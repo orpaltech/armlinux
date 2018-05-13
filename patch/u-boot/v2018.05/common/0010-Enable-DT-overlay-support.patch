@@ -1,6 +1,6 @@
-From 02bb12a0f057f7d0f103abf481f7ab4c02448fa0 Mon Sep 17 00:00:00 2001
+From d090430e7af67191f36c91b21c6a912e398365b6 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Wed, 31 Jan 2018 17:10:02 +0300
+Date: Sun, 13 May 2018 22:23:51 +0300
 Subject: [PATCH] Enable DT-overlay support
 
 ---
@@ -8,10 +8,10 @@ Subject: [PATCH] Enable DT-overlay support
  1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
-index a423aa9..b2fb3b6 100644
+index 9bd70f4..8a68063 100644
 --- a/arch/arm/Kconfig
 +++ b/arch/arm/Kconfig
-@@ -551,6 +551,8 @@ config ARCH_BCM283X
+@@ -489,6 +489,8 @@ config ARCH_BCM283X
  	select OF_CONTROL
  	select PL01X_SERIAL
  	select SERIAL_SEARCH_ALL
@@ -20,18 +20,19 @@ index a423aa9..b2fb3b6 100644
  	imply FAT_WRITE
  
  config TARGET_VEXPRESS_CA15_TC2
-@@ -768,9 +770,10 @@ config ARCH_SUNXI
+@@ -734,10 +736,11 @@ config ARCH_SUNXI
  	select USB_STORAGE if DISTRO_DEFAULTS
  	select USB_KEYBOARD if DISTRO_DEFAULTS
  	select USE_TINY_PRINTF
 +	select OF_LIBFDT
 +	select OF_LIBFDT_OVERLAY
  	imply CMD_GPT
+ 	imply DISTRO_DEFAULTS
  	imply FAT_WRITE
 -	imply OF_LIBFDT_OVERLAY
  	imply PRE_CONSOLE_BUFFER
  	imply SPL_GPIO_SUPPORT
  	imply SPL_LIBCOMMON_SUPPORT
 -- 
-2.16.1
+2.17.0
 
