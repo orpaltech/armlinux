@@ -1,0 +1,71 @@
+From a8c3f5f8738403615d54d4fd06b19c0735f90d3e Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Fri, 20 Apr 2018 16:19:12 +0300
+Subject: [PATCH] bcm2837: dts: Add missing GPIOs of Expander
+
+---
+ arch/arm/boot/dts/bcm2837-rpi-3-b.dts | 20 +++++++++++++++++++-
+ 1 file changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/bcm2837-rpi-3-b.dts b/arch/arm/boot/dts/bcm2837-rpi-3-b.dts
+index 0b31d99..3e87ed0 100644
+--- a/arch/arm/boot/dts/bcm2837-rpi-3-b.dts
++++ b/arch/arm/boot/dts/bcm2837-rpi-3-b.dts
+@@ -20,9 +20,14 @@
+ 
+ 	leds {
+ 		act {
+-			gpios = <&gpio 47 GPIO_ACTIVE_HIGH>;
++			gpios = <&expgpio 2 GPIO_ACTIVE_HIGH>;
+ 		};
+ 	};
++
++	wifi_pwrseq: wifi-pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		reset-gpios = <&expgpio 1 GPIO_ACTIVE_HIGH>;
++	};
+ };
+ 
+ &firmware {
+@@ -42,6 +47,10 @@
+ 	};
+ };
+ 
++&hdmi {
++	hpd-gpios = <&expgpio 4 GPIO_ACTIVE_LOW>;
++};
++
+ /* uart0 communicates with the BT module */
+ &uart0 {
+ 	pinctrl-names = "default";
+@@ -51,6 +60,7 @@
+ 	bluetooth {
+ 		compatible = "brcm,bcm43438-bt";
+ 		max-speed = <2000000>;
++		shutdown-gpios = <&expgpio 0 GPIO_ACTIVE_HIGH>;
+ 	};
+ };
+ 
+@@ -63,11 +73,19 @@
+ 
+ /* SDHCI is used to control the SDIO for wireless */
+ &sdhci {
++	#address-cells = <1>;
++	#size-cells = <0>;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&emmc_gpio34>;
+ 	status = "okay";
+ 	bus-width = <4>;
+ 	non-removable;
++	mmc-pwrseq = <&wifi_pwrseq>;
++
++	brcmf: wifi@1 {
++		reg = <1>;
++		compatible = "brcm,bcm4329-fmac";
++	};
+ };
+ 
+ /* SDHOST is used to drive the SD card */
+-- 
+2.17.0
+

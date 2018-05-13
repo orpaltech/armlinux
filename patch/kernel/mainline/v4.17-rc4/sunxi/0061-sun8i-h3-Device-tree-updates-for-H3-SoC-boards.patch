@@ -1,0 +1,104 @@
+From 3a7ff4327f6071738cf91652346fdec6df9ab2c2 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Fri, 11 May 2018 17:04:08 +0300
+Subject: [PATCH] sun8i-h3: Device tree updates for H3 SoC boards
+
+---
+ arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts |  2 +-
+ arch/arm/boot/dts/sun8i-h3.dtsi            | 25 +++++++++++++++++++++-
+ arch/arm/boot/dts/sunxi-h3-h5.dtsi         | 15 +++++++++++++
+ 3 files changed, 40 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts b/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts
+index cea4d64..11f8fa8 100644
+--- a/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts
++++ b/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts
+@@ -149,7 +149,7 @@
+ &ir {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&ir_pins_a>;
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &mmc0 {
+diff --git a/arch/arm/boot/dts/sun8i-h3.dtsi b/arch/arm/boot/dts/sun8i-h3.dtsi
+index 10da8ed..70fd40f 100644
+--- a/arch/arm/boot/dts/sun8i-h3.dtsi
++++ b/arch/arm/boot/dts/sun8i-h3.dtsi
+@@ -82,7 +82,9 @@
+ 
+ 	soc {
+ 		mali: gpu@1c40000 {
+-			compatible = "allwinner,sun8i-h3-mali", "arm,mali-400";
++			compatible = "allwinner,sun8i-h3-mali",
++				     "allwinner,sun7i-a20-mali",
++				     "arm,mali-400";
+ 			reg = <0x01c40000 0x10000>;
+ 			interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>,
+ 				     <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>,
+@@ -101,6 +103,7 @@
+ 			clocks = <&ccu CLK_BUS_GPU>, <&ccu CLK_GPU>;
+ 			clock-names = "bus", "core";
+ 			resets = <&ccu RST_BUS_GPU>;
++			memory-region = <&cma>;
+ 
+ 			assigned-clocks = <&ccu CLK_GPU>;
+ 			assigned-clock-rates = <384000000>;
+@@ -154,4 +157,24 @@
+ 
+ &pio {
+ 	compatible = "allwinner,sun8i-h3-pinctrl";
++
++	i2s0_pins_bclk: i2s0@0 {
++		pins = "PA19";
++		function = "i2s0";
++	};
++
++	i2s0_pins_lrck: i2s0@1 {
++		pins = "PA18";
++		function = "i2s0";
++	};
++
++	i2s0_pins_do0: i2s0@2 {
++		pins = "PA20";
++		function = "i2s0";
++	};
++
++	i2s0_pins_di: i2s0@3 {
++		pins = "PA21";
++		function = "i2s0";
++	};
+ };
+diff --git a/arch/arm/boot/dts/sunxi-h3-h5.dtsi b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
+index 1be1a02..50c9fa9 100644
+--- a/arch/arm/boot/dts/sunxi-h3-h5.dtsi
++++ b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
+@@ -108,9 +108,24 @@
+ 	de: display-engine {
+ 		compatible = "allwinner,sun8i-h3-display-engine";
+ 		allwinner,pipelines = <&mixer0>;
++		memory-region = <&cma>;
+ 		status = "disabled";
+ 	};
+ 
++	reserved-memory {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		ranges;
++
++		cma: linux,cma {
++			compatible = "shared-dma-pool";
++			reusable;
++			size = <0x8000000>;
++			alignment = <0x2000>;
++			linux,cma-default;
++		};
++	};
++
+ 	soc {
+ 		compatible = "simple-bus";
+ 		#address-cells = <1>;
+-- 
+2.17.0
+

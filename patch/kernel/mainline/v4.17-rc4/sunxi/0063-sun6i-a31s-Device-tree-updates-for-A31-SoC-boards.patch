@@ -1,0 +1,366 @@
+From 6d84a76c1871ecaa0902d0882cf905c4a459531e Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sun, 13 May 2018 18:44:24 +0300
+Subject: [PATCH] sun6i-a31s: Device tree updates for A31 SoC boards
+
+---
+ arch/arm/boot/dts/sun6i-a31.dtsi              |  96 +++++++++++++--
+ .../boot/dts/sun6i-a31s-sinovoip-bpi-m2.dts   | 114 +++++++++---------
+ 2 files changed, 145 insertions(+), 65 deletions(-)
+
+diff --git a/arch/arm/boot/dts/sun6i-a31.dtsi b/arch/arm/boot/dts/sun6i-a31.dtsi
+index c729925..6355cc4 100644
+--- a/arch/arm/boot/dts/sun6i-a31.dtsi
++++ b/arch/arm/boot/dts/sun6i-a31.dtsi
+@@ -104,14 +104,7 @@
+ 			device_type = "cpu";
+ 			reg = <0>;
+ 			clocks = <&ccu CLK_CPU>;
+-			clock-latency = <244144>; /* 8 32k periods */
+-			operating-points = <
+-				/* kHz	  uV */
+-				1008000	1200000
+-				864000	1200000
+-				720000	1100000
+-				480000	1000000
+-				>;
++			operating-points-v2 = <&cpu0_opp_table>;
+ 			#cooling-cells = <2>;
+ 		};
+ 
+@@ -119,18 +112,53 @@
+ 			compatible = "arm,cortex-a7";
+ 			device_type = "cpu";
+ 			reg = <1>;
++			operating-points-v2 = <&cpu0_opp_table>;
+ 		};
+ 
+ 		cpu@2 {
+ 			compatible = "arm,cortex-a7";
+ 			device_type = "cpu";
+ 			reg = <2>;
++			operating-points-v2 = <&cpu0_opp_table>;
+ 		};
+ 
+ 		cpu@3 {
+ 			compatible = "arm,cortex-a7";
+ 			device_type = "cpu";
+ 			reg = <3>;
++			operating-points-v2 = <&cpu0_opp_table>;
++		};
++	};
++
++	cpu0_opp_table: opp_table0 {
++		compatible = "operating-points-v2";
++		opp-shared;
++
++		opp-1008000000 {
++			opp-hz = /bits/ 64 <1008000000>;
++			opp-microvolt = <1260000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp-864000000 {
++			opp-hz = /bits/ 64 <864000000>;
++			opp-microvolt = <1200000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++			status = "disabled";
++		};
++
++		opp-720000000 {
++			opp-hz = /bits/ 64 <720000000>;
++			opp-microvolt = <1100000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++			status = "disabled";
++		};
++
++		opp-480000000 {
++			opp-hz = /bits/ 64 <480000000>;
++			opp-microvolt = <1000000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++			status = "disabled";
+ 		};
+ 	};
+ 
+@@ -156,6 +184,13 @@
+ 					type = "passive";
+ 				};
+ 
++				cpu_hot: cpu_hot {
++					/* milliCelsius */
++					temperature = <85000>;
++					hysteresis = <2000>;
++					type = "hot";
++				};
++
+ 				cpu_crit: cpu_crit {
+ 					/* milliCelsius */
+ 					temperature = <100000>;
+@@ -630,6 +665,36 @@
+ 				function = "i2c2";
+ 			};
+ 
++			i2c3_pins_a: i2c3@0 {
++				pins = "PB5", "PB6";
++				function = "i2c3";
++			};
++
++			i2s0_pins_mclk: i2s0@0 {
++				pins = "PB0";
++				function = "i2s0";
++			};
++
++			i2s0_pins_bclk: i2s0@1 {
++				pins = "PB1";
++				function = "i2s0";
++			};
++
++			i2s0_pins_lrck: i2s0@2 {
++				pins = "PB2";
++				function = "i2s0";
++			};
++
++			i2s0_pins_do0: i2s0@3 {
++				pins = "PB3";
++				function = "i2s0";
++			};
++
++			i2s0_pins_di: i2s0@4 {
++				pins = "PB7";
++				function = "i2s0";
++			};
++
+ 			lcd0_rgb888_pins: lcd0_rgb888 {
+ 				pins = "PD0", "PD1", "PD2", "PD3",
+ 						 "PD4", "PD5", "PD6", "PD7",
+@@ -685,6 +750,21 @@
+ 				bias-pull-up;
+ 			};
+ 
++			spi1_pins_a: spi1@0 {
++				pins = "PG15", "PG16", "PG14", "PG13";
++				function = "spi1";
++			};
++
++			spi1_pins_cs1: spi1@1 {
++				pins = "PG12";
++				function = "spi1";
++			};
++
++			spi2_pins_a: spi2@0 {
++				pins = "PH11", "PH12", "PH10", "PH9";
++				function = "spi2";
++			};
++
+ 			spdif_pins_a: spdif@0 {
+ 				pins = "PH28";
+ 				function = "spdif";
+diff --git a/arch/arm/boot/dts/sun6i-a31s-sinovoip-bpi-m2.dts b/arch/arm/boot/dts/sun6i-a31s-sinovoip-bpi-m2.dts
+index b8b79c0..afa3fba 100644
+--- a/arch/arm/boot/dts/sun6i-a31s-sinovoip-bpi-m2.dts
++++ b/arch/arm/boot/dts/sun6i-a31s-sinovoip-bpi-m2.dts
+@@ -42,6 +42,7 @@
+ 
+ /dts-v1/;
+ #include "sun6i-a31s.dtsi"
++#include "sunxi-common-regulators.dtsi"
+ #include <dt-bindings/gpio/gpio.h>
+ 
+ / {
+@@ -56,6 +57,17 @@
+ 		stdout-path = "serial0:115200n8";
+ 	};
+ 
++	hdmi_connector {
++		compatible = "hdmi-connector";
++		type = "a";
++
++		port {
++			hdmi_con_in: endpoint {
++				remote-endpoint = <&hdmi_out_con>;
++			};
++		};
++	};
++
+ 	leds {
+ 		compatible = "gpio-leds";
+ 		pinctrl-names = "default";
+@@ -64,6 +76,7 @@
+ 		blue {
+ 			label = "bpi-m2:blue:usr";
+ 			gpios = <&pio 6 11 GPIO_ACTIVE_HIGH>; /* PG11 */
++			linux,default-trigger = "heartbeat";
+ 		};
+ 
+ 		green {
+@@ -74,6 +87,7 @@
+ 		red {
+ 			label = "bpi-m2:red:usr";
+ 			gpios = <&pio 6 5 GPIO_ACTIVE_HIGH>; /* PG5 */
++			default-state = "on";
+ 		};
+ 	};
+ 
+@@ -89,6 +103,10 @@
+ 	cpu-supply = <&reg_dcdc3>;
+ };
+ 
++&de {
++	status = "okay";
++};
++
+ &ehci0 {
+ 	status = "okay";
+ };
+@@ -98,7 +116,6 @@
+ 	pinctrl-0 = <&gmac_pins_rgmii_a>, <&gmac_phy_reset_pin_bpi_m2>;
+ 	phy = <&phy1>;
+ 	phy-mode = "rgmii";
+-	phy-supply = <&reg_dldo1>;
+ 	snps,reset-gpio = <&pio 0 21 GPIO_ACTIVE_HIGH>; /* PA21 */
+ 	snps,reset-active-low;
+ 	snps,reset-delays-us = <0 10000 30000>;
+@@ -109,16 +126,46 @@
+ 	};
+ };
+ 
++&hdmi {
++	status = "okay";
++};
++
++&hdmi_out {
++	hdmi_out_con: endpoint {
++		remote-endpoint = <&hdmi_con_in>;
++	};
++};
++
++&i2c0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c0_pins_a>;
++};
++
++&i2c1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c1_pins_a>;
++};
++
++&i2c2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c2_pins_a>;
++};
++
++&i2c3 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c3_pins_a>;
++};
++
+ &ir {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&ir_pins_a>;
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &mmc0 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&mmc0_pins_a>, <&mmc0_cd_pin_bpi_m2>;
+-	vmmc-supply = <&reg_dcdc1>;
++	vmmc-supply = <&reg_vcc3v0>;
+ 	bus-width = <4>;
+ 	cd-gpios = <&pio 0 4 GPIO_ACTIVE_LOW>; /* PA4 */
+ 	status = "okay";
+@@ -131,7 +178,7 @@
+ &mmc2 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&mmc2_pins_a>;
+-	vmmc-supply = <&reg_aldo1>;
++	vmmc-supply = <&reg_vcc3v0>;
+ 	mmc-pwrseq = <&mmc2_pwrseq>;
+ 	bus-width = <4>;
+ 	non-removable;
+@@ -162,8 +209,6 @@
+ 		reg = <0x68>;
+ 		interrupt-parent = <&nmi_intc>;
+ 		interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+-		eldoin-supply = <&reg_dcdc1>;
+-		x-powers,drive-vbus-en;
+ 	};
+ };
+ 
+@@ -194,28 +239,7 @@
+ 
+ #include "axp22x.dtsi"
+ 
+-&reg_aldo1 {
+-	regulator-min-microvolt = <3300000>;
+-	regulator-max-microvolt = <3300000>;
+-	regulator-name = "vcc-wifi";
+-};
+-
+-&reg_aldo2 {
+-	regulator-always-on;
+-	regulator-min-microvolt = <2500000>;
+-	regulator-max-microvolt = <2500000>;
+-	regulator-name = "vcc-gmac";
+-};
+-
+-&reg_aldo3 {
+-	regulator-always-on;
+-	regulator-min-microvolt = <3000000>;
+-	regulator-max-microvolt = <3000000>;
+-	regulator-name = "avcc";
+-};
+-
+ &reg_dc5ldo {
+-	regulator-always-on;
+ 	regulator-min-microvolt = <700000>;
+ 	regulator-max-microvolt = <1320000>;
+ 	regulator-name = "vdd-cpus";
+@@ -255,38 +279,14 @@
+ 	regulator-name = "vcc-dram";
+ };
+ 
+-&reg_dldo1 {
+-	regulator-min-microvolt = <3000000>;
+-	regulator-max-microvolt = <3000000>;
+-	regulator-name = "vcc-mac";
+-};
+-
+-&reg_dldo2 {
+-	regulator-min-microvolt = <2800000>;
+-	regulator-max-microvolt = <2800000>;
+-	regulator-name = "avdd-csi";
+-};
+-
+-&reg_dldo3 {
+-	regulator-always-on;
+-	regulator-min-microvolt = <3300000>;
+-	regulator-max-microvolt = <3300000>;
+-	regulator-name = "vcc-pb";
+-};
+-
+-&reg_eldo1 {
+-	regulator-min-microvolt = <1800000>;
+-	regulator-max-microvolt = <1800000>;
+-	regulator-name = "vdd-csi";
+-	status = "okay";
++&spi1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi1_pins_a>;
+ };
+ 
+-&reg_ldo_io1 {
+-	regulator-always-on;
+-	regulator-min-microvolt = <1800000>;
+-	regulator-max-microvolt = <1800000>;
+-	regulator-name = "vcc-pm-cpus";
+-	status = "okay";
++&spi2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi2_pins_a>;
+ };
+ 
+ &uart0 {
+-- 
+2.17.0
+
