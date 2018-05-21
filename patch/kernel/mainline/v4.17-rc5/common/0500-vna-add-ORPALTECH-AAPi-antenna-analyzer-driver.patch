@@ -1,6 +1,6 @@
-From ef47f0affb3b506140d439cd9095fc3de4f1a02c Mon Sep 17 00:00:00 2001
+From 2a50ef459a6301a1ead10e12b516e968ce27c03b Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Mon, 7 May 2018 21:30:04 +0300
+Date: Sat, 19 May 2018 16:34:50 +0300
 Subject: [PATCH] vna: add ORPALTECH AAPi antenna analyzer driver
 
 ---
@@ -8,11 +8,11 @@ Subject: [PATCH] vna: add ORPALTECH AAPi antenna analyzer driver
  drivers/Makefile               |   2 +
  drivers/vna/Kconfig            |  16 ++
  drivers/vna/Makefile           |   8 +
- drivers/vna/orpal_aapi_drv.c   | 269 +++++++++++++++++++++++++++++++++
- drivers/vna/orpal_aapi_drv.h   |  30 ++++
- drivers/vna/orpal_aapi_sysfs.c | 114 ++++++++++++++
- drivers/vna/orpal_aapi_sysfs.h |  18 +++
- 8 files changed, 459 insertions(+)
+ drivers/vna/orpal_aapi_drv.c   | 310 +++++++++++++++++++++++++++++++++
+ drivers/vna/orpal_aapi_drv.h   |  34 ++++
+ drivers/vna/orpal_aapi_sysfs.c |  90 ++++++++++
+ drivers/vna/orpal_aapi_sysfs.h |  18 ++
+ 8 files changed, 480 insertions(+)
  create mode 100644 drivers/vna/Kconfig
  create mode 100644 drivers/vna/Makefile
  create mode 100644 drivers/vna/orpal_aapi_drv.c
@@ -79,10 +79,10 @@ index 0000000..e47ea92
 +obj-$(CONFIG_VNA_ORPAL_AAPI) += vna-orpal-aapi.o
 diff --git a/drivers/vna/orpal_aapi_drv.c b/drivers/vna/orpal_aapi_drv.c
 new file mode 100644
-index 0000000..f54620a
+index 0000000..82a5172
 --- /dev/null
 +++ b/drivers/vna/orpal_aapi_drv.c
-@@ -0,0 +1,269 @@
+@@ -0,0 +1,310 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Driver for ORPAL AA-Pi antenna analyzer (VNA)
@@ -114,6 +114,40 @@ index 0000000..f54620a
 +static struct class *orpal_aapi_class;
 +
 +ATTRIBUTE_GROUPS(orpal_aapi);
++
++static int orpal_aapi_set_clock(struct clk *clk, u32 rate)
++{
++	int ret;
++
++	ret = clk_round_rate(clk, rate);
++	if (ret < 0)
++		return ret;
++
++	/* A rounded rate value will be passed */
++	ret = clk_set_rate(clk, ret);
++
++	return ret;
++}
++
++int orpal_aapi_set_measure_freq(struct orpal_aapi_device *aapi, u32 measure_freq)
++{
++        u32 lo_freq;
++        int ret;
++
++	lo_freq = measure_freq + aapi->interm_freq;
++
++	// TODO: verify rates
++
++	ret = orpal_aapi_set_clock(aapi->clk0, measure_freq);
++	if (ret)
++		return ret;
++
++	ret = orpal_aapi_set_clock(aapi->clk1, lo_freq);
++	if (ret)
++		return ret;
++
++	return 0;
++}
 +
 +static void orpal_aapi_dev_release(struct device *dev)
 +{
@@ -167,6 +201,7 @@ index 0000000..f54620a
 +static int orpal_aapi_read_dt(struct device *dev, struct orpal_aapi_device *aapi)
 +{
 +	int ret;
++	u32 initial_freq;
 +
 +	aapi->clk0 = devm_clk_get(dev, "clk0");
 +	if (IS_ERR(aapi->clk0)) {
@@ -189,12 +224,21 @@ index 0000000..f54620a
 +	}
 +
 +	ret = device_property_read_u32(dev, "intermediate-frequency",
-+				       &aapi->int_freq);
++				       &aapi->interm_freq);
 +	if (ret) {
 +		dev_err(dev,
-+			"Couldn't read 'intermediate-frequency' property\n");
++			"Intermediate frequency not specified\n");
 +                return ret;
 +        }
++
++	ret = device_property_read_u32(dev, "initial-frequency",
++				       &initial_freq);
++	if (!ret) {
++		ret = orpal_aapi_set_measure_freq(aapi, initial_freq);
++		if (ret)
++			return ret;
++	} else
++		dev_warn(dev, "Initial frequency not specified\n");
 +
 +	return 0;
 +}
@@ -250,15 +294,12 @@ index 0000000..f54620a
 +	aapi = orpal_aapi_dev_init(pdev);
 +	if (IS_ERR(aapi)) {
 +		ret = PTR_ERR(aapi);
-+
 +		if (ret != -EPROBE_DEFER) {
-+			dev_err(dev,
-+				"%s: device init failed: %d\n",
++			dev_err(dev, "%s: device init failed: %d\n",
 +				__func__, ret);
 +		}
 +		return ret;
 +	}
-+
 +	platform_set_drvdata(pdev, aapi);
 +
 +	/*
@@ -354,10 +395,10 @@ index 0000000..f54620a
 +MODULE_LICENSE("GPL v2");
 diff --git a/drivers/vna/orpal_aapi_drv.h b/drivers/vna/orpal_aapi_drv.h
 new file mode 100644
-index 0000000..eff6805
+index 0000000..ec9a056
 --- /dev/null
 +++ b/drivers/vna/orpal_aapi_drv.h
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,34 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Driver for ORPAL AA-Pi antenna analyzer (VNA)
@@ -384,16 +425,20 @@ index 0000000..eff6805
 +	struct clk	*clk1;
 +
 +	u32		xtal_freq;
-+	u32		int_freq;
++	u32		initial_freq;
++	u32		interm_freq;
 +};
++
++int orpal_aapi_set_measure_freq(struct orpal_aapi_device *aapi,
++				u32 measure_freq);
 +
 +#endif /* ORPAL_AAPI_DRV_H */
 diff --git a/drivers/vna/orpal_aapi_sysfs.c b/drivers/vna/orpal_aapi_sysfs.c
 new file mode 100644
-index 0000000..7bdd91c
+index 0000000..85f4e05
 --- /dev/null
 +++ b/drivers/vna/orpal_aapi_sysfs.c
-@@ -0,0 +1,114 @@
+@@ -0,0 +1,90 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Driver for ORPAL AA-Pi antenna analyzer (VNA)
@@ -422,20 +467,6 @@ index 0000000..7bdd91c
 +	container_of(device, struct orpal_aapi_device, dev)
 +
 +
-+static int set_aapi_clock(struct clk *clk, u32 rate)
-+{
-+	int ret;
-+
-+	ret = clk_round_rate(clk, rate);
-+	if (ret < 0)
-+		return ret;
-+
-+	/* A rounded rate value will be passed */
-+	ret = clk_set_rate(clk, ret);
-+
-+	return ret;
-+}
-+
 +static ssize_t measure_freq_show(struct device *dev,
 +				 struct device_attribute *attr,
 +				 char *buf)
@@ -453,24 +484,14 @@ index 0000000..7bdd91c
 +				  const char *buf, size_t count)
 +{
 +	struct orpal_aapi_device *aapi = to_aapi_device(dev);
-+	u32 measure_rate, local_osc_rate;
-+	long ret;
++	u32 measure_freq;
++	int ret;
 +
-+	ret = kstrtou32(buf, 10, &measure_rate);
++	ret = kstrtou32(buf, 10, &measure_freq);
 +	if (ret < 0)
 +		return ret;
 +
-+	local_osc_rate = measure_rate + aapi->int_freq;
-+
-+	// TODO: verify rates given
-+	//if (!rate is valid)
-+	//	return -EINVAL;
-+
-+	ret = set_aapi_clock(aapi->clk0, measure_rate);
-+	if (ret)
-+		return ret;
-+
-+	ret = set_aapi_clock(aapi->clk1, local_osc_rate);
++	ret = orpal_aapi_set_measure_freq(aapi, measure_freq);
 +	if (ret)
 +		return ret;
 +
@@ -495,7 +516,7 @@ index 0000000..7bdd91c
 +{
 +        struct orpal_aapi_device *aapi = to_aapi_device(dev);
 +
-+        return sprintf(buf, "%d\n", aapi->int_freq);
++        return sprintf(buf, "%d\n", aapi->interm_freq);
 +}
 +
 +static DEVICE_ATTR_RW(measure_freq);

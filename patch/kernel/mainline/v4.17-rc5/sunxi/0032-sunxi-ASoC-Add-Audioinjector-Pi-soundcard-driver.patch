@@ -1,13 +1,13 @@
-From db45a218d3f2ee509ade66d20fa6ec2c486a8dd1 Mon Sep 17 00:00:00 2001
+From 996da95a23175b1f26b2ded80b07561bfbff7adf Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 12 May 2018 14:55:39 +0300
+Date: Tue, 15 May 2018 22:48:52 +0300
 Subject: [PATCH] sunxi: ASoC: Add Audioinjector-Pi soundcard driver
 
 ---
  sound/soc/sunxi/Kconfig                  |   7 +
  sound/soc/sunxi/Makefile                 |   4 +
- sound/soc/sunxi/audioinjector-pi-sound.c | 230 +++++++++++++++++++++++
- 3 files changed, 241 insertions(+)
+ sound/soc/sunxi/audioinjector-pi-sound.c | 242 +++++++++++++++++++++++
+ 3 files changed, 253 insertions(+)
  create mode 100644 sound/soc/sunxi/audioinjector-pi-sound.c
 
 diff --git a/sound/soc/sunxi/Kconfig b/sound/soc/sunxi/Kconfig
@@ -40,10 +40,10 @@ index 4a9ef67..1cfecb5 100644
 +obj-$(CONFIG_SND_AUDIOINJECTOR_PI) += snd-soc-audioinjector-pi.o
 diff --git a/sound/soc/sunxi/audioinjector-pi-sound.c b/sound/soc/sunxi/audioinjector-pi-sound.c
 new file mode 100644
-index 0000000..5de4da2
+index 0000000..ef6bddf
 --- /dev/null
 +++ b/sound/soc/sunxi/audioinjector-pi-sound.c
-@@ -0,0 +1,230 @@
+@@ -0,0 +1,242 @@
 +/*
 + * ASoC Driver for AudioInjector Pi soundcard
 + *
@@ -150,26 +150,23 @@ index 0000000..5de4da2
 +	.hw_params	= snd_audioinjector_pi_hw_params,
 +};
 +
-+static struct snd_soc_dai_link snd_audioinjector_pi_dai[] = {
-+	{
-+		.name		= "audioinjector-pi-sound",
-+		.stream_name	= "audioinjector-pi-audio",
-+		.platform_name  = "sun4i-i2s.0",
-+		.cpu_dai_name	= "sun4i-i2s.0",
-+		.codec_dai_name	= "wm8731-hifi",
-+		.codec_name	= "wm8731.0-001a",
-+		.ops		= &snd_audioinjector_pi_ops,
-+		.dai_fmt	= SND_SOC_DAIFMT_CBM_CFM |
-+				SND_SOC_DAIFMT_I2S |
-+				SND_SOC_DAIFMT_NB_NF,
-+	},
++static struct snd_soc_dai_link snd_audioinjector_pi_dai = {
++	.name		= "audioinjector-pi-sound",
++	.stream_name	= "audioinjector-pi-audio",
++	.platform_name  = "sun4i-i2s.0",
++	.cpu_dai_name	= "sun4i-i2s.0",
++	.codec_dai_name	= "wm8731-hifi",
++	.codec_name	= "wm8731.0-001a",
++	.ops		= &snd_audioinjector_pi_ops,
++	.dai_fmt	= SND_SOC_DAIFMT_CBM_CFM |
++			SND_SOC_DAIFMT_NB_NF,
 +};
 +
 +static const struct snd_soc_dapm_widget wm8731_dapm_widgets[] = {
 +	SND_SOC_DAPM_HP("Headphone Jack", NULL),
 +	SND_SOC_DAPM_SPK("Ext Spk", NULL),
-+	SND_SOC_DAPM_LINE("Line In Jacks", NULL),
-+	SND_SOC_DAPM_MIC("Microphone", NULL),
++	SND_SOC_DAPM_LINE("Line In Jack", NULL),
++	SND_SOC_DAPM_MIC("Mic Jack", NULL),
 +};
 +
 +static const struct snd_soc_dapm_route audioinjector_audio_map[] = {
@@ -182,60 +179,75 @@ index 0000000..5de4da2
 +	{"Ext Spk", NULL, "LOUT"},
 +
 +	/* line inputs */
-+	{"Line In Jacks", NULL, "Line Input"},
++	{"LLINEIN", NULL, "Line In Jack"},
++	{"RLINEIN", NULL, "Line In Jack"},
 +
 +	/* mic is connected to Mic Jack, with WM8731 Mic Bias */
-+	{"Microphone", NULL, "Mic Bias"},
++	{ "Mic Bias", NULL, "Mic Jack"},
 +};
 +
 +static struct snd_soc_card snd_soc_audioinjector_pi = {
 +	.name		= "audioinjector-pi-sound",
-+	.dai_link	= snd_audioinjector_pi_dai,
-+	.num_links	= ARRAY_SIZE(snd_audioinjector_pi_dai),
++	.dai_link	= &snd_audioinjector_pi_dai,
++	.num_links	= 1,
 +
-+	.dapm_widgets	= wm8731_dapm_widgets,
++	.dapm_widgets	  = wm8731_dapm_widgets,
 +	.num_dapm_widgets = ARRAY_SIZE(wm8731_dapm_widgets),
-+	.dapm_routes	= audioinjector_audio_map,
-+	.num_dapm_routes = ARRAY_SIZE(audioinjector_audio_map),
++	.dapm_routes	  = audioinjector_audio_map,
++	.num_dapm_routes  = ARRAY_SIZE(audioinjector_audio_map),
 +};
 +
 +static int audioinjector_pi_probe(struct platform_device *pdev)
 +{
 +	struct device *dev = &pdev->dev;
-+	struct snd_soc_card *card = &snd_soc_audioinjector_pi;
++	struct snd_soc_card *card;
++	struct snd_soc_dai_link *link;
++	u32 format;
 +	int ret;
 +
++	card = devm_kmemdup(dev, &snd_soc_audioinjector_pi,
++			    sizeof(*card), GFP_KERNEL);
++	if (!card)
++		return -ENOMEM;
++
 +	card->dev = dev;
++	link = card->dai_link;
 +
-+	if (dev->of_node) {
-+		struct snd_soc_dai_link *dai = &snd_audioinjector_pi_dai[0];
-+		struct device_node *cpu_node = of_parse_phandle(dev->of_node,
-+								"cpu-node", 0);
-+		struct device_node *codec_node = of_parse_phandle(dev->of_node,
-+								"codec-node", 0);
++	ret = of_property_read_u32(dev->of_node, "hw-audio-format",
++				   &format);
++	if (!ret) {
++		if (format < 1 || format > 7)
++			return -EINVAL;
++		link->dai_fmt |= format;
++	} else
++		link->dai_fmt |= SND_SOC_DAIFMT_I2S;
 +
-+		if (cpu_node) {
-+			dai->cpu_dai_name = NULL;
-+			dai->cpu_of_node = cpu_node;
-+			dai->platform_name = NULL;
-+			dai->platform_of_node = cpu_node;
-+		} else
-+			if (!dai->cpu_of_node) {
-+				dev_err(dev,
-+					"Property 'cpu-node' missing or invalid\n");
-+				return -EINVAL;
-+			}
++	struct device_node *cpu_node = of_parse_phandle(dev->of_node,
++							"cpu-node", 0);
++	struct device_node *codec_node = of_parse_phandle(dev->of_node,
++							"codec-node", 0);
 +
-+		if (codec_node) {
-+			dai->codec_name = NULL;
-+			dai->codec_of_node = codec_node;
-+		} else
-+			if (!dai->codec_of_node) {
-+				dev_err(dev,
-+					"Property 'codec-node' missing or invalid\n");
-+				return -EINVAL;
-+			}
-+	}
++	if (cpu_node) {
++		link->cpu_dai_name	= NULL;
++		link->cpu_of_node	= cpu_node;
++		link->platform_name	= NULL;
++		link->platform_of_node	= cpu_node;
++	} else
++		if (!link->cpu_of_node) {
++			dev_err(dev,
++				"Property 'cpu-node' missing or invalid\n");
++			return -EINVAL;
++		}
++
++	if (codec_node) {
++		link->codec_name	= NULL;
++		link->codec_of_node	= codec_node;
++	} else
++		if (!link->codec_of_node) {
++			dev_err(dev,
++				"Property 'codec-node' missing or invalid\n");
++			return -EINVAL;
++		}
 +
 +	ret = snd_soc_register_card(card);
 +	if (ret && ret != -EPROBE_DEFER) {

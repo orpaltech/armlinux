@@ -1,38 +1,40 @@
-From 692875a0391f86899c9e79c3fbf430e587fda60e Mon Sep 17 00:00:00 2001
+From e5545bcb9bfd2987e4dd76f65d328d9119a5319d Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Mon, 7 May 2018 02:08:48 +0300
+Date: Sun, 20 May 2018 21:45:38 +0300
 Subject: [PATCH] drm: sun4i: Add Allwinner DE2 support for A64 SoC
 
 ---
  .../devicetree/bindings/clock/sun8i-de2.txt   |   5 +
  .../bindings/display/sunxi/sun4i-drm.txt      |   7 +
  .../dts/allwinner/sun50i-a64-bananapi-m64.dts |  38 +++
- .../dts/allwinner/sun50i-a64-nanopi-a64.dts   |  46 +++
+ .../dts/allwinner/sun50i-a64-nanopi-a64.dts   |  42 +++
  .../boot/dts/allwinner/sun50i-a64-pine64.dts  |  38 +++
- arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi | 292 +++++++++++++++++-
- drivers/clk/sunxi-ng/ccu-sun50i-a64.c         |  69 +++--
+ arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi | 296 +++++++++++++++++-
+ drivers/clk/sunxi-ng/Kconfig                  |   2 +
+ drivers/clk/sunxi-ng/ccu-sun50i-a64.c         |  69 ++--
  drivers/clk/sunxi-ng/ccu-sun50i-a64.h         |  12 +-
  drivers/clk/sunxi-ng/ccu-sun8i-de2.c          |  32 +-
- drivers/gpu/drm/sun4i/Kconfig                 |   4 +-
+ drivers/gpu/drm/sun4i/Kconfig                 |   5 +-
  drivers/gpu/drm/sun4i/sun4i_drv.c             |   1 +
  drivers/gpu/drm/sun4i/sun4i_tcon.c            |  10 +
  drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c         |  16 +-
  drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h         |  11 +-
- drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c        |  45 ++-
+ drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c        |  62 ++--
  drivers/gpu/drm/sun4i/sun8i_hdmi_phy_clk.c    |  90 ++++--
- drivers/gpu/drm/sun4i/sun8i_mixer.c           |  24 ++
- include/dt-bindings/clock/sun50i-a64-ccu.h    |   6 +
- 18 files changed, 661 insertions(+), 85 deletions(-)
+ drivers/gpu/drm/sun4i/sun8i_mixer.c           |  29 +-
+ drivers/gpu/drm/sun4i/sun8i_mixer.h           |   2 +
+ include/dt-bindings/clock/sun50i-a64-ccu.h    |   4 +
+ 20 files changed, 677 insertions(+), 94 deletions(-)
 
 diff --git a/Documentation/devicetree/bindings/clock/sun8i-de2.txt b/Documentation/devicetree/bindings/clock/sun8i-de2.txt
-index f2fa87c..82d78d9 100644
+index f2fa87c..89a86d0 100644
 --- a/Documentation/devicetree/bindings/clock/sun8i-de2.txt
 +++ b/Documentation/devicetree/bindings/clock/sun8i-de2.txt
 @@ -7,6 +7,7 @@ Required properties :
  		- "allwinner,sun8i-h3-de2-clk"
  		- "allwinner,sun8i-v3s-de2-clk"
  		- "allwinner,sun50i-h5-de2-clk"
-+		- "allwinner,sun50i-a64-de2-clk"
++		- "allwinner,sun50i-a64-de2-clk", "allwinner,sun50i-h5-de2-clk"
  
  - reg: Must contain the registers base address and length
  - clocks: phandle to the clocks feeding the display engine subsystem.
@@ -48,14 +50,14 @@ index f2fa87c..82d78d9 100644
  de2_clocks: clock@1000000 {
  	compatible = "allwinner,sun8i-h3-de2-clk";
 diff --git a/Documentation/devicetree/bindings/display/sunxi/sun4i-drm.txt b/Documentation/devicetree/bindings/display/sunxi/sun4i-drm.txt
-index 3346c1e..cf7c7e5 100644
+index 3346c1e..c81819c 100644
 --- a/Documentation/devicetree/bindings/display/sunxi/sun4i-drm.txt
 +++ b/Documentation/devicetree/bindings/display/sunxi/sun4i-drm.txt
 @@ -78,6 +78,7 @@ Required properties:
  
    - compatible: value must be one of:
      * "allwinner,sun8i-a83t-dw-hdmi"
-+    * "allwinner,sun50i-a64-dw-hdmi"
++    * "allwinner,sun50i-a64-dw-hdmi", "allwinner,sun8i-a83t-dw-hdmi"
    - reg: base address and size of memory-mapped region
    - reg-io-width: See dw_hdmi.txt. Shall be 1.
    - interrupts: HDMI interrupt number
@@ -164,7 +166,7 @@ index 2250dec..8c149cb 100644
  	pinctrl-names = "default";
  	pinctrl-0 = <&uart0_pins_a>;
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts b/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
-index e2dce48..ad1bea8 100644
+index e2dce48..e08eb1c 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
 @@ -57,6 +57,21 @@
@@ -189,14 +191,10 @@ index e2dce48..ad1bea8 100644
  };
  
  &ehci0 {
-@@ -78,6 +93,25 @@
+@@ -78,6 +93,21 @@
  	bias-pull-up;
  };
  
-+&i2s2 {
-+	status = "okay";
-+};
-+
 +&hdmi {
 +	hvcc-supply = <&reg_dldo1>;
 +	status = "okay";
@@ -215,7 +213,7 @@ index e2dce48..ad1bea8 100644
  &mmc0 {
  	pinctrl-names = "default";
  	pinctrl-0 = <&mmc0_pins>;
-@@ -96,6 +130,10 @@
+@@ -96,6 +126,10 @@
  	status = "okay";
  };
  
@@ -226,7 +224,7 @@ index e2dce48..ad1bea8 100644
  &r_rsb {
  	status = "okay";
  
-@@ -195,6 +233,14 @@
+@@ -195,6 +229,14 @@
  	regulator-name = "vcc-rtc";
  };
  
@@ -310,7 +308,7 @@ index a758257..dc5b4e9 100644
  &uart0 {
  	pinctrl-names = "default";
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
-index 1b2ef28..172ea42 100644
+index 1b2ef28..9d2c53b 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
 @@ -46,6 +46,8 @@
@@ -384,15 +382,18 @@ index 1b2ef28..172ea42 100644
  	osc24M: osc24M_clk {
  		#clock-cells = <0>;
  		compatible = "fixed-clock";
-@@ -168,6 +200,19 @@
+@@ -168,6 +200,22 @@
  		#size-cells = <1>;
  		ranges;
  
 +		display_clocks: clock@1000000 {
-+			compatible = "allwinner,sun50i-a64-de2-clk";
++			compatible = "allwinner,sun50i-h5-de2-clk",
++				     "allwinner,sun50i-a64-de2-clk";
 +			reg = <0x01000000 0x100000>;
-+			clocks = <&ccu CLK_DE>, <&ccu CLK_BUS_DE>;
-+			clock-names = "mod", "bus";
++			clocks = <&ccu CLK_DE>,
++				 <&ccu CLK_BUS_DE>;
++			clock-names = "mod",
++				      "bus";
 +			resets = <&ccu RST_BUS_DE>;
 +			allwinner,sram = <&de2_sram 1>;
 +			#clock-cells = <1>;
@@ -404,7 +405,7 @@ index 1b2ef28..172ea42 100644
  		syscon: syscon@1c00000 {
  			compatible = "allwinner,sun50i-a64-system-controller",
  				"syscon";
-@@ -185,6 +230,220 @@
+@@ -185,6 +233,221 @@
  			#dma-cells = <1>;
  		};
  
@@ -438,10 +439,10 @@ index 1b2ef28..172ea42 100644
 +		mixer0: mixer@1100000 {
 +			compatible = "allwinner,sun50i-a64-de2-mixer-0";
 +			reg = <0x01100000 0x100000>;
-+			clocks = <&display_clocks CLK_MIXER0>,
-+				 <&display_clocks CLK_BUS_MIXER0>;
-+			clock-names = "mod",
-+				      "bus";
++			clocks = <&display_clocks CLK_BUS_MIXER0>,
++				 <&display_clocks CLK_MIXER0>;
++			clock-names = "bus",
++				      "mod";
 +			resets = <&display_clocks RST_MIXER0>;
 +			status = "disabled";
 +
@@ -464,10 +465,10 @@ index 1b2ef28..172ea42 100644
 +		mixer1: mixer@1200000 {
 +			compatible = "allwinner,sun50i-a64-de2-mixer-1";
 +			reg = <0x01200000 0x100000>;
-+			clocks = <&display_clocks CLK_MIXER1>,
-+				 <&display_clocks CLK_BUS_MIXER1>;
-+			clock-names = "mod",
-+				      "bus";
++			clocks = <&display_clocks CLK_BUS_MIXER1>,
++				 <&display_clocks CLK_MIXER1>;
++			clock-names = "bus",
++				      "mod";
 +			resets = <&display_clocks RST_MIXER1>;
 +			status = "disabled";
 +
@@ -512,8 +513,9 @@ index 1b2ef28..172ea42 100644
 +					};
 +				};
 +
-+				tcon0_out: port@1 {
++				tcon0_out_dsi: port@1 {
 +					reg = <1>;
++					remote-endpoint = <&dsi_in_tcon0>;
 +				};
 +			};
 +		};
@@ -625,7 +627,7 @@ index 1b2ef28..172ea42 100644
  		mmc0: mmc@1c0f000 {
  			compatible = "allwinner,sun50i-a64-mmc";
  			reg = <0x01c0f000 0x1000>;
-@@ -562,7 +821,6 @@
+@@ -562,7 +825,6 @@
  			#size-cells = <0>;
  		};
  
@@ -633,7 +635,7 @@ index 1b2ef28..172ea42 100644
  		spi0: spi@1c68000 {
  			compatible = "allwinner,sun8i-h3-spi";
  			reg = <0x01c68000 0x1000>;
-@@ -655,6 +913,19 @@
+@@ -655,6 +917,19 @@
  			#reset-cells = <1>;
  		};
  
@@ -653,7 +655,7 @@ index 1b2ef28..172ea42 100644
  		r_pio: pinctrl@1f02c00 {
  			compatible = "allwinner,sun50i-a64-r-pinctrl";
  			reg = <0x01f02c00 0x400>;
-@@ -666,6 +937,11 @@
+@@ -666,6 +941,11 @@
  			interrupt-controller;
  			#interrupt-cells = <3>;
  
@@ -665,6 +667,19 @@ index 1b2ef28..172ea42 100644
  			r_rsb_pins: rsb {
  				pins = "PL0", "PL1";
  				function = "s_rsb";
+diff --git a/drivers/clk/sunxi-ng/Kconfig b/drivers/clk/sunxi-ng/Kconfig
+index 79dfd29..523a6cb 100644
+--- a/drivers/clk/sunxi-ng/Kconfig
++++ b/drivers/clk/sunxi-ng/Kconfig
+@@ -58,6 +58,8 @@ config SUN8I_V3S_CCU
+ 
+ config SUN8I_DE2_CCU
+ 	bool "Support for the Allwinner SoCs DE2 CCU"
++	default MACH_SUN8I || (ARM64 && ARCH_SUNXI)
++	depends on DRM_SUN4I && (MACH_SUN8I || (ARM64 && ARCH_SUNXI))
+ 
+ config SUN8I_R40_CCU
+ 	bool "Support for the Allwinner R40 CCU"
 diff --git a/drivers/clk/sunxi-ng/ccu-sun50i-a64.c b/drivers/clk/sunxi-ng/ccu-sun50i-a64.c
 index ee9c12c..ec5e899 100644
 --- a/drivers/clk/sunxi-ng/ccu-sun50i-a64.c
@@ -878,7 +893,7 @@ index 468d1ab..476d54f 100644
  };
  
 diff --git a/drivers/gpu/drm/sun4i/Kconfig b/drivers/gpu/drm/sun4i/Kconfig
-index eee6bc0..7c9841b 100644
+index eee6bc0..88d72de 100644
 --- a/drivers/gpu/drm/sun4i/Kconfig
 +++ b/drivers/gpu/drm/sun4i/Kconfig
 @@ -1,5 +1,5 @@
@@ -888,7 +903,15 @@ index eee6bc0..7c9841b 100644
  	depends on DRM && (ARM || ARM64) && COMMON_CLK
  	depends on ARCH_SUNXI || COMPILE_TEST
  	select DRM_GEM_CMA_HELPER
-@@ -51,7 +51,7 @@ config DRM_SUN8I_DW_HDMI
+@@ -42,6 +42,7 @@ config DRM_SUN4I_BACKEND
+ 
+ config DRM_SUN8I_DW_HDMI
+ 	tristate "Support for Allwinner version of DesignWare HDMI"
++	default MACH_SUN8I || (ARM64 && ARCH_SUNXI)
+ 	depends on DRM_SUN4I
+ 	select DRM_DW_HDMI
+ 	help
+@@ -51,7 +52,7 @@ config DRM_SUN8I_DW_HDMI
  
  config DRM_SUN8I_MIXER
  	tristate "Support for Allwinner Display Engine 2.0 Mixer"
@@ -1038,19 +1061,26 @@ index 79154f0..d0a30a4 100644
  
  #endif /* _SUN8I_DW_HDMI_H_ */
 diff --git a/drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c b/drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c
-index 5a52fc4..fa0b787 100644
+index 5a52fc4..0dd766d 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c
-@@ -183,6 +183,8 @@ static int sun8i_hdmi_phy_config_h3(struct dw_hdmi *hdmi,
+@@ -183,7 +183,14 @@ static int sun8i_hdmi_phy_config_h3(struct dw_hdmi *hdmi,
  	regmap_update_bits(phy->regs, SUN8I_HDMI_PHY_ANA_CFG1_REG,
  			   SUN8I_HDMI_PHY_ANA_CFG1_TXEN_MASK, 0);
  
-+	pll_cfg1_init |= BIT(26);
+-	regmap_write(phy->regs, SUN8I_HDMI_PHY_PLL_CFG1_REG, pll_cfg1_init);
++	/*
++	 * NOTE: We have to be careful not to overwrite PHY parent
++	 * clock selection bit and clock divider.
++	 */
++	regmap_update_bits(phy->regs, SUN8I_HDMI_PHY_PLL_CFG1_REG,
++			   (u32)~SUN8I_HDMI_PHY_PLL_CFG1_CKIN_SEL_MSK,
++			   pll_cfg1_init);
 +
- 	regmap_write(phy->regs, SUN8I_HDMI_PHY_PLL_CFG1_REG, pll_cfg1_init);
  	regmap_update_bits(phy->regs, SUN8I_HDMI_PHY_PLL_CFG2_REG,
  			   (u32)~SUN8I_HDMI_PHY_PLL_CFG2_PREDIV_MSK,
-@@ -232,7 +234,7 @@ static int sun8i_hdmi_phy_config(struct dw_hdmi *hdmi, void *data,
+ 			   pll_cfg2_init);
+@@ -232,7 +239,7 @@ static int sun8i_hdmi_phy_config(struct dw_hdmi *hdmi, void *data,
  	regmap_update_bits(phy->regs, SUN8I_HDMI_PHY_DBG_CTRL_REG,
  			   SUN8I_HDMI_PHY_DBG_CTRL_POL_MASK, val);
  
@@ -1059,29 +1089,35 @@ index 5a52fc4..fa0b787 100644
  		clk_set_rate(phy->clk_phy, mode->crtc_clock * 1000);
  
  	return phy->variant->phy_config(hdmi, phy, mode->crtc_clock * 1000);
-@@ -386,6 +388,13 @@ static struct regmap_config sun8i_hdmi_phy_regmap_config = {
+@@ -386,20 +393,31 @@ static struct regmap_config sun8i_hdmi_phy_regmap_config = {
  	.name		= "phy"
  };
  
 +static const struct sun8i_hdmi_phy_variant sun50i_a64_hdmi_phy = {
-+	.num_phy_clk = 2,
-+	.phy_init = &sun8i_hdmi_phy_init_h3,
-+	.phy_disable = &sun8i_hdmi_phy_disable_h3,
-+	.phy_config = &sun8i_hdmi_phy_config_h3,
++	.num_phy_clk	= 2,
++	.phy_init	= &sun8i_hdmi_phy_init_h3,
++	.phy_disable	= &sun8i_hdmi_phy_disable_h3,
++	.phy_config	= &sun8i_hdmi_phy_config_h3,
 +};
 +
  static const struct sun8i_hdmi_phy_variant sun8i_a83t_hdmi_phy = {
- 	.phy_init = &sun8i_hdmi_phy_init_a83t,
- 	.phy_disable = &sun8i_hdmi_phy_disable_a83t,
-@@ -393,13 +402,17 @@ static const struct sun8i_hdmi_phy_variant sun8i_a83t_hdmi_phy = {
+-	.phy_init = &sun8i_hdmi_phy_init_a83t,
+-	.phy_disable = &sun8i_hdmi_phy_disable_a83t,
+-	.phy_config = &sun8i_hdmi_phy_config_a83t,
++	.phy_init	= &sun8i_hdmi_phy_init_a83t,
++	.phy_disable	= &sun8i_hdmi_phy_disable_a83t,
++	.phy_config	= &sun8i_hdmi_phy_config_a83t,
  };
  
  static const struct sun8i_hdmi_phy_variant sun8i_h3_hdmi_phy = {
 -	.has_phy_clk = true,
-+	.num_phy_clk = 1,
- 	.phy_init = &sun8i_hdmi_phy_init_h3,
- 	.phy_disable = &sun8i_hdmi_phy_disable_h3,
- 	.phy_config = &sun8i_hdmi_phy_config_h3,
+-	.phy_init = &sun8i_hdmi_phy_init_h3,
+-	.phy_disable = &sun8i_hdmi_phy_disable_h3,
+-	.phy_config = &sun8i_hdmi_phy_config_h3,
++	.num_phy_clk	= 1,
++	.phy_init	= &sun8i_hdmi_phy_init_h3,
++	.phy_disable	= &sun8i_hdmi_phy_disable_h3,
++	.phy_config	= &sun8i_hdmi_phy_config_h3,
  };
  
  static const struct of_device_id sun8i_hdmi_phy_of_table[] = {
@@ -1092,24 +1128,22 @@ index 5a52fc4..fa0b787 100644
  	{
  		.compatible = "allwinner,sun8i-a83t-hdmi-phy",
  		.data = &sun8i_a83t_hdmi_phy,
-@@ -464,26 +477,35 @@ int sun8i_hdmi_phy_probe(struct sun8i_dw_hdmi *hdmi, struct device_node *node)
+@@ -464,7 +482,7 @@ int sun8i_hdmi_phy_probe(struct sun8i_dw_hdmi *hdmi, struct device_node *node)
  		goto err_put_clk_bus;
  	}
  
 -	if (phy->variant->has_phy_clk) {
-+	if (phy->variant->num_phy_clk > 0) {
++	if (phy->variant->num_phy_clk) {
  		phy->clk_pll0 = of_clk_get_by_name(node, "pll-0");
  		if (IS_ERR(phy->clk_pll0)) {
  			dev_err(dev, "Could not get pll-0 clock\n");
- 			ret = PTR_ERR(phy->clk_pll0);
+@@ -472,18 +490,25 @@ int sun8i_hdmi_phy_probe(struct sun8i_dw_hdmi *hdmi, struct device_node *node)
  			goto err_put_clk_mod;
  		}
-+	}
  
 -		ret = sun8i_phy_clk_create(phy, dev);
 -		if (ret) {
 -			dev_err(dev, "Couldn't create the PHY clock\n");
-+	if (phy->variant->num_phy_clk > 1) {
 +		phy->clk_pll1 = of_clk_get_by_name(node, "pll-1");
 +		if (IS_ERR(phy->clk_pll1)) {
 +			dev_err(dev, "Could not get pll-1 clock\n");
@@ -1133,7 +1167,7 @@ index 5a52fc4..fa0b787 100644
  	}
  
  	ret = reset_control_deassert(phy->rst_phy);
-@@ -514,9 +536,10 @@ err_deassert_rst_phy:
+@@ -514,9 +539,10 @@ err_deassert_rst_phy:
  	reset_control_assert(phy->rst_phy);
  err_put_rst_phy:
  	reset_control_put(phy->rst_phy);
@@ -1146,7 +1180,7 @@ index 5a52fc4..fa0b787 100644
  err_put_clk_mod:
  	clk_put(phy->clk_mod);
  err_put_clk_bus:
-@@ -536,8 +559,8 @@ void sun8i_hdmi_phy_remove(struct sun8i_dw_hdmi *hdmi)
+@@ -536,8 +562,8 @@ void sun8i_hdmi_phy_remove(struct sun8i_dw_hdmi *hdmi)
  
  	reset_control_put(phy->rst_phy);
  
@@ -1297,10 +1331,26 @@ index faea449..504f9d8 100644
  
  	priv->phy = phy;
 diff --git a/drivers/gpu/drm/sun4i/sun8i_mixer.c b/drivers/gpu/drm/sun4i/sun8i_mixer.c
-index 126899d..78c0770 100644
+index 126899d..834e51f 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_mixer.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_mixer.c
-@@ -508,6 +508,22 @@ static const struct sun8i_mixer_cfg sun8i_v3s_mixer_cfg = {
+@@ -353,13 +353,13 @@ static int sun8i_mixer_bind(struct device *dev, struct device *master,
+ 	dev_set_drvdata(dev, mixer);
+ 	mixer->engine.ops = &sun8i_engine_ops;
+ 	mixer->engine.node = dev->of_node;
+-	/* The ID of the mixer currently doesn't matter */
+-	mixer->engine.id = -1;
+ 
+ 	mixer->cfg = of_device_get_match_data(dev);
+ 	if (!mixer->cfg)
+ 		return -EINVAL;
+ 
++	mixer->engine.id = mixer->cfg->index;
++
+ 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+ 	regs = devm_ioremap_resource(dev, res);
+ 	if (IS_ERR(regs))
+@@ -508,6 +508,23 @@ static const struct sun8i_mixer_cfg sun8i_v3s_mixer_cfg = {
  	.mod_rate = 150000000,
  };
  
@@ -1314,6 +1364,7 @@ index 126899d..78c0770 100644
 +
 +static const struct sun8i_mixer_cfg sun50i_a64_mixer1_cfg = {
 +	.ccsc		= 1,
++	.index		= 1,
 +	.mod_rate	= 297000000,
 +	.scaler_mask	= 0x3,
 +	.ui_num		= 1,
@@ -1323,7 +1374,7 @@ index 126899d..78c0770 100644
  static const struct of_device_id sun8i_mixer_of_table[] = {
  	{
  		.compatible = "allwinner,sun8i-a83t-de2-mixer-0",
-@@ -525,6 +541,14 @@ static const struct of_device_id sun8i_mixer_of_table[] = {
+@@ -525,6 +542,14 @@ static const struct of_device_id sun8i_mixer_of_table[] = {
  		.compatible = "allwinner,sun8i-v3s-de2-mixer",
  		.data = &sun8i_v3s_mixer_cfg,
  	},
@@ -1338,25 +1389,42 @@ index 126899d..78c0770 100644
  	{ }
  };
  MODULE_DEVICE_TABLE(of, sun8i_mixer_of_table);
+diff --git a/drivers/gpu/drm/sun4i/sun8i_mixer.h b/drivers/gpu/drm/sun4i/sun8i_mixer.h
+index f34e70c..aeda6e9 100644
+--- a/drivers/gpu/drm/sun4i/sun8i_mixer.h
++++ b/drivers/gpu/drm/sun4i/sun8i_mixer.h
+@@ -123,6 +123,7 @@ struct de2_fmt_info {
+  *	are invalid.
+  * @mod_rate: module clock rate that needs to be set in order to have
+  *	a functional block.
++ * @index: mixer index, needed to properly set TCON TOP
+  */
+ struct sun8i_mixer_cfg {
+ 	int		vi_num;
+@@ -130,6 +131,7 @@ struct sun8i_mixer_cfg {
+ 	int		scaler_mask;
+ 	int		ccsc;
+ 	unsigned long	mod_rate;
++	int		index;
+ };
+ 
+ struct sun8i_mixer {
 diff --git a/include/dt-bindings/clock/sun50i-a64-ccu.h b/include/dt-bindings/clock/sun50i-a64-ccu.h
-index d66432c..c1086f5 100644
+index d66432c..46f4c4a 100644
 --- a/include/dt-bindings/clock/sun50i-a64-ccu.h
 +++ b/include/dt-bindings/clock/sun50i-a64-ccu.h
-@@ -43,8 +43,14 @@
+@@ -43,7 +43,11 @@
  #ifndef _DT_BINDINGS_CLK_SUN50I_A64_H_
  #define _DT_BINDINGS_CLK_SUN50I_A64_H_
  
 +#define CLK_PLL_VIDEO0		7
-+
  #define CLK_PLL_PERIPH0		11
- 
 +#define CLK_PLL_VIDEO1		15
 +
 +#define CLK_CPUX		21
-+
+ 
  #define CLK_BUS_MIPI_DSI	28
  #define CLK_BUS_CE		29
- #define CLK_BUS_DMA		30
 -- 
 2.17.0
 

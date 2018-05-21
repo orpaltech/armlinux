@@ -6,7 +6,7 @@ BOOT_SCR_CMD="${BOOT_DIR}/uboot.mkimage"
 BOOTENV_FILE="${BOOT_DIR}/bootEnv.txt"
 
 # This is optional
-install_readonly "${UBOOTSRC_DIR}/u-boot-sunxi-with-spl.bin" "${BOOT_DIR}/u-boot-sunxi-with-spl.bin"
+install_readonly "${UBOOT_SOURCE_DIR}/u-boot-sunxi-with-spl.bin" "${BOOT_DIR}/u-boot-sunxi-with-spl.bin"
 
 # Install and setup U-Boot command file
 install_readonly "${FILES_DIR}/boot/uboot.mkimage" $BOOT_SCR_CMD
@@ -33,7 +33,8 @@ sed -i "/./,\$!d" $BOOT_SCR_CMD
 # Generate U-Boot bootloader image
 # http://www.denx.de/wiki/view/DULG/UBootScripts
 # http://www.denx.de/wiki/view/DULG/UBootEnvVariables
-${UBOOTSRC_DIR}/tools/mkimage -A "${KERNEL_ARCH}" -O linux -T script -C none -a 0x00000000 -e 0x00000000 -d "${BOOT_SCR_CMD}" "${BOOT_DIR}/boot.scr"
+${UBOOT_SOURCE_DIR}/tools/mkimage -A "${KERNEL_ARCH}" -O linux -T script -C none -a 0x00000000 -e 0x00000000 \
+	-d "${BOOT_SCR_CMD}" "${BOOT_DIR}/boot.scr"
 
 # The default bootEnv.txt
 printf "# user provided boot enviroment \nextraargs=${EXTRAARGS}\noverlay_prefix=${OVERLAY_PREFIX}\noverlays=${DEFAULT_OVERLAYS}\n" >> ${BOOTENV_FILE}

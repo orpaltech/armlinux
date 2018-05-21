@@ -1,15 +1,15 @@
-From 0ab1844c791bc387f0e38b674430544f7af86164 Mon Sep 17 00:00:00 2001
+From f474cf15cdde6280153b74bcd48b2cdc33188965 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Mon, 7 May 2018 01:29:32 +0300
+Date: Sun, 20 May 2018 20:05:17 +0300
 Subject: [PATCH] sun50i-a64: Device tree updates for A64 SoC boards
 
 ---
- .../dts/allwinner/sun50i-a64-nanopi-a64.dts   | 36 ++++++++++++++
- arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi | 49 ++++++++++++++++++-
- 2 files changed, 83 insertions(+), 2 deletions(-)
+ .../dts/allwinner/sun50i-a64-nanopi-a64.dts   | 48 ++++++++++++++++--
+ arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi | 50 +++++++++++++++++--
+ 2 files changed, 91 insertions(+), 7 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts b/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
-index e2dce48..3ce8cfa 100644
+index e2dce48..d3204d7 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
 @@ -51,6 +51,8 @@
@@ -21,10 +21,11 @@ index e2dce48..3ce8cfa 100644
  		serial0 = &uart0;
  	};
  
-@@ -67,6 +69,15 @@
+@@ -67,15 +69,35 @@
  	status = "okay";
  };
  
+-/* i2c1 connected with gpio headers like pine64, bananapi */
 +&emac {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&rgmii_pins>;
@@ -34,24 +35,33 @@ index e2dce48..3ce8cfa 100644
 +	status = "okay";
 +};
 +
- /* i2c1 connected with gpio headers like pine64, bananapi */
++&i2c0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c0_pins>;
++};
++
  &i2c1 {
  	pinctrl-names = "default";
-@@ -78,6 +89,13 @@
- 	bias-pull-up;
+ 	pinctrl-0 = <&i2c1_pins>;
+-	status = "disabled";
  };
  
+-&i2c1_pins {
+-	bias-pull-up;
++&i2c2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c2_pins>;
++};
++
 +&mdio {
 +	ext_rgmii_phy: ethernet-phy@0 {
 +		compatible = "ethernet-phy-ieee802.3-c22";
 +		reg = <0>;
 +	};
-+};
-+
+ };
+ 
  &mmc0 {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&mmc0_pins>;
-@@ -88,6 +106,20 @@
+@@ -88,6 +110,20 @@
  	status = "okay";
  };
  
@@ -72,7 +82,7 @@ index e2dce48..3ce8cfa 100644
  &ohci0 {
  	status = "okay";
  };
-@@ -153,6 +185,10 @@
+@@ -153,6 +189,10 @@
  	regulator-name = "vdd-sys";
  };
  
@@ -84,7 +94,7 @@ index e2dce48..3ce8cfa 100644
  	regulator-always-on;
  	regulator-min-microvolt = <3300000>;
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
-index 1b2ef28..c49f367 100644
+index 1b2ef28..8a74971 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
 @@ -135,6 +135,7 @@
@@ -165,6 +175,14 @@ index 1b2ef28..c49f367 100644
  		uart0: serial@1c28000 {
  			compatible = "snps,dw-apb-uart";
  			reg = <0x01c28000 0x400>;
+@@ -562,7 +607,6 @@
+ 			#size-cells = <0>;
+ 		};
+ 
+-
+ 		spi0: spi@1c68000 {
+ 			compatible = "allwinner,sun8i-h3-spi";
+ 			reg = <0x01c68000 0x1000>;
 -- 
 2.17.0
 

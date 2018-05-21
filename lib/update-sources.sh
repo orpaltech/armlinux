@@ -154,36 +154,36 @@ patch_uboot()
 get_kernel_source()
 {
 	local BRANCH_FIXED=$(echo $KERNEL_REPO_BRANCH | sed -e 's/\//-/g')
-	LINUX_SOURCE_DIR=$KERNEL_BASE_DIR/$BRANCH_FIXED
+	KERNEL_SOURCE_DIR="$KERNEL_BASE_DIR/$BRANCH_FIXED"
 
-	if [ -d $LINUX_SOURCE_DIR ] && [ -d $LINUX_SOURCE_DIR/.git ] ; then
-                local KERNEL_OLD_URL=$(git -C $LINUX_SOURCE_DIR config --get remote.origin.url)
+	if [ -d $KERNEL_SOURCE_DIR ] && [ -d $KERNEL_SOURCE_DIR/.git ] ; then
+                local KERNEL_OLD_URL=$(git -C $KERNEL_SOURCE_DIR config --get remote.origin.url)
                 if [ "${KERNEL_OLD_URL}" != "${KERNEL_REPO_URL}" ] ; then
 			echo "Kernel repository has changed, clean up directory ?"
 			pause
-                        rm -rf ${LINUX_SOURCE_DIR}
+                        rm -rf $KERNEL_SOURCE_DIR
                 fi
         fi
 
-	if [ -d $LINUX_SOURCE_DIR ] && [ -d $LINUX_SOURCE_DIR/.git ] ; then
+	if [ -d $KERNEL_SOURCE_DIR ] && [ -d $KERNEL_SOURCE_DIR/.git ] ; then
 		display_alert "Updating kernel from" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_BRANCH}" "info"
 
 		# update sources
-		git -C $LINUX_SOURCE_DIR fetch --tags --depth=1 origin $KERNEL_REPO_BRANCH
-		git -C $LINUX_SOURCE_DIR reset --hard origin/$KERNEL_REPO_BRANCH
-		git -C $LINUX_SOURCE_DIR clean -fd
+		git -C $KERNEL_SOURCE_DIR fetch --tags --depth=1 origin $KERNEL_REPO_BRANCH
+		git -C $KERNEL_SOURCE_DIR reset --hard origin/$KERNEL_REPO_BRANCH
+		git -C $KERNEL_SOURCE_DIR clean -fd
 	else
 		display_alert "Cloning kernel" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_BRANCH}" "info"
 
-		rm -rf $LINUX_SOURCE_DIR
+		rm -rf $KERNEL_SOURCE_DIR
 		mkdir -p $KERNEL_BASE_DIR
 
-		git clone $KERNEL_REPO_URL -b $KERNEL_REPO_BRANCH --depth=1 --tags $LINUX_SOURCE_DIR
+		git clone $KERNEL_REPO_URL -b $KERNEL_REPO_BRANCH --depth=1 --tags $KERNEL_SOURCE_DIR
 	fi
 
 	if [ ! -z $KERNEL_REPO_TAG ] ; then
 		display_alert "Checking out kernel tag" "tags/${KERNEL_REPO_TAG}" "info"
-		git -C $LINUX_SOURCE_DIR checkout tags/$KERNEL_REPO_TAG
+		git -C $KERNEL_SOURCE_DIR checkout tags/$KERNEL_REPO_TAG
 	fi
 
 	echo "Done."
@@ -220,7 +220,7 @@ patch_kernel()
 			# patching
 			for PATCHFILE in $PATCH_TMP_DIR/*.patch; do
 				echo "Applying patch '${PATCHFILE}' to kernel..."
-				patch -d $LINUX_SOURCE_DIR --batch -p1 -N -F5 < $PATCHFILE
+				patch -d $KERNEL_SOURCE_DIR --batch -p1 -N -F5 < $PATCHFILE
 				[ $? -eq 0 ] || exit $?;
 				echo "Patched."
 			done

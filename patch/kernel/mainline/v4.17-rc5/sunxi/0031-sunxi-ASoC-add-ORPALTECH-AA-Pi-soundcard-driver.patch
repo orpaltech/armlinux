@@ -1,68 +1,69 @@
-From 7c8678a914a4c61f8e3c8ec01c82f4de94cdd758 Mon Sep 17 00:00:00 2001
+From 8f047a6d305dca6148a779243baab793b4acc2d5 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sun, 6 May 2018 17:50:02 +0300
-Subject: [PATCH] bcm2835: ASoC: Add ORPALTECH AA-Pi soundcard driver
+Date: Fri, 18 May 2018 19:39:26 +0300
+Subject: [PATCH] sunxi: ASoC: add ORPALTECH AA-Pi soundcard driver
 
 ---
- sound/soc/bcm/Kconfig            |   9 +-
- sound/soc/bcm/Makefile           |   5 +-
- sound/soc/bcm/orpal-aapi-sound.c | 185 +++++++++++++++++++++++++++++++
- 3 files changed, 196 insertions(+), 3 deletions(-)
- create mode 100644 sound/soc/bcm/orpal-aapi-sound.c
+ sound/soc/sunxi/Kconfig            |  12 +-
+ sound/soc/sunxi/Makefile           |   4 +
+ sound/soc/sunxi/orpal-aapi-sound.c | 189 +++++++++++++++++++++++++++++
+ 3 files changed, 203 insertions(+), 2 deletions(-)
+ create mode 100644 sound/soc/sunxi/orpal-aapi-sound.c
 
-diff --git a/sound/soc/bcm/Kconfig b/sound/soc/bcm/Kconfig
-index edf3671..64d6b32 100644
---- a/sound/soc/bcm/Kconfig
-+++ b/sound/soc/bcm/Kconfig
-@@ -8,6 +8,13 @@ config SND_BCM2835_SOC_I2S
- 	  the BCM2835 I2S interface. You will also need
- 	  to select the audio interfaces to support below.
+diff --git a/sound/soc/sunxi/Kconfig b/sound/soc/sunxi/Kconfig
+index 22408bc..5424a9d 100644
+--- a/sound/soc/sunxi/Kconfig
++++ b/sound/soc/sunxi/Kconfig
+@@ -29,12 +29,12 @@ config SND_SUN8I_CODEC_ANALOG
+ 	  the codec embedded in newer Allwinner SoCs.
  
-+config SND_ORPAL_AAPI
-+        tristate "ORPALTECH AA-Pi Soundcard driver for Broadcom BCM2835 family"
-+        depends on SND_BCM2835_SOC_I2S
-+        select SND_SOC_WM8731
-+        help
-+          Say Y or M if you want to add support for ORPALTECH AA-Pi Soundcard.
+ config SND_SUN4I_I2S
+-	tristate "Allwinner A10 I2S Support"
++	tristate "Allwinner sunXi I2S Support"
+ 	select SND_SOC_GENERIC_DMAENGINE_PCM
+ 	select REGMAP_MMIO
+ 	help
+ 	  Say Y or M if you want to add support for codecs attached to
+-	  the Allwinner A10 I2S. You will also need to select the
++	  the Allwinner sunXi I2S. You will also need to select the
+ 	  individual machine drivers to support below.
+ 
+ config SND_SUN4I_SPDIF
+@@ -45,4 +45,12 @@ config SND_SUN4I_SPDIF
+ 	help
+ 	  Say Y or M to add support for the S/PDIF audio block in the Allwinner
+ 	  A10 and affiliated SoCs.
 +
- config SND_SOC_CYGNUS
- 	tristate "SoC platform audio for Broadcom Cygnus chips"
- 	depends on ARCH_BCM_CYGNUS || COMPILE_TEST
-@@ -16,4 +23,4 @@ config SND_SOC_CYGNUS
- 	  Say Y if you want to add support for ASoC audio on Broadcom
- 	  Cygnus chips (bcm958300, bcm958305, bcm911360)
- 
--	  If you don't know what to do here, say N.
-\ No newline at end of file
-+	  If you don't know what to do here, say N.
-diff --git a/sound/soc/bcm/Makefile b/sound/soc/bcm/Makefile
-index fc739d0..cc29a60 100644
---- a/sound/soc/bcm/Makefile
-+++ b/sound/soc/bcm/Makefile
-@@ -1,10 +1,11 @@
- # BCM2835 Platform Support
- snd-soc-bcm2835-i2s-objs := bcm2835-i2s.o
--
- obj-$(CONFIG_SND_BCM2835_SOC_I2S) += snd-soc-bcm2835-i2s.o
- 
- # CYGNUS Platform Support
- snd-soc-cygnus-objs := cygnus-pcm.o cygnus-ssp.o
--
- obj-$(CONFIG_SND_SOC_CYGNUS) += snd-soc-cygnus.o
- 
++config SND_ORPAL_AAPI
++	tristate "ORPALTECH AA-Pi Soundcard driver for Allwinner SoCs"
++	depends on SND_SUN4I_I2S
++	select SND_SOC_WM8731
++	help
++	  Say Y or M if you want to add support for ORPALTECH AA-Pi Soundcard.
++
+ endmenu
+diff --git a/sound/soc/sunxi/Makefile b/sound/soc/sunxi/Makefile
+index 4a9ef67..ae0145a 100644
+--- a/sound/soc/sunxi/Makefile
++++ b/sound/soc/sunxi/Makefile
+@@ -4,3 +4,7 @@ obj-$(CONFIG_SND_SUN4I_I2S) += sun4i-i2s.o
+ obj-$(CONFIG_SND_SUN4I_SPDIF) += sun4i-spdif.o
+ obj-$(CONFIG_SND_SUN8I_CODEC_ANALOG) += sun8i-codec-analog.o
+ obj-$(CONFIG_SND_SUN8I_CODEC) += sun8i-codec.o
++
 +# ORPAL-AA-Pi Soundcard Support
 +snd-soc-orpal-aapi-objs := orpal-aapi-sound.o
 +obj-$(CONFIG_SND_ORPAL_AAPI) += snd-soc-orpal-aapi.o
-diff --git a/sound/soc/bcm/orpal-aapi-sound.c b/sound/soc/bcm/orpal-aapi-sound.c
+diff --git a/sound/soc/sunxi/orpal-aapi-sound.c b/sound/soc/sunxi/orpal-aapi-sound.c
 new file mode 100644
-index 0000000..ef5f0f8
+index 0000000..326c44b
 --- /dev/null
-+++ b/sound/soc/bcm/orpal-aapi-sound.c
-@@ -0,0 +1,185 @@
++++ b/sound/soc/sunxi/orpal-aapi-sound.c
+@@ -0,0 +1,189 @@
 +/*
 + * ASoC Driver for ORPAL-AA Pi soundcard (capture only).
 + *
-+ *  Created on:	06-Jan-2018
++ *  Created on:	15-Apr-2018
 + *  	Author:	Sergey Suloev <ssuloev@orpaltech.com>
 + *
 + * Copyright (C) 2017-2018 ORPAL Technology, Inc.
@@ -83,28 +84,31 @@ index 0000000..ef5f0f8
 +
 +#include "../codecs/wm8731.h"
 +
++/*
++ * This is fixed on this board
++ */
 +#define XTAL_CLK_FREQ	12288000
 +
-+static const unsigned int bcm2835_rates[] = {
++static const unsigned int sun4i_i2s_rates[] = {
 +        8000, 32000, 48000, 96000,
 +};
 +
-+static struct snd_pcm_hw_constraint_list bcm2835_constraints = {
-+	.list	= bcm2835_rates,
-+	.count	= ARRAY_SIZE(bcm2835_rates),
++static struct snd_pcm_hw_constraint_list sun4i_i2s_constraints = {
++	.list	= sun4i_i2s_rates,
++	.count	= ARRAY_SIZE(sun4i_i2s_rates),
 +};
 +
-+static int orpal_aapi_soundcard_startup(struct snd_pcm_substream *substream)
++static int snd_orpal_aapi_soundcard_startup(struct snd_pcm_substream *substream)
 +{
 +	/* Setup constraints, because there is a 12.288 MHz XTAL on the board */
 +	snd_pcm_hw_constraint_list(substream->runtime, 0,
 +				SNDRV_PCM_HW_PARAM_RATE,
-+				&bcm2835_constraints);
++				&sun4i_i2s_constraints);
 +	return 0;
 +}
 +
-+static int orpal_aapi_soundcard_hw_params(struct snd_pcm_substream *substream,
-+					  struct snd_pcm_hw_params *params)
++static int snd_orpal_aapi_soundcard_hw_params(struct snd_pcm_substream *substream,
++					      struct snd_pcm_hw_params *params)
 +{
 +	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 +	struct snd_soc_codec *codec = rtd->codec;
@@ -112,14 +116,14 @@ index 0000000..ef5f0f8
 +	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 +	int ret;
 +
-+	/* Set bclk ratio */
-+	ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 32*2);
++	/* WM8731 will use BCLK = 64*SR when not in USB mode */
++	ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 64);
 +	if (ret < 0) {
-+		dev_err(codec->dev, "Failed to set BCLK ratio %d\n", ret);
++		dev_err(codec->dev, "Failed to set BCLK ratio: %d\n", ret);
 +		return ret;
 +	}
 +
-+	/* Set sysclk */
++	/* Set codec sysclk */
 +	ret = snd_soc_dai_set_sysclk(codec_dai, WM8731_SYSCLK_XTAL,
 +				     XTAL_CLK_FREQ, SND_SOC_CLOCK_IN);
 +	if (ret < 0) {
@@ -131,24 +135,22 @@ index 0000000..ef5f0f8
 +}
 +
 +/* machine stream operations */
-+static struct snd_soc_ops snd_orpal_aapi_soundcard_ops = {
-+	.startup	= orpal_aapi_soundcard_startup,
-+	.hw_params	= orpal_aapi_soundcard_hw_params,
++static struct snd_soc_ops orpal_aapi_soundcard_ops = {
++	.startup	= snd_orpal_aapi_soundcard_startup,
++	.hw_params	= snd_orpal_aapi_soundcard_hw_params,
 +};
 +
-+static struct snd_soc_dai_link orpal_aapi_soundcard_dai[] = {
-+	{
-+		.name		= "orpal-aapi-dai",
-+		.stream_name	= "orpal-aapi-audio",
-+		.cpu_dai_name	= "bcm2835-i2s.0",
-+		.codec_dai_name	= "wm8731-hifi",
-+		.platform_name	= "bcm2835-i2s.0",
-+		.codec_name	= "wm8731.1-001a",
-+		.ops		= &snd_orpal_aapi_soundcard_ops,
-+		.dai_fmt	= SND_SOC_DAIFMT_CBM_CFM |
-+				SND_SOC_DAIFMT_I2S |
-+				SND_SOC_DAIFMT_NB_NF,
-+	},
++static struct snd_soc_dai_link orpal_aapi_soundcard_dai = {
++	.name		= "orpal-aapi-dai",
++	.stream_name	= "orpal-aapi-stream",
++	.cpu_dai_name	= "sun4i-i2s.0",
++	.codec_dai_name	= "wm8731-hifi",
++	.platform_name	= "sun4i-i2s.0",
++	.codec_name	= "wm8731.1-001a",
++	.ops		= &orpal_aapi_soundcard_ops,
++	.dai_fmt	= SND_SOC_DAIFMT_I2S |
++			SND_SOC_DAIFMT_CBM_CFM |
++			SND_SOC_DAIFMT_NB_NF,
 +};
 +
 +static const struct snd_soc_dapm_widget wm8731_dapm_widgets[] = {
@@ -157,19 +159,20 @@ index 0000000..ef5f0f8
 +
 +static const struct snd_soc_dapm_route orpal_aapi_audio_map[] = {
 +	/* line inputs */
-+	{ "Line In Jacks", NULL, "Line Input" },
++	{ "LLINEIN", NULL, "Line In Jacks"},
++	{ "RLINEIN", NULL, "Line In Jacks"},
 +};
 +
 +static struct snd_soc_card snd_soc_orpal_aapi = {
 +	.name		= "orpal-aapi-sound",
 +	.owner		= THIS_MODULE,
-+	.dai_link	= orpal_aapi_soundcard_dai,
-+	.num_links	= ARRAY_SIZE(orpal_aapi_soundcard_dai),
++	.dai_link	= &orpal_aapi_soundcard_dai,
++	.num_links	= 1,
 +
-+	.dapm_widgets	= wm8731_dapm_widgets,
++	.dapm_widgets	  = wm8731_dapm_widgets,
 +	.num_dapm_widgets = ARRAY_SIZE(wm8731_dapm_widgets),
-+	.dapm_routes	= orpal_aapi_audio_map,
-+	.num_dapm_routes = ARRAY_SIZE(orpal_aapi_audio_map),
++	.dapm_routes	  = orpal_aapi_audio_map,
++	.num_dapm_routes  = ARRAY_SIZE(orpal_aapi_audio_map),
 +};
 +
 +static int orpal_aapi_soundcard_probe(struct platform_device *pdev)
@@ -212,7 +215,8 @@ index 0000000..ef5f0f8
 +
 +	ret = snd_soc_register_card(card);
 +	if (ret && ret != -EPROBE_DEFER) {
-+		dev_err(dev, "snd_soc_register_card() failed: (%d)\n", ret);
++		dev_err(dev,
++			"snd_soc_register_card() failed: (%d)\n", ret);
 +	}
 +
 +	return ret;
@@ -222,6 +226,7 @@ index 0000000..ef5f0f8
 +{
 +	struct snd_soc_card *card = platform_get_drvdata(pdev);
 +	return snd_soc_unregister_card(card);
++
 +}
 +
 +static const struct of_device_id orpal_aapi_soundcard_of_match[] = {

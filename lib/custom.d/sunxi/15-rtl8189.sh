@@ -32,7 +32,7 @@ rtl8189_make()
 
         cd $RTL8189_DIR
 
-        ARCH="${KERNEL_ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" KSRC="${KERNELSRC_DIR}" make
+        ARCH="${KERNEL_ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" KSRC="${KERNEL_SOURCE_DIR}" make
 
 	MODDESTDIR=${R}/lib/modules/${KERNEL_VERSION}/extra
 	mkdir -p $MODDESTDIR

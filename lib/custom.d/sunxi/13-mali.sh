@@ -37,7 +37,7 @@ build_mali_kmod()
         echo "Building Mali Utgard kernel module..."
 
         export CROSS_COMPILE="${CROSS_COMPILE}"
-        export KDIR="${KERNELSRC_DIR}"
+        export KDIR="${KERNEL_SOURCE_DIR}"
         export INSTALL_MOD_PATH="${R}"
 
         $MALI_MOD_SRC/build.sh -r $MALI_MOD_VERSION -j $NUM_CPU_CORES -b

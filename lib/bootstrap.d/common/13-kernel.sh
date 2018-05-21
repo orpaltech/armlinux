@@ -4,7 +4,7 @@
 
 # Copy kernel sources
 mkdir -p "${KERNEL_DIR}"
-rsync -a --exclude=".git" "${KERNELSRC_DIR}/" "${KERNEL_DIR}/"
+rsync -a --exclude=".git" "${KERNEL_SOURCE_DIR}/" "${KERNEL_DIR}/"
 
 
 # Install kernel modules
@@ -41,9 +41,9 @@ if [ "${KERNEL_ARCH}" = arm64 ] && [ "${KERNEL_USE_MKIMAGE}" = yes ] ; then
   # The default Linux kernel 'make' target generates an uncompressed 'Image' and a gzip-compresesd 'Image.gz'.
   # We use latter and wrap it into an uImage. u-boot can decompress gzip images.
   # See https://www.kernel.org/doc/Documentation/arm64/booting.txt
-  ${UBOOTSRC_DIR}/tools/mkimage -A ${KERNEL_ARCH} -O linux -T kernel -C ${KERNEL_MKIMAGE_COMPRESS} \
-				-a ${KERNEL_MKIMAGE_LOADADDR} -e ${KERNEL_MKIMAGE_LOADADDR} \
-				-d "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_SOURCE}" "${BOOT_DIR}/${KERNEL_IMAGE_TARGET}"
+  ${UBOOT_SOURCE_DIR}/tools/mkimage -A ${KERNEL_ARCH} -O linux -T kernel -C ${KERNEL_MKIMAGE_COMPRESS} \
+	-a ${KERNEL_MKIMAGE_LOADADDR} -e ${KERNEL_MKIMAGE_LOADADDR} \
+	-d "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_SOURCE}" "${BOOT_DIR}/${KERNEL_IMAGE_TARGET}"
 else
   # The default Linux kernel 'make' target generates a self-extracting 'zImage'. From the perspective of u-boot this image is uncompressed because u-$
 

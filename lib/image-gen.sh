@@ -184,15 +184,15 @@ DEV_OBJDUMP="${CROSS_COMPILE}objdump"
 
 
 # Fail early: Is kernel ready?
-if [ ! -e "${KERNELSRC_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_SOURCE}" ] ; then
+if [ ! -e "${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_SOURCE}" ] ; then
   echo "error: cannot proceed: Linux kernel must be precompiled"
   exit 1
 fi
 # Get kernel release version
-KERNEL_VERSION=$(cat "${KERNELSRC_DIR}/include/config/kernel.release")
+KERNEL_VERSION=$(cat "${KERNEL_SOURCE_DIR}/include/config/kernel.release")
 
 # Fail early: Is u-boot ready?
-if [ ! -e "${UBOOTSRC_DIR}/u-boot.bin" ] ; then
+if [ ! -e "${UBOOT_SOURCE_DIR}/u-boot.bin" ] ; then
   echo "error: cannot proceed: U-Boot must be precompiled"
   exit 1
 fi

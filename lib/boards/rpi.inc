@@ -8,7 +8,7 @@ FIRMWARE_URL="https://github.com/raspberrypi/firmware"
 FIRMWARE_BRANCH=master
 FIRMWARE_NAME=raspberrypi
 
-UBOOT_REPO_TAG="v2018.01"
+# UBOOT_REPO_TAG="v2018.01"
 
 QT5_OPENGL_OPTION="-opengl es2"
 

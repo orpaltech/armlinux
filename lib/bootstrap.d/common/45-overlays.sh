@@ -3,7 +3,6 @@
 #
 
 BOOT_OVERLAY_DIR="${BOOT_DIR}/overlays"
-KERNEL_OVERLAY_DIR="${KERNELSRC_DIR}/arch/${KERNEL_ARCH}/boot/dts/overlays"
 
 if [ -d ${KERNEL_OVERLAY_DIR} ] ; then
 	mkdir -p ${BOOT_OVERLAY_DIR}

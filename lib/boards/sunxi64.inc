@@ -21,6 +21,8 @@ FIRMWARE_NAME=apritzel-atf
 KERNEL_BUILD_CONFIG=defconfig
 KERNEL_BUILD_USER_CONFIG="linux-mainline-sunxi64.config"
 
+KERNEL_OVERLAY_DIR="${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/dts/allwinner/overlays"
+
 KERNEL_USE_MKIMAGE=yes
 # Use compressed (gzip) or uncompressed (none) kernel image for ARM64
 KERNEL_MKIMAGE_COMPRESS=none

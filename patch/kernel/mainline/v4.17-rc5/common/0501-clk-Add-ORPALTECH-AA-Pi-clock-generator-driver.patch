@@ -1,6 +1,6 @@
-From 9e228ead979ea29485f154ca4cd20bb86f037496 Mon Sep 17 00:00:00 2001
+From 587ff9105fe6cc0963f2c9deaa78dc2674882fd4 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Tue, 8 May 2018 10:01:58 +0300
+Date: Wed, 16 May 2018 10:22:27 +0300
 Subject: [PATCH] clk: Add ORPALTECH AA-Pi clock generator driver
 
 ---
@@ -43,7 +43,7 @@ index de6d06a..89c8e97 100644
  obj-$(CONFIG_COMMON_CLK_PWM)		+= clk-pwm.o
 diff --git a/drivers/clk/clk-orpal-aapi.c b/drivers/clk/clk-orpal-aapi.c
 new file mode 100644
-index 0000000..fd8b55c
+index 0000000..8548ddb
 --- /dev/null
 +++ b/drivers/clk/clk-orpal-aapi.c
 @@ -0,0 +1,707 @@
@@ -168,14 +168,14 @@ index 0000000..fd8b55c
 +	struct regmap		*regmap;
 +
 +	u32			xtal_freq;
-+	u32			ref_freq;
++	unsigned long		ref_freq;
 +
 +	struct si5351_hw_data	clkout[2];
 +	unsigned int		num_clkout;
 +};
 +
 +#define si5351_get_hw_data(hw)	\
-+	container_of(hw, struct si5351_hw_data, hw);
++	container_of(hw, struct si5351_hw_data, hw)
 +
 +
 +static inline u8 si5351_reg_read(struct si5351_driver_data *drvdata, u8 reg)
@@ -344,7 +344,7 @@ index 0000000..fd8b55c
 +	u64 lltmp;
 +	unsigned long m, rate;
 +	unsigned long ms_freq, pll_freq;
-+	u32 ref_freq = hwdata->drv->ref_freq;
++	unsigned long ref_freq = hwdata->drv->ref_freq;
 +	u8 rdiv, pll_reg, ms_reg;
 +
 +	pll_reg = (hwdata->num == 0) ? SI5351_REG_PLLA_PARAMETERS :
@@ -420,7 +420,7 @@ index 0000000..fd8b55c
 +	struct si5351_parameters params;
 +	u64 lltmp;
 +	unsigned long a, b, c, rfrac, denom;
-+	u32 ref_freq = hwdata->drv->ref_freq;
++	unsigned long ref_freq = hwdata->drv->ref_freq;
 +	u8 reg;
 +
 +	reg = (hwdata->num == 0) ? SI5351_REG_PLLA_PARAMETERS :

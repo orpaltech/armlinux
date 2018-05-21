@@ -18,6 +18,8 @@ QEMU_BINARY=/usr/bin/qemu-arm-static
 KERNEL_BUILD_CONFIG="sunxi_defconfig"
 KERNEL_BUILD_USER_CONFIG="linux-mainline-sunxi.config"
 
+KERNEL_OVERLAY_DIR="${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/dts/overlays"
+
 KERNEL_IMAGE_SOURCE=zImage
 KERNEL_IMAGE_TARGET=linuz.img
 

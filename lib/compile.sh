@@ -48,7 +48,7 @@ compile_kernel()
 	export CROSS_COMPILE="${CROSS_COMPILE}"
 	export LOCALVERSION="-${SOC_FAMILY}"
 
-	cd $LINUX_SOURCE_DIR
+	cd $KERNEL_SOURCE_DIR
 
 	if [[ $CLEAN_OPTIONS =~ (^|,)"kernel"(,|$) ]] ; then
 		echo "Clean kernel directory"
@@ -58,7 +58,7 @@ compile_kernel()
 	local USER_CONFIG="${BASEDIR}/config/kernel/${KERNEL_BUILD_USER_CONFIG}"
 
 	if [ -f $USER_CONFIG ] ; then
-		cp $USER_CONFIG "${LINUX_SOURCE_DIR}/.config"
+		cp $USER_CONFIG "${KERNEL_SOURCE_DIR}/.config"
 		make olddefconfig $KERNEL_V
         else
 		make $KERNEL_BUILD_CONFIG $KERNEL_V
@@ -69,7 +69,7 @@ compile_kernel()
 	[ $? -eq 0 ] || exit $?;
 
 	# read kernel release version
-	KERNEL_VERSION=$(cat "${LINUX_SOURCE_DIR}/include/config/kernel.release")
+	KERNEL_VERSION=$(cat "${KERNEL_SOURCE_DIR}/include/config/kernel.release")
 
 	echo "Done."
 }

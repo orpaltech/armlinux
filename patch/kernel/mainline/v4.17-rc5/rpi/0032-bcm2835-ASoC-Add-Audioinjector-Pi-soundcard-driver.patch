@@ -1,13 +1,13 @@
-From 50d46e8ace7d70b4b8959c7e30b85c59dd443c84 Mon Sep 17 00:00:00 2001
+From 45608ceab09f9e38850739337d734a45166cbdbe Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 12 May 2018 17:13:47 +0300
+Date: Fri, 18 May 2018 19:50:58 +0300
 Subject: [PATCH] bcm2835: ASoC: Add Audioinjector-Pi soundcard driver
 
 ---
  sound/soc/bcm/Kconfig                  |   7 +
  sound/soc/bcm/Makefile                 |   3 +
- sound/soc/bcm/audioinjector-pi-sound.c | 228 +++++++++++++++++++++++++
- 3 files changed, 238 insertions(+)
+ sound/soc/bcm/audioinjector-pi-sound.c | 224 +++++++++++++++++++++++++
+ 3 files changed, 234 insertions(+)
  create mode 100644 sound/soc/bcm/audioinjector-pi-sound.c
 
 diff --git a/sound/soc/bcm/Kconfig b/sound/soc/bcm/Kconfig
@@ -41,19 +41,17 @@ index fc739d0..6c0af84 100644
 +obj-$(CONFIG_SND_AUDIOINJECTOR_PI) += snd-soc-audioinjector-pi.o
 diff --git a/sound/soc/bcm/audioinjector-pi-sound.c b/sound/soc/bcm/audioinjector-pi-sound.c
 new file mode 100644
-index 0000000..1f7768d
+index 0000000..50d6efa
 --- /dev/null
 +++ b/sound/soc/bcm/audioinjector-pi-sound.c
-@@ -0,0 +1,228 @@
+@@ -0,0 +1,224 @@
 +/*
-+ * ASoC Driver for AudioInjector Pi soundcard
++ * ASoC Driver for AudioInjector Pi Soundcard
 + *
-+ *  Created on: 13-May-2016
-+ *      Author: flatmax@flatmax.org
-+ *  Adopted by: Sergey Suloev <ssuloev@orpaltech.com>
++ *  Created on: 14-Apr-2018
++ *  Created by: Sergey Suloev <ssuloev@orpaltech.com>
 + *
-+ * Copyright (C) 2016 Flatmax Pty. Ltd.
-+ * Copyright (C) 2017-2018 ORPAL Technology, Inc.
++ * Copyright (C) 2013-2018 ORPAL Technology, Inc.
 + *
 + * This program is free software; you can redistribute it and/or
 + * modify it under the terms of the GNU General Public License
@@ -150,19 +148,17 @@ index 0000000..1f7768d
 +	.hw_params	= audioinjector_pi_soundcard_hw_params,
 +};
 +
-+static struct snd_soc_dai_link audioinjector_pi_soundcard_dai[] = {
-+	{
-+		.name		= "audioinjector-pi-sound",
-+		.stream_name	= "audioinjector-pi-audio",
-+		.platform_name  = "bcm2835-i2s.0",
-+		.cpu_dai_name	= "bcm2835-i2s.0",
-+		.codec_dai_name	= "wm8731-hifi",
-+		.codec_name	= "wm8731.0-001a",
-+		.ops		= &audioinjector_pi_soundcard_ops,
-+		.dai_fmt	= SND_SOC_DAIFMT_CBM_CFM |
-+				SND_SOC_DAIFMT_I2S |
-+				SND_SOC_DAIFMT_NB_NF,
-+	},
++static struct snd_soc_dai_link audioinjector_pi_soundcard_dai = {
++	.name		= "audioinjector-pi-sound",
++	.stream_name	= "audioinjector-pi-audio",
++	.platform_name  = "bcm2835-i2s.0",
++	.cpu_dai_name	= "bcm2835-i2s.0",
++	.codec_dai_name	= "wm8731-hifi",
++	.codec_name	= "wm8731.0-001a",
++	.ops		= &audioinjector_pi_soundcard_ops,
++	.dai_fmt	= SND_SOC_DAIFMT_CBM_CFM |
++			SND_SOC_DAIFMT_I2S |
++			SND_SOC_DAIFMT_NB_NF,
 +};
 +
 +static const struct snd_soc_dapm_widget wm8731_dapm_widgets[] = {
@@ -174,24 +170,25 @@ index 0000000..1f7768d
 +
 +static const struct snd_soc_dapm_route audioinjector_audio_map[] = {
 +	/* headphone connected to LHPOUT, RHPOUT */
-+	{"Headphone Jack", NULL, "LHPOUT"},
-+	{"Headphone Jack", NULL, "RHPOUT"},
++	{ "Headphone Jack", NULL, "LHPOUT" },
++	{ "Headphone Jack", NULL, "RHPOUT" },
 +
 +	/* speaker connected to LOUT, ROUT */
-+	{"Ext Spk", NULL, "ROUT"},
-+	{"Ext Spk", NULL, "LOUT"},
++	{ "Ext Spk", NULL, "ROUT" },
++	{ "Ext Spk", NULL, "LOUT" },
 +
 +	/* line inputs */
-+	{"Line In Jacks", NULL, "Line Input"},
++	{ "LLINEIN", NULL, "Line In Jacks" },
++	{ "RLINEIN", NULL, "Line In Jacks" },
 +
 +	/* mic is connected to Mic Jack, with WM8731 Mic Bias */
-+	{"Microphone", NULL, "Mic Bias"},
++	{ "Mic Bias", NULL, "Microphone" },
 +};
 +
 +static struct snd_soc_card snd_soc_audioinjector = {
 +	.name		= "audioinjector-pi-sound",
-+	.dai_link	= audioinjector_pi_soundcard_dai,
-+	.num_links	= ARRAY_SIZE(audioinjector_pi_soundcard_dai),
++	.dai_link	= &audioinjector_pi_soundcard_dai,
++	.num_links	= 1,
 +
 +	.dapm_widgets	= wm8731_dapm_widgets,
 +	.num_dapm_widgets = ARRAY_SIZE(wm8731_dapm_widgets),
@@ -208,7 +205,7 @@ index 0000000..1f7768d
 +	card->dev = dev;
 +
 +	if (dev->of_node) {
-+		struct snd_soc_dai_link *dai = &audioinjector_pi_soundcard_dai[0];
++		struct snd_soc_dai_link *dai = card->dai_link;
 +		struct device_node *cpu_node = of_parse_phandle(dev->of_node,
 +								"cpu-node", 0);
 +		struct device_node *codec_node = of_parse_phandle(dev->of_node,
@@ -268,9 +265,8 @@ index 0000000..1f7768d
 +};
 +module_platform_driver(audioinjector_pi_soundcard_driver);
 +
-+MODULE_AUTHOR("Matt Flax <flatmax@flatmax.org>");
 +MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
-+MODULE_DESCRIPTION("AudioInjector Pi soundcard");
++MODULE_DESCRIPTION("AudioInjector Pi Soundcard driver");
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:audioinjector-pi-sound");
 -- 

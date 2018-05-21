@@ -32,7 +32,7 @@ nrf24_make_kmod()
 
 	export ARCH=${KERNEL_ARCH}
         export CROSS_COMPILE=${CROSS_COMPILE}
-        export KERNEL_DIR=${KERNELSRC_DIR}
+        export KERNEL_DIR=${KERNEL_SOURCE_DIR}
         export PWD=$(pwd)
         export INSTALL_MOD_PATH=${R}
 

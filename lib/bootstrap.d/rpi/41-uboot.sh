@@ -5,7 +5,7 @@
 BOOT_SCR_CMD="${BOOT_DIR}/uboot.mkimage"
 BOOTENV_FILE="${BOOT_DIR}/bootEnv.txt"
 
-install_readonly "${UBOOTSRC_DIR}/u-boot.bin" "${BOOT_DIR}/u-boot.bin"
+install_readonly "${UBOOT_SOURCE_DIR}/u-boot.bin" "${BOOT_DIR}/u-boot.bin"
 
 
 # Install and setup U-Boot command file
@@ -32,7 +32,8 @@ sed -i "/./,\$!d" $BOOT_SCR_CMD
 # Generate U-Boot bootloader image
 # http://www.denx.de/wiki/view/DULG/UBootScripts
 # http://www.denx.de/wiki/view/DULG/UBootEnvVariables
-${UBOOTSRC_DIR}/tools/mkimage -A "${KERNEL_ARCH}" -O linux -T script -C none -a 0x00000000 -e 0x00000000 -n "RPi${RPI_MODEL}" -d "${BOOT_SCR_CMD}" "${BOOT_DIR}/boot.scr"
+${UBOOT_SOURCE_DIR}/tools/mkimage -A "${KERNEL_ARCH}" -O linux -T script -C none -a 0x00000000 -e 0x00000000 \
+	-n "RPi${RPI_MODEL}" -d "${BOOT_SCR_CMD}" "${BOOT_DIR}/boot.scr"
 
 # The raspberry firmware blobs will boot u-boot
 printf "\n# boot u-boot kernel\nkernel=u-boot.bin\n" >> "${BOOT_DIR}/config.txt"
