@@ -1,6 +1,6 @@
-From e5545bcb9bfd2987e4dd76f65d328d9119a5319d Mon Sep 17 00:00:00 2001
+From d7b89e5cc876bfb3eecdf5dd40f407475abb5571 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sun, 20 May 2018 21:45:38 +0300
+Date: Thu, 24 May 2018 22:45:49 +0300
 Subject: [PATCH] drm: sun4i: Add Allwinner DE2 support for A64 SoC
 
 ---
@@ -19,12 +19,12 @@ Subject: [PATCH] drm: sun4i: Add Allwinner DE2 support for A64 SoC
  drivers/gpu/drm/sun4i/sun4i_tcon.c            |  10 +
  drivers/gpu/drm/sun4i/sun8i_dw_hdmi.c         |  16 +-
  drivers/gpu/drm/sun4i/sun8i_dw_hdmi.h         |  11 +-
- drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c        |  62 ++--
+ drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c        |  64 ++--
  drivers/gpu/drm/sun4i/sun8i_hdmi_phy_clk.c    |  90 ++++--
  drivers/gpu/drm/sun4i/sun8i_mixer.c           |  29 +-
  drivers/gpu/drm/sun4i/sun8i_mixer.h           |   2 +
  include/dt-bindings/clock/sun50i-a64-ccu.h    |   4 +
- 20 files changed, 677 insertions(+), 94 deletions(-)
+ 20 files changed, 679 insertions(+), 94 deletions(-)
 
 diff --git a/Documentation/devicetree/bindings/clock/sun8i-de2.txt b/Documentation/devicetree/bindings/clock/sun8i-de2.txt
 index f2fa87c..89a86d0 100644
@@ -1061,7 +1061,7 @@ index 79154f0..d0a30a4 100644
  
  #endif /* _SUN8I_DW_HDMI_H_ */
 diff --git a/drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c b/drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c
-index 5a52fc4..0dd766d 100644
+index 5a52fc4..18d730c 100644
 --- a/drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c
 +++ b/drivers/gpu/drm/sun4i/sun8i_hdmi_phy.c
 @@ -183,7 +183,14 @@ static int sun8i_hdmi_phy_config_h3(struct dw_hdmi *hdmi,
@@ -1128,22 +1128,24 @@ index 5a52fc4..0dd766d 100644
  	{
  		.compatible = "allwinner,sun8i-a83t-hdmi-phy",
  		.data = &sun8i_a83t_hdmi_phy,
-@@ -464,7 +482,7 @@ int sun8i_hdmi_phy_probe(struct sun8i_dw_hdmi *hdmi, struct device_node *node)
+@@ -464,26 +482,35 @@ int sun8i_hdmi_phy_probe(struct sun8i_dw_hdmi *hdmi, struct device_node *node)
  		goto err_put_clk_bus;
  	}
  
 -	if (phy->variant->has_phy_clk) {
-+	if (phy->variant->num_phy_clk) {
++	if (phy->variant->num_phy_clk > 0) {
  		phy->clk_pll0 = of_clk_get_by_name(node, "pll-0");
  		if (IS_ERR(phy->clk_pll0)) {
  			dev_err(dev, "Could not get pll-0 clock\n");
-@@ -472,18 +490,25 @@ int sun8i_hdmi_phy_probe(struct sun8i_dw_hdmi *hdmi, struct device_node *node)
+ 			ret = PTR_ERR(phy->clk_pll0);
  			goto err_put_clk_mod;
  		}
++	}
  
 -		ret = sun8i_phy_clk_create(phy, dev);
 -		if (ret) {
 -			dev_err(dev, "Couldn't create the PHY clock\n");
++	if (phy->variant->num_phy_clk > 1) {
 +		phy->clk_pll1 = of_clk_get_by_name(node, "pll-1");
 +		if (IS_ERR(phy->clk_pll1)) {
 +			dev_err(dev, "Could not get pll-1 clock\n");
@@ -1167,7 +1169,7 @@ index 5a52fc4..0dd766d 100644
  	}
  
  	ret = reset_control_deassert(phy->rst_phy);
-@@ -514,9 +539,10 @@ err_deassert_rst_phy:
+@@ -514,9 +541,10 @@ err_deassert_rst_phy:
  	reset_control_assert(phy->rst_phy);
  err_put_rst_phy:
  	reset_control_put(phy->rst_phy);
@@ -1180,7 +1182,7 @@ index 5a52fc4..0dd766d 100644
  err_put_clk_mod:
  	clk_put(phy->clk_mod);
  err_put_clk_bus:
-@@ -536,8 +562,8 @@ void sun8i_hdmi_phy_remove(struct sun8i_dw_hdmi *hdmi)
+@@ -536,8 +564,8 @@ void sun8i_hdmi_phy_remove(struct sun8i_dw_hdmi *hdmi)
  
  	reset_control_put(phy->rst_phy);
  

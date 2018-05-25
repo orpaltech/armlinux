@@ -1,13 +1,13 @@
-From 8f047a6d305dca6148a779243baab793b4acc2d5 Mon Sep 17 00:00:00 2001
+From 24de1836b2c3764b1b7631c6aa1da85b5e99d49e Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Fri, 18 May 2018 19:39:26 +0300
+Date: Thu, 24 May 2018 21:24:48 +0300
 Subject: [PATCH] sunxi: ASoC: add ORPALTECH AA-Pi soundcard driver
 
 ---
  sound/soc/sunxi/Kconfig            |  12 +-
  sound/soc/sunxi/Makefile           |   4 +
- sound/soc/sunxi/orpal-aapi-sound.c | 189 +++++++++++++++++++++++++++++
- 3 files changed, 203 insertions(+), 2 deletions(-)
+ sound/soc/sunxi/orpal-aapi-sound.c | 203 +++++++++++++++++++++++++++++
+ 3 files changed, 217 insertions(+), 2 deletions(-)
  create mode 100644 sound/soc/sunxi/orpal-aapi-sound.c
 
 diff --git a/sound/soc/sunxi/Kconfig b/sound/soc/sunxi/Kconfig
@@ -56,10 +56,10 @@ index 4a9ef67..ae0145a 100644
 +obj-$(CONFIG_SND_ORPAL_AAPI) += snd-soc-orpal-aapi.o
 diff --git a/sound/soc/sunxi/orpal-aapi-sound.c b/sound/soc/sunxi/orpal-aapi-sound.c
 new file mode 100644
-index 0000000..326c44b
+index 0000000..f05b062
 --- /dev/null
 +++ b/sound/soc/sunxi/orpal-aapi-sound.c
-@@ -0,0 +1,189 @@
+@@ -0,0 +1,203 @@
 +/*
 + * ASoC Driver for ORPAL-AA Pi soundcard (capture only).
 + *
@@ -87,10 +87,10 @@ index 0000000..326c44b
 +/*
 + * This is fixed on this board
 + */
-+#define XTAL_CLK_FREQ	12288000
++#define BOARD_XTAL_FREQ	12288000
 +
 +static const unsigned int sun4i_i2s_rates[] = {
-+        8000, 32000, 48000, 96000,
++	48000, 96000,
 +};
 +
 +static struct snd_pcm_hw_constraint_list sun4i_i2s_constraints = {
@@ -116,7 +116,7 @@ index 0000000..326c44b
 +	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 +	int ret;
 +
-+	/* WM8731 will use BCLK = 64*SR when not in USB mode */
++	/* WM8731 will use BCLK = 64 * FS  */
 +	ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 64);
 +	if (ret < 0) {
 +		dev_err(codec->dev, "Failed to set BCLK ratio: %d\n", ret);
@@ -125,7 +125,7 @@ index 0000000..326c44b
 +
 +	/* Set codec sysclk */
 +	ret = snd_soc_dai_set_sysclk(codec_dai, WM8731_SYSCLK_XTAL,
-+				     XTAL_CLK_FREQ, SND_SOC_CLOCK_IN);
++				     BOARD_XTAL_FREQ, SND_SOC_CLOCK_IN);
 +	if (ret < 0) {
 +		dev_err(codec->dev, "Failed to set WM8731 SYSCLK: %d\n", ret);
 +		return ret;
@@ -148,9 +148,8 @@ index 0000000..326c44b
 +	.platform_name	= "sun4i-i2s.0",
 +	.codec_name	= "wm8731.1-001a",
 +	.ops		= &orpal_aapi_soundcard_ops,
-+	.dai_fmt	= SND_SOC_DAIFMT_I2S |
-+			SND_SOC_DAIFMT_CBM_CFM |
-+			SND_SOC_DAIFMT_NB_NF,
++	.dai_fmt	= SND_SOC_DAIFMT_CBM_CFM |
++			  SND_SOC_DAIFMT_NB_NF,
 +};
 +
 +static const struct snd_soc_dapm_widget wm8731_dapm_widgets[] = {
@@ -178,13 +177,29 @@ index 0000000..326c44b
 +static int orpal_aapi_soundcard_probe(struct platform_device *pdev)
 +{
 +	struct device *dev = &pdev->dev;
-+	struct snd_soc_card *card = &snd_soc_orpal_aapi;
++	struct snd_soc_card *card;
++	struct snd_soc_dai_link *dai;
++	u32 format;
 +	int ret;
 +
++	card = devm_kmemdup(dev, &snd_soc_orpal_aapi,
++			    sizeof(*card), GFP_KERNEL);
++	if (!card)
++		return -ENOMEM;
++
 +	card->dev = dev;
++	dai = card->dai_link;
 +
 +	if (dev->of_node) {
-+		struct snd_soc_dai_link *dai = card->dai_link;
++		ret = of_property_read_u32(dev->of_node, "hw-format",
++					   &format);
++		if (!ret) {
++			if (format < 1 || format > 7)
++				return -EINVAL;
++		} else
++			format = SND_SOC_DAIFMT_I2S;
++		dai->dai_fmt |= format;
++
 +		struct device_node *cpu_node = of_parse_phandle(dev->of_node,
 +								"cpu-node", 0);
 +		struct device_node *codec_node = of_parse_phandle(dev->of_node,
@@ -198,7 +213,7 @@ index 0000000..326c44b
 +		} else
 +			if (!dai->cpu_of_node) {
 +				dev_err(dev,
-+					"Property 'cpu-node' missing or invalid\n");
++					"Missing property 'cpu-node'\n");
 +				return -EINVAL;
 +			}
 +
@@ -208,15 +223,14 @@ index 0000000..326c44b
 +		} else
 +			if (!dai->codec_of_node) {
 +				dev_err(dev,
-+					"Property 'codec-node' missing or invalid\n");
++					"Missing property 'codec-node'\n");
 +				return -EINVAL;
 +			}
 +	}
 +
 +	ret = snd_soc_register_card(card);
 +	if (ret && ret != -EPROBE_DEFER) {
-+		dev_err(dev,
-+			"snd_soc_register_card() failed: (%d)\n", ret);
++		dev_err(dev, "snd_soc_register_card() failed: %d\n", ret);
 +	}
 +
 +	return ret;

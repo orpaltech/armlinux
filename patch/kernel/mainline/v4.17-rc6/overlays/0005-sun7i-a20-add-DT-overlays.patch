@@ -1,69 +1,51 @@
-From 01528e7be72eb12b0acba1589657980383b6f4b8 Mon Sep 17 00:00:00 2001
+From 43d230fd119b9f78621d08d22480f6fa9112b091 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Tue, 10 Apr 2018 23:03:53 +0300
+Date: Thu, 24 May 2018 01:51:39 +0300
 Subject: [PATCH] sun7i-a20: add DT-overlays
 
 ---
  arch/arm/boot/dts/Makefile                    |   2 +
- arch/arm/boot/dts/overlays/Makefile           |  37 ++++
+ arch/arm/boot/dts/overlays/Makefile           |  28 +++
  .../dts/overlays/README.sun7i-a20-overlays    |  17 ++
+ .../dts/overlays/sun7i-a20-aapi-sound.dts     |  44 +++++
+ arch/arm/boot/dts/overlays/sun7i-a20-aapi.dts |  65 +++++++
  .../dts/overlays/sun7i-a20-analog-codec.dts   |  13 ++
+ .../overlays/sun7i-a20-audioinjector-pi.dts   |  44 +++++
  .../dts/overlays/sun7i-a20-ertft0356-drm.dts  | 132 ++++++++++++++
- .../boot/dts/overlays/sun7i-a20-fixup.scr-cmd | 161 ++++++++++++++++++
- arch/arm/boot/dts/overlays/sun7i-a20-i2c1.dts |  13 ++
- arch/arm/boot/dts/overlays/sun7i-a20-i2c2.dts |  14 ++
- arch/arm/boot/dts/overlays/sun7i-a20-i2c3.dts |  13 ++
- arch/arm/boot/dts/overlays/sun7i-a20-i2c4.dts |  13 ++
- arch/arm/boot/dts/overlays/sun7i-a20-i2s0.dts |  13 ++
- arch/arm/boot/dts/overlays/sun7i-a20-i2s1.dts |  13 ++
- arch/arm/boot/dts/overlays/sun7i-a20-mmc2.dts |  13 ++
+ .../boot/dts/overlays/sun7i-a20-fixup.scr-cmd | 165 ++++++++++++++++++
+ .../overlays/sun7i-a20-gy-pcm5102-sound.dts   |  33 ++++
  arch/arm/boot/dts/overlays/sun7i-a20-nand.dts | 103 +++++++++++
  .../boot/dts/overlays/sun7i-a20-nrf24-spi.dts |  68 ++++++++
  arch/arm/boot/dts/overlays/sun7i-a20-pwm0.dts |  15 ++
  arch/arm/boot/dts/overlays/sun7i-a20-pwm1.dts |  15 ++
  .../boot/dts/overlays/sun7i-a20-spi0-cs1.dts  |  14 ++
- .../boot/dts/overlays/sun7i-a20-spidev.dts    |  57 +++++++
- .../arm/boot/dts/overlays/sun7i-a20-uart2.dts |  32 ++++
- .../arm/boot/dts/overlays/sun7i-a20-uart3.dts |  42 +++++
- .../arm/boot/dts/overlays/sun7i-a20-uart4.dts |  22 +++
- .../arm/boot/dts/overlays/sun7i-a20-uart5.dts |  22 +++
- .../arm/boot/dts/overlays/sun7i-a20-uart6.dts |  22 +++
- .../arm/boot/dts/overlays/sun7i-a20-uart7.dts |  22 +++
+ .../boot/dts/overlays/sun7i-a20-spidev.dts    |  57 ++++++
  .../overlays/sun7i-a20-waveshare35-drm.dts    |  71 ++++++++
  .../overlays/sun7i-a20-waveshare35-fbtft.dts  |  83 +++++++++
- 27 files changed, 1042 insertions(+)
+ 18 files changed, 969 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.sun7i-a20-overlays
+ create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-aapi-sound.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-aapi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-analog-codec.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-audioinjector-pi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-ertft0356-drm.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-fixup.scr-cmd
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-i2c1.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-i2c2.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-i2c3.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-i2c4.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-i2s0.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-i2s1.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-mmc2.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-gy-pcm5102-sound.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-nand.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-nrf24-spi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-pwm0.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-pwm1.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-spi0-cs1.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-spidev.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-uart2.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-uart3.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-uart4.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-uart5.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-uart6.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-uart7.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-waveshare35-drm.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-waveshare35-fbtft.dts
 
 diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
-index ade7a38..6b1f884 100644
+index 7e24249..48fd202 100644
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -1134,3 +1134,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+@@ -1163,3 +1163,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
  	aspeed-bmc-opp-witherspoon.dtb \
  	aspeed-bmc-opp-zaius.dtb \
  	aspeed-bmc-quanta-q71l.dtb
@@ -71,35 +53,26 @@ index ade7a38..6b1f884 100644
 +subdir-y	:= overlays
 diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
 new file mode 100644
-index 0000000..02508b8
+index 0000000..e92a80a
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/Makefile
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,28 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
 +dtbo-$(CONFIG_MACH_SUN7I) += \
 +	sun7i-a20-analog-codec.dtbo \
-+	sun7i-a20-i2c1.dtbo \
-+	sun7i-a20-i2c2.dtbo \
-+	sun7i-a20-i2c3.dtbo \
-+	sun7i-a20-i2c4.dtbo \
-+	sun7i-a20-i2s0.dtbo \
-+	sun7i-a20-i2s1.dtbo \
-+	sun7i-a20-mmc2.dtbo \
++	sun7i-a20-aapi.dtbo \
++	sun7i-a20-aapi-sound.dtbo \
++	sun7i-a20-audioinjector-pi.dtbo \
++	sun7i-a20-ertft0356-drm.dtbo \
++	sun7i-a20-gy-pcm5102-sound.dtbo \
 +	sun7i-a20-nand.dtbo \
 +	sun7i-a20-nrf24-spi.dtbo \
 +	sun7i-a20-pwm0.dtbo \
 +	sun7i-a20-pwm1.dtbo \
 +	sun7i-a20-spi0-cs1.dtbo \
 +	sun7i-a20-spidev.dtbo \
-+	sun7i-a20-uart2.dtbo \
-+	sun7i-a20-uart3.dtbo \
-+	sun7i-a20-uart4.dtbo \
-+	sun7i-a20-uart5.dtbo \
-+	sun7i-a20-uart6.dtbo \
-+	sun7i-a20-uart7.dtbo \
-+	sun7i-a20-ertft0356-drm.dtbo \
 +	sun7i-a20-waveshare35-drm.dtbo \
 +	sun7i-a20-waveshare35-fbtft.dtbo
 +
@@ -135,6 +108,127 @@ index 0000000..a01bb97
 +Reference: A20 Datasheet sections 6.3.5.1, 1.19.2
 +
 +I2C bus 0 is used for the AXP209 PMIC
+diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-aapi-sound.dts b/arch/arm/boot/dts/overlays/sun7i-a20-aapi-sound.dts
+new file mode 100644
+index 0000000..749381c
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun7i-a20-aapi-sound.dts
+@@ -0,0 +1,44 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
++				    <&i2s0_pins_di>;
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&i2c2>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			aapi_codec: wm8731@1a {
++				#sound-dai-cells = <0>;
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc@1c00000/";
++		__overlay__ {
++			sound-aapi {
++				compatible = "orpaltech,aapi-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&aapi_codec>;
++				status = "okay";
++                        };
++                };
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-aapi.dts b/arch/arm/boot/dts/overlays/sun7i-a20-aapi.dts
+new file mode 100644
+index 0000000..1bc84e6
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun7i-a20-aapi.dts
+@@ -0,0 +1,65 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			vna-aapi {
++				compatible = "orpaltech,aapi-160";
++				clocks = <&aapi_clk 0>, <&aapi_clk 1>;
++				clock-names = "clk0", "clk1";
++				intermediate-frequency = <10031>;
++				status = "okay";
++			};
++
++			sound-aapi {
++				compatible = "orpaltech,aapi-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&aapi_codec>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&i2c0>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			aapi_codec: wm8731@1a {
++				#sound-dai-cells = <0>;
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				status = "okay";
++			};
++
++			aapi_clk: clk-aapi@60 {
++				compatible = "orpaltech,aapi-clk-si5351";
++				reg = <0x60>;
++				#clock-cells = <1>;
++				status = "okay";
++
++				xtal-frequency = <27000000>;
++				xtal-correction = <0 0>; /*<corr,sign>*/
++
++				clock-output-names = "clk0", "clk1";
++			};
++		};
++	};
++
++	fragment@2 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
++				    <&i2s0_pins_di>;
++			status = "okay";
++		};
++	};
++};
 diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-analog-codec.dts b/arch/arm/boot/dts/overlays/sun7i-a20-analog-codec.dts
 new file mode 100644
 index 0000000..e1a70c5
@@ -152,6 +246,56 @@ index 0000000..e1a70c5
 +		__overlay__ {
 +			status = "okay";
 +		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-audioinjector-pi.dts b/arch/arm/boot/dts/overlays/sun7i-a20-audioinjector-pi.dts
+new file mode 100644
+index 0000000..0d29c3c
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun7i-a20-audioinjector-pi.dts
+@@ -0,0 +1,44 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
++				    <&i2s0_pins_do0>, <&i2s0_pins_di>;
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&i2c0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			wm8731: wm8731@1a {
++				#sound-dai-cells = <0>;
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/";
++		__overlay__ {
++			sound {
++				compatible = "flatmax,audioinjector-pi-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&wm8731>;
++				status = "okay";
++                        };
++                };
 +	};
 +};
 diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-ertft0356-drm.dts b/arch/arm/boot/dts/overlays/sun7i-a20-ertft0356-drm.dts
@@ -294,10 +438,10 @@ index 0000000..11278eb
 +};
 diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-fixup.scr-cmd b/arch/arm/boot/dts/overlays/sun7i-a20-fixup.scr-cmd
 new file mode 100644
-index 0000000..9155ca5
+index 0000000..c352d53
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/sun7i-a20-fixup.scr-cmd
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,165 @@
 +# overlays fixup script
 +# implements (or rather substitutes) overlay arguments functionality
 +# using u-boot scripting, environment variables and "fdt" command
@@ -316,6 +460,10 @@ index 0000000..9155ca5
 +test "${tmp_bank}" = "I" && setenv tmp_bank 8'
 +
 +setenv tmp_soc_path "soc@1c00000"
++
++if test -n "${param_i2s0_slot_width}"; then
++	fdt set /${tmp_soc_path}/i2s@1c22400 allwinner,slot-width-override "<${param_i2s0_slot_width}>";
++fi
 +
 +if test -n "${param_spidev_spi_bus}"; then
 +	test "${param_spidev_spi_bus}" = "0" && setenv tmp_spi_path "spi@1c05000"
@@ -459,139 +607,44 @@ index 0000000..9155ca5
 +fi
 +
 +env delete tmp_soc_path
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-i2c1.dts b/arch/arm/boot/dts/overlays/sun7i-a20-i2c1.dts
+diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-gy-pcm5102-sound.dts b/arch/arm/boot/dts/overlays/sun7i-a20-gy-pcm5102-sound.dts
 new file mode 100644
-index 0000000..3b700d1
+index 0000000..df63f29
 --- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-i2c1.dts
-@@ -0,0 +1,13 @@
++++ b/arch/arm/boot/dts/overlays/sun7i-a20-gy-pcm5102-sound.dts
+@@ -0,0 +1,33 @@
 +/dts-v1/;
 +/plugin/;
 +
 +/ {
-+        compatible = "allwinner,sun7i-a20";
++	compatible = "allwinner,sun7i-a20";
 +
-+        fragment@0 {
-+                target = <&i2c1>;
-+                __overlay__ {
-+                        status = "okay";
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2s0_pins_mclk>, <&i2s0_pins_bclk>,
++				    <&i2s0_pins_lrck>, <&i2s0_pins_do0>;
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target-path = "/soc@1c00000/";
++		__overlay__ {
++			pcm5102: pcm5102a-i2s@0 {
++				compatible = "ti,pcm5102a";
++				status = "okay";
++			};
++
++			gy-pcm5102-sound {
++				compatible = "orpaltech,gy-pcm5102-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&pcm5102>;
++				status = "okay";
++                        };
 +                };
-+        };
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-i2c2.dts b/arch/arm/boot/dts/overlays/sun7i-a20-i2c2.dts
-new file mode 100644
-index 0000000..5b2f909
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-i2c2.dts
-@@ -0,0 +1,14 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target = <&i2c2>;
-+                __overlay__ {
-+                        status = "okay";
-+                };
-+        };
-+};
-+
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-i2c3.dts b/arch/arm/boot/dts/overlays/sun7i-a20-i2c3.dts
-new file mode 100644
-index 0000000..b1ef00d
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-i2c3.dts
-@@ -0,0 +1,13 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target = <&i2c3>;
-+                __overlay__ {
-+                        status = "okay";
-+                };
-+        };
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-i2c4.dts b/arch/arm/boot/dts/overlays/sun7i-a20-i2c4.dts
-new file mode 100644
-index 0000000..45a5a72
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-i2c4.dts
-@@ -0,0 +1,13 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target = <&i2c4>;
-+                __overlay__ {
-+                        status = "okay";
-+                };
-+        };
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-i2s0.dts b/arch/arm/boot/dts/overlays/sun7i-a20-i2s0.dts
-new file mode 100644
-index 0000000..7040784
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-i2s0.dts
-@@ -0,0 +1,13 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target = <&i2s0>;
-+                __overlay__ {
-+                        status = "okay";
-+                };
-+        };
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-i2s1.dts b/arch/arm/boot/dts/overlays/sun7i-a20-i2s1.dts
-new file mode 100644
-index 0000000..87a29ec
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-i2s1.dts
-@@ -0,0 +1,13 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target = <&i2s1>;
-+                __overlay__ {
-+                        status = "okay";
-+                };
-+        };
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-mmc2.dts b/arch/arm/boot/dts/overlays/sun7i-a20-mmc2.dts
-new file mode 100644
-index 0000000..18cc546
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-mmc2.dts
-@@ -0,0 +1,13 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target = <&mmc2>;
-+                __overlay__ {
-+                        status = "okay";
-+                };
-+        };
++	};
 +};
 diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-nand.dts b/arch/arm/boot/dts/overlays/sun7i-a20-nand.dts
 new file mode 100644
@@ -898,204 +951,6 @@ index 0000000..9c7eda4
 +                                reg = <0>;
 +                                spi-max-frequency = <1000000>;
 +                        };
-+                };
-+        };
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-uart2.dts b/arch/arm/boot/dts/overlays/sun7i-a20-uart2.dts
-new file mode 100644
-index 0000000..1d02180
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-uart2.dts
-@@ -0,0 +1,32 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target-path = "/aliases";
-+                __overlay__ {
-+                        serial2 = "/soc@1c00000/serial@1c28800";
-+                };
-+        };
-+
-+        fragment@1 {
-+                target = <&pio>;
-+                __overlay__ {
-+                        uart2_pins_a_2: uart2@1 {
-+                                pins = "PI18", "PI19";
-+                                function = "uart2";
-+                        };
-+                };
-+        };
-+
-+        fragment@2 {
-+                target = <&uart2>;
-+                 __overlay__ {
-+                        pinctrl-names = "default";
-+                        pinctrl-0 = <&uart2_pins_a_2>;
-+                        status = "okay";
-+                };
-+        };
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-uart3.dts b/arch/arm/boot/dts/overlays/sun7i-a20-uart3.dts
-new file mode 100644
-index 0000000..a40f803
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-uart3.dts
-@@ -0,0 +1,42 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target-path = "/aliases";
-+                __overlay__ {
-+                        serial3 = "/soc@1c00000/serial@1c28c00";
-+                };
-+        };
-+
-+        fragment@1 {
-+                target = <&pio>;
-+                __overlay__ {
-+                        uart3_pins_a_2: uart3@2 {
-+                                pins = "PG6", "PG7";
-+                                function = "uart3";
-+                        };
-+
-+                        uart3_pins_a_rts_cts: uart3@1 {
-+                                pins = "PG8", "PG9";
-+                                function = "uart3";
-+                        };
-+
-+                        uart3_pins_b_rts_cts: uart3@3 {
-+                                pins = "PH2", "PH3";
-+                                function = "uart3";
-+                        };
-+                };
-+        };
-+
-+        fragment@2 {
-+                target = <&uart3>;
-+                 __overlay__ {
-+                        pinctrl-names = "default";
-+                        pinctrl-0 = <&uart3_pins_a_2>;
-+                        status = "okay";
-+                };
-+        };
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-uart4.dts b/arch/arm/boot/dts/overlays/sun7i-a20-uart4.dts
-new file mode 100644
-index 0000000..506c2a4
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-uart4.dts
-@@ -0,0 +1,22 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target-path = "/aliases";
-+                __overlay__ {
-+                        serial4 = "/soc@1c00000/serial@1c29000";
-+                };
-+        };
-+
-+        fragment@1 {
-+                target = <&uart4>;
-+                 __overlay__ {
-+                        pinctrl-names = "default";
-+                        pinctrl-0 = <&uart4_pins_a>;
-+                        status = "okay";
-+                };
-+        };
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-uart5.dts b/arch/arm/boot/dts/overlays/sun7i-a20-uart5.dts
-new file mode 100644
-index 0000000..a0e1df0
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-uart5.dts
-@@ -0,0 +1,22 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target-path = "/aliases";
-+                __overlay__ {
-+                        serial5 = "/soc@1c00000/serial@1c29400";
-+                };
-+        };
-+
-+        fragment@1 {
-+                target = <&uart5>;
-+                 __overlay__ {
-+                        pinctrl-names = "default";
-+                        pinctrl-0 = <&uart5_pins_a>;
-+                        status = "okay";
-+                };
-+        };
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-uart6.dts b/arch/arm/boot/dts/overlays/sun7i-a20-uart6.dts
-new file mode 100644
-index 0000000..bd7e826
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-uart6.dts
-@@ -0,0 +1,22 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target-path = "/aliases";
-+                __overlay__ {
-+                        serial6 = "/soc@1c00000/serial@1c29800";
-+                };
-+        };
-+
-+        fragment@1 {
-+                target = <&uart6>;
-+                __overlay__ {
-+                        pinctrl-names = "default";
-+                        pinctrl-0 = <&uart6_pins_a>;
-+                        status = "okay";
-+                };
-+        };
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-uart7.dts b/arch/arm/boot/dts/overlays/sun7i-a20-uart7.dts
-new file mode 100644
-index 0000000..274e777
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-uart7.dts
-@@ -0,0 +1,22 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+        compatible = "allwinner,sun7i-a20";
-+
-+        fragment@0 {
-+                target-path = "/aliases";
-+                __overlay__ {
-+                        serial7 = "/soc@1c00000/serial@1c29c00";
-+                };
-+        };
-+
-+        fragment@1 {
-+                target = <&uart7>;
-+                __overlay__ {
-+                        pinctrl-names = "default";
-+                        pinctrl-0 = <&uart7_pins_a>;
-+                        status = "okay";
 +                };
 +        };
 +};

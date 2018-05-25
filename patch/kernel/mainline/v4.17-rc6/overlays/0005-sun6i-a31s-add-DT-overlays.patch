@@ -1,18 +1,18 @@
-From 0ca3b1810dbaec4c3003a7e1b9bca6ea223dfbea Mon Sep 17 00:00:00 2001
+From 4e6d961d6cf632123adf237bdb538fac0bda1c4d Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sun, 13 May 2018 18:49:45 +0300
+Date: Thu, 24 May 2018 22:06:52 +0300
 Subject: [PATCH] sun6i-a31s: Add DT-overlays
 
 ---
  arch/arm/boot/dts/Makefile                    |   2 +
  arch/arm/boot/dts/overlays/Makefile           |  29 ++++
  .../dts/overlays/README.sun6i-a31s-overlays   |   3 +
- .../dts/overlays/sun6i-a31s-aapi-sound.dts    |  44 ++++++
- .../arm/boot/dts/overlays/sun6i-a31s-aapi.dts |  65 +++++++++
- .../dts/overlays/sun6i-a31s-analog-codec.dts  |  21 +++
- .../overlays/sun6i-a31s-audioinjector-pi.dts  |  44 ++++++
+ .../dts/overlays/sun6i-a31s-aapi-sound.dts    |  43 ++++++
+ .../arm/boot/dts/overlays/sun6i-a31s-aapi.dts |  78 +++++++++++
+ .../overlays/sun6i-a31s-audioinjector-pi.dts  |  43 ++++++
  .../dts/overlays/sun6i-a31s-ertft0356-drm.dts | 132 ++++++++++++++++++
- .../dts/overlays/sun6i-a31s-fixup.scr-cmd     |  91 ++++++++++++
+ .../dts/overlays/sun6i-a31s-fixup.scr-cmd     |  95 +++++++++++++
+ .../overlays/sun6i-a31s-gy-pcm5102-sound.dts  |  33 +++++
  .../dts/overlays/sun6i-a31s-nrf24-spi.dts     |  67 +++++++++
  .../overlays/sun6i-a31s-nrf24-spi_gpio2.dts   |  48 +++++++
  .../arm/boot/dts/overlays/sun6i-a31s-pwm0.dts |  15 ++
@@ -23,15 +23,15 @@ Subject: [PATCH] sun6i-a31s: Add DT-overlays
  .../boot/dts/overlays/sun6i-a31s-spidev.dts   |  37 +++++
  .../overlays/sun6i-a31s-waveshare35-drm.dts   |  78 +++++++++++
  .../overlays/sun6i-a31s-waveshare35-fbtft.dts |  88 ++++++++++++
- 19 files changed, 861 insertions(+)
+ 19 files changed, 888 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.sun6i-a31s-overlays
  create mode 100644 arch/arm/boot/dts/overlays/sun6i-a31s-aapi-sound.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun6i-a31s-aapi.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun6i-a31s-analog-codec.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun6i-a31s-audioinjector-pi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun6i-a31s-ertft0356-drm.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun6i-a31s-fixup.scr-cmd
+ create mode 100644 arch/arm/boot/dts/overlays/sun6i-a31s-gy-pcm5102-sound.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun6i-a31s-nrf24-spi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun6i-a31s-nrf24-spi_gpio2.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun6i-a31s-pwm0.dts
@@ -55,7 +55,7 @@ index 7e24249..48fd202 100644
 +subdir-y	:= overlays
 diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
 new file mode 100644
-index 0000000..2f00143
+index 0000000..d966df3
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/Makefile
 @@ -0,0 +1,29 @@
@@ -65,9 +65,9 @@ index 0000000..2f00143
 +dtbo-$(CONFIG_MACH_SUN6I) += \
 +	sun6i-a31s-aapi.dtbo \
 +	sun6i-a31s-aapi-sound.dtbo \
-+	sun6i-a31s-analog-codec.dtbo \
 +	sun6i-a31s-audioinjector-pi.dtbo \
 +	sun6i-a31s-ertft0356-drm.dtbo \
++	sun6i-a31s-gy-pcm5102-sound.dtbo \
 +	sun6i-a31s-nrf24-spi.dtbo \
 +	sun6i-a31s-nrf24-spi_gpio2.dtbo \
 +	sun6i-a31s-pwm0.dtbo \
@@ -99,10 +99,10 @@ index 0000000..1f728c2
 +https://docs.armbian.com/User-Guide_Allwinner_overlays/
 diff --git a/arch/arm/boot/dts/overlays/sun6i-a31s-aapi-sound.dts b/arch/arm/boot/dts/overlays/sun6i-a31s-aapi-sound.dts
 new file mode 100644
-index 0000000..373b296
+index 0000000..17a444a
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/sun6i-a31s-aapi-sound.dts
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,43 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -112,9 +112,8 @@ index 0000000..373b296
 +	fragment@0 {
 +		target = <&i2s0>;
 +		__overlay__ {
++			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_di>;
 +			pinctrl-names = "default";
-+			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
-+				    <&i2s0_pins_di>;
 +			status = "okay";
 +		};
 +	};
@@ -127,8 +126,8 @@ index 0000000..373b296
 +			status = "okay";
 +
 +			wm8731: wm8731@1a {
-+				#sound-dai-cells = <0>;
 +				compatible = "wlf,wm8731";
++				#sound-dai-cells = <0>;
 +				reg = <0x1a>;
 +				status = "okay";
 +			};
@@ -149,10 +148,10 @@ index 0000000..373b296
 +};
 diff --git a/arch/arm/boot/dts/overlays/sun6i-a31s-aapi.dts b/arch/arm/boot/dts/overlays/sun6i-a31s-aapi.dts
 new file mode 100644
-index 0000000..494689b
+index 0000000..0a73b5a
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/sun6i-a31s-aapi.dts
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,78 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -164,17 +163,31 @@ index 0000000..494689b
 +		__overlay__ {
 +			vna-aapi {
 +				compatible = "orpaltech,aapi-160";
-+				clocks = <&aapi_clk 0>, <&aapi_clk 1>;
-+				clock-names = "clk0", "clk1";
++				clocks = <&aapi_clk 0>,
++					 <&aapi_clk 1>;
++				clock-names = "clk0",
++					      "clk1";
 +				intermediate-frequency = <10031>;
++				initial-frequency = <14000000>;
 +				status = "okay";
 +			};
++
++			/******************/
++			/* DAI FORMAT     */
++			/******************/
++			/* I2S		1 */
++			/* RIGHT_J	2 */
++			/* LEFT_J	3 */
++			/* DSP_A	4 */
++			/* DSP_B	5 */
++			/******************/
 +
 +			sound-aapi {
 +				compatible = "orpaltech,aapi-sound";
 +				cpu-node = <&i2s0>;
 +				codec-node = <&aapi_codec>;
 +				status = "okay";
++				hw-format = <1>;
 +			};
 +		};
 +	};
@@ -188,9 +201,9 @@ index 0000000..494689b
 +			status = "okay";
 +
 +			aapi_codec: wm8731@1a {
-+				#sound-dai-cells = <0>;
 +				compatible = "wlf,wm8731";
 +				reg = <0x1a>;
++				#sound-dai-cells = <0>;
 +				status = "okay";
 +			};
 +
@@ -201,7 +214,7 @@ index 0000000..494689b
 +				status = "okay";
 +
 +				xtal-frequency = <27000000>;
-+				xtal-correction = <0 0>; /*<corr,sign>*/
++				xtal-correction = <0 0>; /*<correction(Hz) sign>*/
 +
 +				clock-output-names = "clk0", "clk1";
 +			};
@@ -211,46 +224,18 @@ index 0000000..494689b
 +	fragment@2 {
 +		target = <&i2s0>;
 +		__overlay__ {
++			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_di>;
 +			pinctrl-names = "default";
-+			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
-+				    <&i2s0_pins_di>;
 +			status = "okay";
 +                };
 +	};
 +};
-diff --git a/arch/arm/boot/dts/overlays/sun6i-a31s-analog-codec.dts b/arch/arm/boot/dts/overlays/sun6i-a31s-analog-codec.dts
-new file mode 100644
-index 0000000..d11fce8
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun6i-a31s-analog-codec.dts
-@@ -0,0 +1,21 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "allwinner,sun6i-a31s";
-+
-+	fragment@0 {
-+		target = <&codec>;
-+		__overlay__ {
-+			allwinner,audio-routing = 
-+				"Headphone", "HP",
-+				"Speaker", "LINEOUT",
-+				"LINEIN", "Line In",
-+				"MIC1", "MBIAS",
-+				"MIC1", "Mic",
-+				"MIC2", "HBIAS",
-+				"MIC2", "Headset Mic";
-+			status = "okay";
-+		};
-+	};
-+};
 diff --git a/arch/arm/boot/dts/overlays/sun6i-a31s-audioinjector-pi.dts b/arch/arm/boot/dts/overlays/sun6i-a31s-audioinjector-pi.dts
 new file mode 100644
-index 0000000..937fdeb
+index 0000000..fedaab2
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/sun6i-a31s-audioinjector-pi.dts
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,43 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -261,8 +246,7 @@ index 0000000..937fdeb
 +		target = <&i2s0>;
 +		__overlay__ {
 +			pinctrl-names = "default";
-+			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
-+				    <&i2s0_pins_do0>, <&i2s0_pins_di>;
++			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_do0 &i2s0_pins_di>;
 +			status = "okay";
 +		};
 +	};
@@ -275,9 +259,9 @@ index 0000000..937fdeb
 +			status = "okay";
 +
 +			wm8731: wm8731@1a {
-+				#sound-dai-cells = <0>;
 +				compatible = "wlf,wm8731";
 +				reg = <0x1a>;
++				#sound-dai-cells = <0>;
 +				status = "okay";
 +			};
 +		};
@@ -435,15 +419,19 @@ index 0000000..5710ffe
 +};
 diff --git a/arch/arm/boot/dts/overlays/sun6i-a31s-fixup.scr-cmd b/arch/arm/boot/dts/overlays/sun6i-a31s-fixup.scr-cmd
 new file mode 100644
-index 0000000..43b90fb
+index 0000000..5fd01f9
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/sun6i-a31s-fixup.scr-cmd
-@@ -0,0 +1,91 @@
+@@ -0,0 +1,95 @@
 +# overlays fixup script
 +# implements (or rather substitutes) overlay arguments functionality
 +# using u-boot scripting, environment variables and "fdt" command
 +
 +setenv tmp_soc_path "soc@1c00000"
++
++if test -n "${param_i2s0_slot_width}"; then
++	fdt set /${tmp_soc_path}/i2s@1c22000 allwinner,slot-width-override "<${param_i2s0_slot_width}>";
++fi
 +
 +if test -n "${param_spidev_spi_bus}"; then
 +	test "${param_spidev_spi_bus}" = "1" && setenv tmp_spi_path "spi@1c69000"
@@ -530,6 +518,45 @@ index 0000000..43b90fb
 +fi
 +
 +env delete tmp_soc_path
+diff --git a/arch/arm/boot/dts/overlays/sun6i-a31s-gy-pcm5102-sound.dts b/arch/arm/boot/dts/overlays/sun6i-a31s-gy-pcm5102-sound.dts
+new file mode 100644
+index 0000000..4db7cdb
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun6i-a31s-gy-pcm5102-sound.dts
+@@ -0,0 +1,33 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_do0>;
++			pinctrl-1 = <&i2s0_pins_mclk>;
++			pinctrl-names = "default", "default";
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target-path = "/soc@1c00000/";
++		__overlay__ {
++			pcm5102: pcm5102a-i2s@0 {
++				compatible = "ti,pcm5102a";
++				status = "okay";
++			};
++
++			sound-pcm5102 {
++				compatible = "orpaltech,gy-pcm5102-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&pcm5102>;
++				status = "okay";
++                        };
++                };
++	};
++};
 diff --git a/arch/arm/boot/dts/overlays/sun6i-a31s-nrf24-spi.dts b/arch/arm/boot/dts/overlays/sun6i-a31s-nrf24-spi.dts
 new file mode 100644
 index 0000000..cd4eac1

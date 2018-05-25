@@ -1,23 +1,19 @@
-From acc4d7db49023932ee5b2a7690bb8baa65d98a99 Mon Sep 17 00:00:00 2001
+From 1ecd772090cad354dc006058a202fc9b32216ba6 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Tue, 15 May 2018 15:18:54 +0300
+Date: Thu, 24 May 2018 23:19:36 +0300
 Subject: [PATCH] sun8i-h3: add DT-overlays
 
 ---
  arch/arm/boot/dts/Makefile                    |   2 +
- arch/arm/boot/dts/overlays/Makefile           |  37 ++++++
+ arch/arm/boot/dts/overlays/Makefile           |  33 +++++
  .../dts/overlays/README.sun8i-h3-overlays     |  14 ++
  .../boot/dts/overlays/sun8i-h3-aapi-sound.dts |  44 +++++++
- arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts  |  65 ++++++++++
- .../dts/overlays/sun8i-h3-analog-codec.dts    |  17 +++
+ arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts  |  67 ++++++++++
  .../overlays/sun8i-h3-audioinjector-pi.dts    |  45 +++++++
  arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts |  29 +++++
  .../dts/overlays/sun8i-h3-ertft0356-drm.dts   | 102 +++++++++++++++
  .../boot/dts/overlays/sun8i-h3-fixup.scr-cmd  | 122 ++++++++++++++++++
- arch/arm/boot/dts/overlays/sun8i-h3-i2c0.dts  |  13 ++
- arch/arm/boot/dts/overlays/sun8i-h3-i2c1.dts  |  13 ++
- arch/arm/boot/dts/overlays/sun8i-h3-i2c2.dts  |  13 ++
- arch/arm/boot/dts/overlays/sun8i-h3-i2s0.dts  |  16 +++
+ .../overlays/sun8i-h3-gy-pcm5102-sound.dts    |  34 +++++
  arch/arm/boot/dts/overlays/sun8i-h3-ir.dts    |  13 ++
  .../boot/dts/overlays/sun8i-h3-nrf24-spi.dts  |  71 ++++++++++
  arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts   |  39 ++++++
@@ -32,20 +28,16 @@ Subject: [PATCH] sun8i-h3: add DT-overlays
  .../boot/dts/overlays/sun8i-h3-usbhost3.dts   |  20 +++
  .../dts/overlays/sun8i-h3-waveshare35-drm.dts |  68 ++++++++++
  .../overlays/sun8i-h3-waveshare35-fbtft.dts   |  93 +++++++++++++
- 28 files changed, 1052 insertions(+)
+ 24 files changed, 1012 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.sun8i-h3-overlays
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-analog-codec.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-audioinjector-pi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-ertft0356-drm.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-fixup.scr-cmd
- create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-i2c0.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-i2c1.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-i2c2.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-i2s0.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-ir.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-nrf24-spi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts
@@ -73,23 +65,19 @@ index 7e24249..48fd202 100644
 +subdir-y	:= overlays
 diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
 new file mode 100644
-index 0000000..8917d0c
+index 0000000..4743570
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/Makefile
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,33 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
 +dtbo-$(CONFIG_MACH_SUN8I) += \
-+	sun8i-h3-analog-codec.dtbo \
 +	sun8i-h3-audioinjector-pi.dtbo \
 +	sun8i-h3-aapi-sound.dtbo \
 +	sun8i-h3-aapi.dtbo \
 +	sun8i-h3-dht11.dtbo \
-+	sun8i-h3-i2c0.dtbo \
-+	sun8i-h3-i2c1.dtbo \
-+	sun8i-h3-i2c2.dtbo \
-+	sun8i-h3-i2s0.dtbo \
++	sun8i-h3-gy-pcm5102-sound.dtbo \
 +	sun8i-h3-ir.dtbo \
 +	sun8i-h3-nrf24-spi.dtbo \
 +	sun8i-h3-pwm.dtbo \
@@ -186,10 +174,10 @@ index 0000000..a90dfb0
 +};
 diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts b/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts
 new file mode 100644
-index 0000000..1bc84e6
+index 0000000..b81a9fe
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,67 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -201,9 +189,12 @@ index 0000000..1bc84e6
 +		__overlay__ {
 +			vna-aapi {
 +				compatible = "orpaltech,aapi-160";
-+				clocks = <&aapi_clk 0>, <&aapi_clk 1>;
-+				clock-names = "clk0", "clk1";
++				clocks = <&aapi_clk 0>,
++					 <&aapi_clk 1>;
++				clock-names = "clk0",
++					      "clk1";
 +				intermediate-frequency = <10031>;
++				initial-frequency = <14000000>;
 +				status = "okay";
 +			};
 +
@@ -225,9 +216,9 @@ index 0000000..1bc84e6
 +			status = "okay";
 +
 +			aapi_codec: wm8731@1a {
-+				#sound-dai-cells = <0>;
 +				compatible = "wlf,wm8731";
 +				reg = <0x1a>;
++				#sound-dai-cells = <0>;
 +				status = "okay";
 +			};
 +
@@ -248,32 +239,8 @@ index 0000000..1bc84e6
 +	fragment@2 {
 +		target = <&i2s0>;
 +		__overlay__ {
++			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_di>;
 +			pinctrl-names = "default";
-+			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
-+				    <&i2s0_pins_di>;
-+			status = "okay";
-+		};
-+	};
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-analog-codec.dts b/arch/arm/boot/dts/overlays/sun8i-h3-analog-codec.dts
-new file mode 100644
-index 0000000..36dbc31
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun8i-h3-analog-codec.dts
-@@ -0,0 +1,17 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "allwinner,sun8i-h3";
-+
-+	fragment@0 {
-+		target = <&codec>;
-+		__overlay__ {
-+			allwinner,audio-routing =
-+				"Line Out", "LINEOUT",
-+				"MIC1", "Mic",
-+				"Mic",  "MBIAS";
 +			status = "okay";
 +		};
 +	};
@@ -600,69 +567,12 @@ index 0000000..1bce575
 +	fdt set /soc/serial@01c28c00 pinctrl-1 "<${tmp_phandle2}>"
 +	env delete tmp_phandle1 tmp_phandle2
 +fi
-diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-i2c0.dts b/arch/arm/boot/dts/overlays/sun8i-h3-i2c0.dts
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts b/arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts
 new file mode 100644
-index 0000000..6e413f1
+index 0000000..da479c8
 --- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun8i-h3-i2c0.dts
-@@ -0,0 +1,13 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "allwinner,sun8i-h3";
-+
-+	fragment@0 {
-+		target = <&i2c0>;
-+		__overlay__ {
-+			status = "okay";
-+		};
-+	};
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-i2c1.dts b/arch/arm/boot/dts/overlays/sun8i-h3-i2c1.dts
-new file mode 100644
-index 0000000..4d46925
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun8i-h3-i2c1.dts
-@@ -0,0 +1,13 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "allwinner,sun8i-h3";
-+
-+	fragment@0 {
-+		target = <&i2c1>;
-+		__overlay__ {
-+			status = "okay";
-+		};
-+	};
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-i2c2.dts b/arch/arm/boot/dts/overlays/sun8i-h3-i2c2.dts
-new file mode 100644
-index 0000000..b700ae8
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun8i-h3-i2c2.dts
-@@ -0,0 +1,13 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "allwinner,sun8i-h3";
-+
-+	fragment@0 {
-+		target = <&i2c2>;
-+		__overlay__ {
-+			status = "okay";
-+		};
-+	};
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-i2s0.dts b/arch/arm/boot/dts/overlays/sun8i-h3-i2s0.dts
-new file mode 100644
-index 0000000..f343fc9
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun8i-h3-i2s0.dts
-@@ -0,0 +1,16 @@
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts
+@@ -0,0 +1,34 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -672,11 +582,29 @@ index 0000000..f343fc9
 +	fragment@0 {
 +		target = <&i2s0>;
 +		__overlay__ {
++			pinctrl-0 = <&i2s0_pins_bclk>,
++				    <&i2s0_pins_lrck>,
++				    <&i2s0_pins_do0>;
 +			pinctrl-names = "default";
-+			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
-+				    <&i2s0_pins_do>, <&i2s0_pins_di>;
 +			status = "okay";
 +		};
++	};
++
++	fragment@1 {
++		target-path = "/soc/";
++		__overlay__ {
++			pcm5102: pcm5102a-i2s@0 {
++				compatible = "ti,pcm5102a";
++				status = "okay";
++			};
++
++			sound-pcm5102 {
++				compatible = "orpaltech,gy-pcm5102-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&pcm5102>;
++				status = "okay";
++                        };
++                };
 +	};
 +};
 diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-ir.dts b/arch/arm/boot/dts/overlays/sun8i-h3-ir.dts

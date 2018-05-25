@@ -1,6 +1,6 @@
-From d80ec753f996b83fecb20c21820a25c170fd61b0 Mon Sep 17 00:00:00 2001
+From c03b2f4fc3679ac701156a538a3c6a0306ffa385 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Wed, 2 May 2018 23:42:15 +0300
+Date: Fri, 25 May 2018 12:52:02 +0300
 Subject: [PATCH] drm/sun4i: Add support for Allwinner MIPI-DSI
 
 ---
@@ -8,6 +8,7 @@ Subject: [PATCH] drm/sun4i: Add support for Allwinner MIPI-DSI
  .../bindings/display/sunxi/sun6i-dsi.txt      |   93 ++
  arch/arm/boot/dts/sun8i-a33.dtsi              |   44 +
  arch/arm/boot/dts/sun8i-r16-bananapi-m2m.dts  |   39 +
+ arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi |   42 +
  drivers/gpu/drm/panel/Kconfig                 |    9 +
  drivers/gpu/drm/panel/Makefile                |    1 +
  drivers/gpu/drm/panel/panel-ilitek-ili9881c.c |  489 ++++++++
@@ -18,7 +19,7 @@ Subject: [PATCH] drm/sun4i: Add support for Allwinner MIPI-DSI
  drivers/gpu/drm/sun4i/sun6i_mipi_dphy.c       |  292 +++++
  drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c        | 1107 +++++++++++++++++
  drivers/gpu/drm/sun4i/sun6i_mipi_dsi.h        |   63 +
- 14 files changed, 2182 insertions(+), 4 deletions(-)
+ 15 files changed, 2224 insertions(+), 4 deletions(-)
  create mode 100644 Documentation/devicetree/bindings/display/panel/ilitek,ili9881c.txt
  create mode 100644 Documentation/devicetree/bindings/display/sunxi/sun6i-dsi.txt
  create mode 100644 drivers/gpu/drm/panel/panel-ilitek-ili9881c.c
@@ -291,6 +292,59 @@ index 0dbdb29..710cde7 100644
  &uart0 {
  	pinctrl-names = "default";
  	pinctrl-0 = <&uart0_pins_b>;
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+index 1b2ef28..aed046e 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+@@ -185,6 +185,48 @@
+ 			#dma-cells = <1>;
+ 		};
+ 
++		dsi: dsi@1ca0000 {
++			compatible = "allwinner,sun6i-a31-mipi-dsi";
++			reg = <0x01ca0000 0x1000>;
++			interrupts = <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
++			/*TODO: fix me*/
++			/*clocks = <&ccu CLK_BUS_MIPI_DSI>,
++				 <&ccu CLK_DSI_SCLK>;
++			clock-names = "bus",
++				      "mod";*/
++			resets = <&ccu RST_BUS_MIPI_DSI>;
++			phys = <&dsi_phy>;
++			phy-names = "dphy";
++			status = "disabled";
++
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				port@0 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <0>;
++
++					dsi_in_tcon0: endpoint {
++						remote-endpoint = <&tcon0_out_dsi>;
++					};
++				};
++			};
++		};
++
++		dsi_phy: dsi-phy@1ca1000 {
++			compatible = "allwinner,sun6i-a31-mipi-dphy";
++			reg = <0x01ca1000 0x1000>;
++			clocks = <&ccu CLK_BUS_MIPI_DSI>,
++				 <&ccu CLK_DSI_DPHY>;
++			clock-names = "bus",
++				      "mod";
++			resets = <&ccu RST_BUS_MIPI_DSI>;
++			status = "disabled";
++			#phy-cells = <0>;
++		};
++
+ 		mmc0: mmc@1c0f000 {
+ 			compatible = "allwinner,sun50i-a64-mmc";
+ 			reg = <0x01c0f000 0x1000>;
 diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
 index 25682ff..6020c30 100644
 --- a/drivers/gpu/drm/panel/Kconfig

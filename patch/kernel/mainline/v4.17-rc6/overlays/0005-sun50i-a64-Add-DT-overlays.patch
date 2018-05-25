@@ -1,19 +1,20 @@
-From 2d3f308005bfa8e447fd20b80b689fd0af9498a1 Mon Sep 17 00:00:00 2001
+From 34f47b844d96652e6cfd005a5a5847f435963686 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 19 May 2018 22:38:13 +0300
+Date: Fri, 25 May 2018 10:41:32 +0300
 Subject: [PATCH] sun50i-a64: Add DT-overlays
 
 ---
  arch/arm64/boot/dts/allwinner/Makefile        |   2 +
- .../boot/dts/allwinner/overlays/Makefile      |  21 +++
+ .../boot/dts/allwinner/overlays/Makefile      |  22 +++
  .../overlays/README.sun50i-a64-overlays       |   9 ++
  .../overlays/sun50i-a64-aapi-sound.dts        |  44 ++++++
- .../allwinner/overlays/sun50i-a64-aapi.dts    |  66 +++++++++
+ .../allwinner/overlays/sun50i-a64-aapi.dts    |  68 ++++++++++
  .../overlays/sun50i-a64-audioinjector-pi.dts  |  44 ++++++
  .../overlays/sun50i-a64-ertft0356-drm.dts     | 128 ++++++++++++++++++
  .../overlays/sun50i-a64-fixup.scr-cmd         |  71 ++++++++++
+ .../overlays/sun50i-a64-gy-pcm5102-sound.dts  |  34 +++++
  .../overlays/sun50i-a64-nrf24-spi.dts         |  65 +++++++++
- 9 files changed, 450 insertions(+)
+ 10 files changed, 487 insertions(+)
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/Makefile
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/README.sun50i-a64-overlays
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-sound.dts
@@ -21,6 +22,7 @@ Subject: [PATCH] sun50i-a64: Add DT-overlays
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-audioinjector-pi.dts
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-ertft0356-drm.dts
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-fixup.scr-cmd
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gy-pcm5102-sound.dts
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-nrf24-spi.dts
 
 diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile
@@ -35,10 +37,10 @@ index 8bebe7d..6049404 100644
 +subdir-y	:= overlays
 diff --git a/arch/arm64/boot/dts/allwinner/overlays/Makefile b/arch/arm64/boot/dts/allwinner/overlays/Makefile
 new file mode 100644
-index 0000000..ba93917
+index 0000000..6d07478
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/overlays/Makefile
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,22 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
@@ -47,6 +49,7 @@ index 0000000..ba93917
 +	sun50i-a64-aapi-sound.dtbo \
 +	sun50i-a64-aapi.dtbo \
 +	sun50i-a64-ertft0356-drm.dtbo \
++	sun50i-a64-gy-pcm5102-sound.dtbo \
 +	sun50i-a64-nrf24-spi.dtbo
 +
 +scr-$(CONFIG_ARCH_SUNXI) += \
@@ -127,10 +130,10 @@ index 0000000..9fc0b20
 +};
 diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi.dts
 new file mode 100644
-index 0000000..588adc1
+index 0000000..ce1a15e
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi.dts
-@@ -0,0 +1,66 @@
+@@ -0,0 +1,68 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -142,10 +145,12 @@ index 0000000..588adc1
 +		__overlay__ {
 +			vna-aapi {
 +				compatible = "orpaltech,aapi-160";
-+				clocks = <&aapi_clk 0>, <&aapi_clk 1>;
-+				clock-names = "clk0", "clk1";
-+				initial-frequency = <14000000>;
++				clocks = <&aapi_clk 0>,
++					 <&aapi_clk 1>;
++				clock-names = "clk0",
++					      "clk1";
 +				intermediate-frequency = <10031>;
++				initial-frequency = <14000000>;
 +				status = "okay";
 +			};
 +
@@ -180,7 +185,7 @@ index 0000000..588adc1
 +				status = "okay";
 +
 +				xtal-frequency = <27000000>;
-+				xtal-correction = <0 0>; /*<corr,sign>*/
++				xtal-correction = <0 0>; /*<correction(Hz) sign>*/
 +
 +				clock-output-names = "clk0", "clk1";
 +			};
@@ -190,9 +195,9 @@ index 0000000..588adc1
 +	fragment@2 {
 +		target = <&i2s0>;
 +		__overlay__ {
-+			pinctrl-names = "default";
 +			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
 +				    <&i2s0_pins_di>;
++			pinctrl-names = "default";
 +			status = "okay";
 +                };
 +	};
@@ -458,6 +463,46 @@ index 0000000..f4fca3b
 +fi
 +
 +env delete tmp_soc_path
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gy-pcm5102-sound.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gy-pcm5102-sound.dts
+new file mode 100644
+index 0000000..dfe257d
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gy-pcm5102-sound.dts
+@@ -0,0 +1,34 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-names = "default", "default";
++			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
++				    <&i2s0_pins_do0>;
++			pinctrl-1 = <&i2s0_pins_mclk>;
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target-path = "/soc/";
++		__overlay__ {
++			pcm5102: pcm5102a-i2s@0 {
++				compatible = "ti,pcm5102a";
++				status = "okay";
++			};
++
++			sound-pcm5102 {
++				compatible = "orpaltech,gy-pcm5102-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&pcm5102>;
++				status = "okay";
++                        };
++                };
++	};
++};
 diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-nrf24-spi.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-nrf24-spi.dts
 new file mode 100644
 index 0000000..effb9ca

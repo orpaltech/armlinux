@@ -1,6 +1,6 @@
-From 2d34d5f96b1254c428912f151a61fbf3f9fc7fa2 Mon Sep 17 00:00:00 2001
+From 29d1275586184bbdcc9e2bd4d6051d02025f82ae Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 12 May 2018 20:06:27 +0300
+Date: Fri, 25 May 2018 11:23:46 +0300
 Subject: [PATCH] sun50i: a64: Add DVFS and thermal settings
 
 ---
