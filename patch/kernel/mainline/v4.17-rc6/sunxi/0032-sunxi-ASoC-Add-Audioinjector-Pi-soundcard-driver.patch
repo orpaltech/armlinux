@@ -1,13 +1,13 @@
-From 996da95a23175b1f26b2ded80b07561bfbff7adf Mon Sep 17 00:00:00 2001
+From e804345509271b36cf552031cb477c7fea88e244 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Tue, 15 May 2018 22:48:52 +0300
+Date: Sun, 27 May 2018 00:24:33 +0300
 Subject: [PATCH] sunxi: ASoC: Add Audioinjector-Pi soundcard driver
 
 ---
  sound/soc/sunxi/Kconfig                  |   7 +
  sound/soc/sunxi/Makefile                 |   4 +
- sound/soc/sunxi/audioinjector-pi-sound.c | 242 +++++++++++++++++++++++
- 3 files changed, 253 insertions(+)
+ sound/soc/sunxi/audioinjector-pi-sound.c | 241 +++++++++++++++++++++++
+ 3 files changed, 252 insertions(+)
  create mode 100644 sound/soc/sunxi/audioinjector-pi-sound.c
 
 diff --git a/sound/soc/sunxi/Kconfig b/sound/soc/sunxi/Kconfig
@@ -40,10 +40,10 @@ index 4a9ef67..1cfecb5 100644
 +obj-$(CONFIG_SND_AUDIOINJECTOR_PI) += snd-soc-audioinjector-pi.o
 diff --git a/sound/soc/sunxi/audioinjector-pi-sound.c b/sound/soc/sunxi/audioinjector-pi-sound.c
 new file mode 100644
-index 0000000..ef6bddf
+index 0000000..0a23965
 --- /dev/null
 +++ b/sound/soc/sunxi/audioinjector-pi-sound.c
-@@ -0,0 +1,242 @@
+@@ -0,0 +1,241 @@
 +/*
 + * ASoC Driver for AudioInjector Pi soundcard
 + *
@@ -165,7 +165,7 @@ index 0000000..ef6bddf
 +static const struct snd_soc_dapm_widget wm8731_dapm_widgets[] = {
 +	SND_SOC_DAPM_HP("Headphone Jack", NULL),
 +	SND_SOC_DAPM_SPK("Ext Spk", NULL),
-+	SND_SOC_DAPM_LINE("Line In Jack", NULL),
++	SND_SOC_DAPM_LINE("Line In Jacks", NULL),
 +	SND_SOC_DAPM_MIC("Mic Jack", NULL),
 +};
 +
@@ -179,11 +179,10 @@ index 0000000..ef6bddf
 +	{"Ext Spk", NULL, "LOUT"},
 +
 +	/* line inputs */
-+	{"LLINEIN", NULL, "Line In Jack"},
-+	{"RLINEIN", NULL, "Line In Jack"},
++	{"Line Input", NULL, "Line In Jacks"},
 +
 +	/* mic is connected to Mic Jack, with WM8731 Mic Bias */
-+	{ "Mic Bias", NULL, "Mic Jack"},
++	{"Mic Bias", NULL, "Mic Jack"},
 +};
 +
 +static struct snd_soc_card snd_soc_audioinjector_pi = {

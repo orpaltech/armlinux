@@ -1,24 +1,24 @@
-From 1ecd772090cad354dc006058a202fc9b32216ba6 Mon Sep 17 00:00:00 2001
+From 694ca667ec19add7f2aefb553215db82d5aa2647 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Thu, 24 May 2018 23:19:36 +0300
+Date: Mon, 28 May 2018 23:36:04 +0300
 Subject: [PATCH] sun8i-h3: add DT-overlays
 
 ---
  arch/arm/boot/dts/Makefile                    |   2 +
  arch/arm/boot/dts/overlays/Makefile           |  33 +++++
- .../dts/overlays/README.sun8i-h3-overlays     |  14 ++
+ .../dts/overlays/README.sun8i-h3-overlays     |  14 +++
  .../boot/dts/overlays/sun8i-h3-aapi-sound.dts |  44 +++++++
  arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts  |  67 ++++++++++
  .../overlays/sun8i-h3-audioinjector-pi.dts    |  45 +++++++
  arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts |  29 +++++
  .../dts/overlays/sun8i-h3-ertft0356-drm.dts   | 102 +++++++++++++++
- .../boot/dts/overlays/sun8i-h3-fixup.scr-cmd  | 122 ++++++++++++++++++
+ .../boot/dts/overlays/sun8i-h3-fixup.scr-cmd  | 116 ++++++++++++++++++
  .../overlays/sun8i-h3-gy-pcm5102-sound.dts    |  34 +++++
  arch/arm/boot/dts/overlays/sun8i-h3-ir.dts    |  13 ++
- .../boot/dts/overlays/sun8i-h3-nrf24-spi.dts  |  71 ++++++++++
+ .../boot/dts/overlays/sun8i-h3-nrf24-spi.dts  |  71 +++++++++++
  arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts   |  39 ++++++
- .../boot/dts/overlays/sun8i-h3-spi-cs1.dts    |  41 ++++++
- .../arm/boot/dts/overlays/sun8i-h3-spidev.dts |  42 ++++++
+ .../boot/dts/overlays/sun8i-h3-spi-cs1.dts    |  41 +++++++
+ .../arm/boot/dts/overlays/sun8i-h3-spidev.dts |  42 +++++++
  arch/arm/boot/dts/overlays/sun8i-h3-uart1.dts |  22 ++++
  arch/arm/boot/dts/overlays/sun8i-h3-uart2.dts |  22 ++++
  arch/arm/boot/dts/overlays/sun8i-h3-uart3.dts |  22 ++++
@@ -27,8 +27,8 @@ Subject: [PATCH] sun8i-h3: add DT-overlays
  .../boot/dts/overlays/sun8i-h3-usbhost2.dts   |  20 +++
  .../boot/dts/overlays/sun8i-h3-usbhost3.dts   |  20 +++
  .../dts/overlays/sun8i-h3-waveshare35-drm.dts |  68 ++++++++++
- .../overlays/sun8i-h3-waveshare35-fbtft.dts   |  93 +++++++++++++
- 24 files changed, 1012 insertions(+)
+ .../overlays/sun8i-h3-waveshare35-fbtft.dts   |  93 ++++++++++++++
+ 24 files changed, 1006 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.sun8i-h3-overlays
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts
@@ -441,24 +441,18 @@ index 0000000..3f66286
 +};
 diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-fixup.scr-cmd b/arch/arm/boot/dts/overlays/sun8i-h3-fixup.scr-cmd
 new file mode 100644
-index 0000000..1bce575
+index 0000000..8fb1d5c
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/sun8i-h3-fixup.scr-cmd
-@@ -0,0 +1,122 @@
+@@ -0,0 +1,116 @@
 +# overlays fixup script
 +# implements (or rather substitutes) overlay arguments functionality
 +# using u-boot scripting, environment variables and "fdt" command
 +
-+# setexpr test_var ${tmp_bank} - A
-+# works only for hex numbers (A-F)
 +
-+setenv decompose_pin 'setexpr tmp_bank sub "P(A|C|D|G)\\d+" "\\1";
-+setexpr tmp_pin sub "P\\S(\\d+)" "\\1";
-+test "${tmp_bank}" = "A" && setenv tmp_bank 0;
-+test "${tmp_bank}" = "C" && setenv tmp_bank 2;
-+test "${tmp_bank}" = "D" && setenv tmp_bank 3;
-+test "${tmp_bank}" = "G" && setenv tmp_bank 6'
-+
++if test -n "${param_i2s0_slot_width}"; then
++	fdt set /soc/i2s@1c22000 allwinner,slot-width-override "<${param_i2s0_slot_width}>";
++fi
 +
 +if test -n "${param_spidev_spi_bus}"; then
 +        test "${param_spidev_spi_bus}" = "0" && setenv tmp_spi_path "spi@1c68000"

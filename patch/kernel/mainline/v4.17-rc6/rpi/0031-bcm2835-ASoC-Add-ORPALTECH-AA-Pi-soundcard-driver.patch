@@ -1,13 +1,13 @@
-From dc1c74b63cf240cc20b618f2b787b713a5d24e50 Mon Sep 17 00:00:00 2001
+From 48b7ee202f102ea844940b316c2068173ccb2b6f Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Fri, 18 May 2018 19:42:01 +0300
+Date: Sun, 27 May 2018 02:44:00 +0300
 Subject: [PATCH] bcm2835: ASoC: Add ORPALTECH AA-Pi soundcard driver
 
 ---
  sound/soc/bcm/Kconfig            |   9 +-
  sound/soc/bcm/Makefile           |   5 +-
- sound/soc/bcm/orpal-aapi-sound.c | 184 +++++++++++++++++++++++++++++++
- 3 files changed, 195 insertions(+), 3 deletions(-)
+ sound/soc/bcm/orpal-aapi-sound.c | 183 +++++++++++++++++++++++++++++++
+ 3 files changed, 194 insertions(+), 3 deletions(-)
  create mode 100644 sound/soc/bcm/orpal-aapi-sound.c
 
 diff --git a/sound/soc/bcm/Kconfig b/sound/soc/bcm/Kconfig
@@ -55,10 +55,10 @@ index fc739d0..cc29a60 100644
 +obj-$(CONFIG_SND_ORPAL_AAPI) += snd-soc-orpal-aapi.o
 diff --git a/sound/soc/bcm/orpal-aapi-sound.c b/sound/soc/bcm/orpal-aapi-sound.c
 new file mode 100644
-index 0000000..141d2c5
+index 0000000..a8bfae4
 --- /dev/null
 +++ b/sound/soc/bcm/orpal-aapi-sound.c
-@@ -0,0 +1,184 @@
+@@ -0,0 +1,183 @@
 +/*
 + * ASoC Driver for ORPALTECH AA-Pi Soundcard (capture only).
 + *
@@ -86,7 +86,7 @@ index 0000000..141d2c5
 +#define XTAL_CLK_FREQ	12288000
 +
 +static const unsigned int bcm2835_rates[] = {
-+        8000, 32000, 48000, 96000,
++        48000, 96000,
 +};
 +
 +static struct snd_pcm_hw_constraint_list bcm2835_constraints = {
@@ -154,9 +154,8 @@ index 0000000..141d2c5
 +};
 +
 +static const struct snd_soc_dapm_route orpal_aapi_audio_map[] = {
-+	/* line inputs */
-+	{ "LLINEIN", NULL, "Line In Jacks"},
-+	{ "RLINEIN", NULL, "Line In Jacks"},
++	{ "LLINEIN", NULL, "Line In Jacks" },
++	{ "RLINEIN", NULL, "Line In Jacks" },
 +};
 +
 +static struct snd_soc_card snd_soc_orpal_aapi = {

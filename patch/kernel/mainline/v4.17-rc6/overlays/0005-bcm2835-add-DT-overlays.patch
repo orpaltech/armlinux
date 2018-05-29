@@ -1,6 +1,6 @@
-From 631e503c87da5c0c7fec2003c3815cf16d6b3521 Mon Sep 17 00:00:00 2001
+From 0e83bee72e1090e38b1bbc57ad0d592e973944b2 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 12 May 2018 17:17:47 +0300
+Date: Sun, 27 May 2018 00:44:34 +0300
 Subject: [PATCH] bcm2835: add DT-overlays
 
 ---
@@ -9,7 +9,7 @@ Subject: [PATCH] bcm2835: add DT-overlays
  .../boot/dts/overlays/README.bcm2835-overlays |   1 +
  .../overlays/bcm2835-aapi-sound-simple.dts    |  67 +++++++++++
  .../boot/dts/overlays/bcm2835-aapi-sound.dts  |  41 +++++++
- arch/arm/boot/dts/overlays/bcm2835-aapi.dts   |  62 ++++++++++
+ arch/arm/boot/dts/overlays/bcm2835-aapi.dts   |  65 +++++++++++
  .../dts/overlays/bcm2835-audioinjector-pi.dts |  41 +++++++
  .../dts/overlays/bcm2835-ertft0356-drm.dts    | 110 ++++++++++++++++++
  .../boot/dts/overlays/bcm2835-fixup.scr-cmd   |  82 +++++++++++++
@@ -17,7 +17,7 @@ Subject: [PATCH] bcm2835: add DT-overlays
  arch/arm/boot/dts/overlays/bcm2835-spidev.dts |  68 +++++++++++
  .../dts/overlays/bcm2835-waveshare35-drm.dts  |  70 +++++++++++
  .../overlays/bcm2835-waveshare35-fbtft.dts    |  89 ++++++++++++++
- 13 files changed, 741 insertions(+)
+ 13 files changed, 744 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.bcm2835-overlays
  create mode 100644 arch/arm/boot/dts/overlays/bcm2835-aapi-sound-simple.dts
@@ -199,10 +199,10 @@ index 0000000..eda1029
 +};
 diff --git a/arch/arm/boot/dts/overlays/bcm2835-aapi.dts b/arch/arm/boot/dts/overlays/bcm2835-aapi.dts
 new file mode 100644
-index 0000000..41ea786
+index 0000000..e77c1ca
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/bcm2835-aapi.dts
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,65 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -214,9 +214,12 @@ index 0000000..41ea786
 +		__overlay__ {
 +			vna-aapi {
 +				compatible = "orpaltech,aapi-160";
-+				clocks = <&aapi_clk 0>, <&aapi_clk 1>;
-+				clock-names = "clk0", "clk1";
++				clocks = <&aapi_clk 0>,
++					 <&aapi_clk 1>;
++				clock-names = "clk0",
++					      "clk1";
 +				intermediate-frequency = <10031>;
++				initial-frequency = <3500000>;
 +				status = "okay";
 +			};
 +

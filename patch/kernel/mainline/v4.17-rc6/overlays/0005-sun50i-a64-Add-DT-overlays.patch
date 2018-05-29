@@ -1,6 +1,6 @@
-From 34f47b844d96652e6cfd005a5a5847f435963686 Mon Sep 17 00:00:00 2001
+From f68d86c476e86b9b8abbedcc138055f83ec5f2c7 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Fri, 25 May 2018 10:41:32 +0300
+Date: Sat, 26 May 2018 20:00:37 +0300
 Subject: [PATCH] sun50i-a64: Add DT-overlays
 
 ---
@@ -8,13 +8,13 @@ Subject: [PATCH] sun50i-a64: Add DT-overlays
  .../boot/dts/allwinner/overlays/Makefile      |  22 +++
  .../overlays/README.sun50i-a64-overlays       |   9 ++
  .../overlays/sun50i-a64-aapi-sound.dts        |  44 ++++++
- .../allwinner/overlays/sun50i-a64-aapi.dts    |  68 ++++++++++
+ .../allwinner/overlays/sun50i-a64-aapi.dts    |  75 ++++++++++
  .../overlays/sun50i-a64-audioinjector-pi.dts  |  44 ++++++
  .../overlays/sun50i-a64-ertft0356-drm.dts     | 128 ++++++++++++++++++
- .../overlays/sun50i-a64-fixup.scr-cmd         |  71 ++++++++++
+ .../overlays/sun50i-a64-fixup.scr-cmd         |  75 ++++++++++
  .../overlays/sun50i-a64-gy-pcm5102-sound.dts  |  34 +++++
  .../overlays/sun50i-a64-nrf24-spi.dts         |  65 +++++++++
- 10 files changed, 487 insertions(+)
+ 10 files changed, 498 insertions(+)
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/Makefile
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/README.sun50i-a64-overlays
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-sound.dts
@@ -130,10 +130,10 @@ index 0000000..9fc0b20
 +};
 diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi.dts
 new file mode 100644
-index 0000000..ce1a15e
+index 0000000..bd7d085
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi.dts
-@@ -0,0 +1,68 @@
+@@ -0,0 +1,75 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -164,7 +164,7 @@ index 0000000..ce1a15e
 +	};
 +
 +	fragment@1 {
-+		target = <&i2c1>;
++		target = <&r_i2c>;
 +		__overlay__ {
 +			/* needed to avoid dtc warning */
 +			#address-cells = <1>;
@@ -193,6 +193,13 @@ index 0000000..ce1a15e
 +	};
 +
 +	fragment@2 {
++		target = <&r_i2c_pins>;
++		__overlay__ {
++			bias-pull-up;
++		};
++	};
++
++	fragment@3 {
 +		target = <&i2s0>;
 +		__overlay__ {
 +			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
@@ -388,15 +395,19 @@ index 0000000..c11c56c
 +};
 diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-fixup.scr-cmd b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-fixup.scr-cmd
 new file mode 100644
-index 0000000..f4fca3b
+index 0000000..9bd2c50
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-fixup.scr-cmd
-@@ -0,0 +1,71 @@
+@@ -0,0 +1,75 @@
 +# overlays fixup script
 +# implements (or rather substitutes) overlay arguments functionality
 +# using u-boot scripting, environment variables and "fdt" command
 +
 +setenv tmp_soc_path "soc"
++
++if test -n "${param_i2s0_slot_width}"; then
++	fdt set /${tmp_soc_path}/i2s@1c22000 allwinner,slot-width-override "<${param_i2s0_slot_width}>";
++fi
 +
 +if test -n "${param_nrf24_spi_bus}"; then
 +	test "${param_nrf24_spi_bus}" = "0" && setenv tmp_spi_path "spi@1c68000"

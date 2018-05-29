@@ -1,6 +1,6 @@
-From 45608ceab09f9e38850739337d734a45166cbdbe Mon Sep 17 00:00:00 2001
+From cb2ffd328f5d396770583acb7952b9f56d2cedf1 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Fri, 18 May 2018 19:50:58 +0300
+Date: Sun, 27 May 2018 02:37:26 +0300
 Subject: [PATCH] bcm2835: ASoC: Add Audioinjector-Pi soundcard driver
 
 ---

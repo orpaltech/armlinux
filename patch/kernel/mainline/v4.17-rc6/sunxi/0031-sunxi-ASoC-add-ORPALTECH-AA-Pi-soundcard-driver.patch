@@ -1,6 +1,6 @@
-From 24de1836b2c3764b1b7631c6aa1da85b5e99d49e Mon Sep 17 00:00:00 2001
+From 3a28474b2255dc224354eb6ac93fdabfd56ec013 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Thu, 24 May 2018 21:24:48 +0300
+Date: Sun, 27 May 2018 14:30:13 +0300
 Subject: [PATCH] sunxi: ASoC: add ORPALTECH AA-Pi soundcard driver
 
 ---
@@ -56,7 +56,7 @@ index 4a9ef67..ae0145a 100644
 +obj-$(CONFIG_SND_ORPAL_AAPI) += snd-soc-orpal-aapi.o
 diff --git a/sound/soc/sunxi/orpal-aapi-sound.c b/sound/soc/sunxi/orpal-aapi-sound.c
 new file mode 100644
-index 0000000..f05b062
+index 0000000..cd88900
 --- /dev/null
 +++ b/sound/soc/sunxi/orpal-aapi-sound.c
 @@ -0,0 +1,203 @@
@@ -157,9 +157,8 @@ index 0000000..f05b062
 +};
 +
 +static const struct snd_soc_dapm_route orpal_aapi_audio_map[] = {
-+	/* line inputs */
-+	{ "LLINEIN", NULL, "Line In Jacks"},
-+	{ "RLINEIN", NULL, "Line In Jacks"},
++	{ "LLINEIN", NULL, "Line In Jacks" },
++	{ "RLINEIN", NULL, "Line In Jacks" }
 +};
 +
 +static struct snd_soc_card snd_soc_orpal_aapi = {
@@ -239,6 +238,7 @@ index 0000000..f05b062
 +static int orpal_aapi_soundcard_remove(struct platform_device *pdev)
 +{
 +	struct snd_soc_card *card = platform_get_drvdata(pdev);
++
 +	return snd_soc_unregister_card(card);
 +
 +}

@@ -1,0 +1,25 @@
+From a2d70a477b43ab9cf4359dd59ee5bcad537a00a2 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Mon, 28 May 2018 12:27:43 +0300
+Subject: [PATCH] rtc: sun6i: Fix bit_idx value for clk_register_gate
+
+---
+ drivers/rtc/rtc-sun6i.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/rtc/rtc-sun6i.c b/drivers/rtc/rtc-sun6i.c
+index 2e6fb27..a66f40c 100644
+--- a/drivers/rtc/rtc-sun6i.c
++++ b/drivers/rtc/rtc-sun6i.c
+@@ -74,7 +74,7 @@
+ #define SUN6I_ALARM_CONFIG_WAKEUP		BIT(0)
+ 
+ #define SUN6I_LOSC_OUT_GATING			0x0060
+-#define SUN6I_LOSC_OUT_GATING_EN		BIT(0)
++#define SUN6I_LOSC_OUT_GATING_EN		0
+ 
+ /*
+  * Get date values
+-- 
+2.17.0
+
