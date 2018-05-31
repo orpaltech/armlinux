@@ -129,28 +129,26 @@
 #define SUN8I_I2S_REG_CHAN_CFG		0x30
 #define  SUN8I_I2S_CHAN_CFG_RX_SLOT_NUM_MASK	GENMASK(6,4)
 #define  SUN8I_I2S_CHAN_CFG_RX_SLOT_NUM(ch)	(((ch) - 1) << 4)
-#define  SUN8I_I2S_CHAN_CFG_TX_SLOT_NUM_MASK	GENMASK(2, 0)
+#define  SUN8I_I2S_CHAN_CFG_TX_SLOT_NUM_MASK	GENMASK(2,0)
 #define  SUN8I_I2S_CHAN_CFG_TX_SLOT_NUM(ch)	(((ch) - 1) << 0)
 
 
 #define SUN4I_I2S_REG_TX_CHAN_SEL	0x30	/* TX Channel Select Register */
 #define SUN8I_I2S_REG_TX_CHAN_SEL	0x34
-#define  SUN8I_I2S_TX_CHAN_SEL_EN_MASK		GENMASK(11,4)
-#define  SUN8I_I2S_TX_CHAN_SEL_EN(ch)		(((1 << (ch)) - 1) << 4)
-#define  SUN8I_I2S_TX_CHAN_SEL_OFFSET_MASK	GENMASK(13,12)
-#define  SUN8I_I2S_TX_CHAN_SEL_OFFSET(off)	((off) << 12)
-
-
 #define SUN4I_I2S_REG_RX_CHAN_SEL	0x38    /* RX Channel Select Register */
 #define SUN8I_I2S_REG_RX_CHAN_SEL	0x54
+#define  SUN8I_I2S_TX_CHAN_SEL_EN_MASK		GENMASK(11,4)
+#define  SUN8I_I2S_TX_CHAN_SEL_EN(ch)		(((1 << (ch)) - 1) << 4)
 #define  SUN4I_I2S_CHAN_SEL(num)		((num) - 1)
+#define  SUN8I_I2S_CHAN_SEL_OFFSET_MASK		GENMASK(13,12)
+#define  SUN8I_I2S_CHAN_SEL_OFFSET(off)		((off) << 12)
 
 
 #define SUN4I_I2S_REG_TX_CHAN_MAP	0x34	/* TX Channel Mapping Register */
 #define SUN8I_I2S_REG_TX_CHAN_MAP	0x44
 #define SUN4I_I2S_REG_RX_CHAN_MAP	0x3c	/* RX Channel Mapping Register */
 #define SUN8I_I2S_REG_RX_CHAN_MAP	0x58
-#define  SUN4I_I2S_CHAN_MAP(chan, sample)	((sample) << ((chan) << 2))
+#define  SUN4I_I2S_CHAN_MAP(chan, samp)		((samp) << ((chan) << 2))
 
 
 /* regmap fields */
@@ -206,10 +204,7 @@ struct sun4i_i2s_quirks {
 	/* SoC-specific DAI configuration */
 	int (*set_format)(struct sun4i_i2s *i2s, u32 fmt);
 	int (*set_hw_config)(struct snd_soc_dai *dai,
-			     u32 channels, u32 sample_rate,
-			     u32 sample_size, u32 word_size);
-	int (*set_frame_period)(struct sun4i_i2s *i2s,
-				u32 channels, u32 word_size);
+			     struct snd_pcm_hw_params *params);
 };
 
 struct sun4i_i2s {
@@ -226,8 +221,10 @@ struct sun4i_i2s {
 
 	unsigned long	mclk_rate;
 
-	u32		bclk_ratio;
+	u32		tdm_slots;
+//	u32		bclk_ratio;
 	u32		slot_width;
+	u32		frame_length;
 
 	struct snd_dmaengine_dai_dma_data
 			dma_data[SNDRV_PCM_STREAM_LAST + 1];
