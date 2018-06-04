@@ -24,7 +24,7 @@ BOARD=$(dialog  --clear \
 		--backtitle "ORPALTECH ARM Linux v1.0" \
 		--title "Select board" \
 		--menu "Choose one of the supported boards:" \
-		24 100 16 \
+		24 102 16 \
 		"${board_options[@]}" \
 		2>&1 >/dev/tty)
 

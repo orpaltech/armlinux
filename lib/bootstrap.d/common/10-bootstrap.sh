@@ -2,7 +2,7 @@
 # Debootstrap basic system
 #
 
-ROOTFS_PKG="rootfs-${DEBIAN_RELEASE}-${DEBIAN_RELEASE_ARCH}-${VERSION}"
+ROOTFS_PKG="rootfs-${DEBIAN_RELEASE}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}-${VERSION}"
 
 mkdir -p ${BASEDIR}/debs
 
@@ -21,7 +21,7 @@ if [ ! -f "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" ] ; then
   fi
 
   # Use minbase bootstrap variant which only includes essential packages
-  if [ "$ENABLE_MINBASE" = true ] ; then
+  if [ "$ENABLE_MINBASE" = yes ] ; then
     VARIANT="--variant=minbase"
   fi
 

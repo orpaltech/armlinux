@@ -12,7 +12,7 @@ KERNEL_ARCH=${SOC_ARCH}
 LINUX_PLATFORM=arm-linux-gnueabihf
 
 CROSS_COMPILE=${CROSS_COMPILE:="${TOOLCHAINDIR}/7.2-2017.11/arm-linux-gnueabihf/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-"}
-CROSS_COMPILE=${CROSS_COMPILE:="${TOOLCHAINDIR}/6.4-2017.11/arm-linux-gnueabihf/gcc-linaro-6.4.1-2017.11-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-"}
+# CROSS_COMPILE=${CROSS_COMPILE:="${TOOLCHAINDIR}/6.4-2017.11/arm-linux-gnueabihf/gcc-linaro-6.4.1-2017.11-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-"}
 QEMU_BINARY=/usr/bin/qemu-arm-static
 
 KERNEL_BUILD_CONFIG="sunxi_defconfig"
@@ -29,7 +29,8 @@ FELBOOT_FDT_ADDR=0x43000000
 
 QT5_OPENGL_OPTION="-no-opengl"
 
-APT_EXTRA_PACKAGES=
+# Install packages required for QT5 "eglfs_kms" integration
+APT_EXTRA_PACKAGES="libgbm-dev,libgles2-mesa-dev,weston"
 
 #
 # Custom EDID binary for DRM

@@ -4,9 +4,9 @@
 
 # Reduce the image size by various operations
 if [ "${ENABLE_REDUCE}" = yes ] ; then
-  if [ "$REDUCE_APT" = true ] ; then
+  if [ "$REDUCE_APT" = yes ] ; then
     # Install dpkg configuration file
-    if [ "$REDUCE_DOC" = true ] || [ "$REDUCE_MAN" = true ] ; then
+    if [ "$REDUCE_DOC" = yes ] || [ "$REDUCE_MAN" = yes ] ; then
       install_readonly "${FILES_DIR}/dpkg/01nodoc" "${ETC_DIR}/dpkg/dpkg.cfg.d/01nodoc"
     fi
 
@@ -21,28 +21,28 @@ if [ "${ENABLE_REDUCE}" = yes ] ; then
   fi
 
   # Remove all doc files
-  if [ "$REDUCE_DOC" = true ] ; then
+  if [ "$REDUCE_DOC" = yes ] ; then
     find "${R}/usr/share/doc" -depth -type f ! -name copyright | xargs rm || true
     find "${R}/usr/share/doc" -empty | xargs rmdir || true
   fi
 
   # Remove all man pages and info files
-  if [ "$REDUCE_MAN" = true ] ; then
+  if [ "$REDUCE_MAN" = yes ] ; then
     rm -rf "${R}/usr/share/man" "${R}/usr/share/groff" "${R}/usr/share/info" "${R}/usr/share/lintian" "${R}/usr/share/linda" "${R}/var/cache/man"
   fi
 
   # Remove all locale translation files
-  if [ "$REDUCE_LOCALE" = true ] ; then
+  if [ "$REDUCE_LOCALE" = yes ] ; then
     find "${R}/usr/share/locale" -mindepth 1 -maxdepth 1 ! -name 'en' | xargs rm -r
   fi
 
   # Remove hwdb PCI device classes (experimental)
-  if [ "$REDUCE_HWDB" = true ] ; then
+  if [ "$REDUCE_HWDB" = yes ] ; then
     rm -fr "/lib/udev/hwdb.d/20-pci-*"
   fi
 
   # Replace bash shell by dash shell (experimental)
-  if [ "$REDUCE_BASH" = true ] ; then
+  if [ "$REDUCE_BASH" = yes ] ; then
     echo "Yes, do as I say!" | chroot_exec apt-get purge -qq -y $APT_FORCE_YES bash
     chroot_exec update-alternatives --install /bin/bash bash /bin/dash 100
   fi

@@ -2,7 +2,7 @@
 # Prepare device sysroot for crosscompile (RPi2 2/3 script)
 #
 
-SYSROOT_DIR=${EXTRADIR}/boards/${BOARD}/sysroot
+SYSROOT_DIR=$EXTRADIR/boards/$BOARD/sysroot
 
 mkdir -p $SYSROOT_DIR
 rm -rf $SYSROOT_DIR/*
@@ -15,7 +15,8 @@ if [ -d "${R}/opt/vc" ] ; then
 fi
 
 # adjust symlinks to be relative
-cd $EXTRADIR
+cd $EXTRADIR/boards
+
 if [ ! -f "./sysroot-relativelinks.py" ] ; then
 	wget "https://raw.githubusercontent.com/riscv/riscv-poky/master/scripts/sysroot-relativelinks.py"
 	chmod +x ./sysroot-relativelinks.py

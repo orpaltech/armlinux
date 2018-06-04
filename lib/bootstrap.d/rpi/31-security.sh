@@ -3,6 +3,6 @@
 #
 
 # Enable serial console systemd style
-if [ "$ENABLE_CONSOLE" = true ] ; then
+if [ "$ENABLE_CONSOLE" = yes ] ; then
   chroot_exec systemctl --no-reload enable serial-getty\@ttyAMA0.service
 fi

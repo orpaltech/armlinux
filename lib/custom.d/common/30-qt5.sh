@@ -9,8 +9,7 @@ QT5_FORCE_UPDATE="no"
 QT5_FORCE_REBUILD="yes"
 
 QT5_GIT_ROOT="git://code.qt.io/qt"
-# QT5_GIT_ROOT="https://github.com/qt/qt5.git"
-QT5_RELEASE="5.10"
+QT5_RELEASE="5.11"
 QT5_BRANCH="${QT5_RELEASE}"
 QT5_TAG=""
 QT5_MODULES=("qtxmlpatterns"
@@ -40,8 +39,8 @@ QT5_EXT_PREFIX=$QT5_DEVCFG_DIR/qt5pi
 QT5_QMAKE=$QT5_HOST_PREFIX/bin/qmake
 
 [[ -z "${QT5_TAG}" ]] && QT5_DEB_VER="${QT5_RELEASE}" || QT5_DEB_VER="${QT5_RELEASE}-tag-${QT5_TAG}"
-QT5_DEB_PKG_VER="${QT5_DEB_VER}-al${VERSION}-${QT5_DEVICE_CONFIG}"
-QT5_DEB_PKG="qt5-${QT5_DEB_PKG_VER}"
+QT5_DEB_PKG_VER="${QT5_DEB_VER}-rel${VERSION}-${QT5_DEVICE_CONFIG}"
+QT5_DEB_PKG="qt-${QT5_DEB_PKG_VER}"
 QT5_DEB_DIR=$BASEDIR/debs/$QT5_DEB_PKG-deb
 
 # ----------------------------------------------------------------------------
@@ -67,8 +66,12 @@ qt5_update()
         if [ -d $QTBASE_SRC_DIR ] && [ -d $QTBASE_SRC_DIR/.git ] ; then
                 # update sources
                 git -C $QTBASE_SRC_DIR fetch origin
-                git -C $QTBASE_SRC_DIR reset --hard origin/$QT5_BRANCH
+                git -C $QTBASE_SRC_DIR reset --hard
                 git -C $QTBASE_SRC_DIR clean -fd
+
+		echo "Checking out branch: ${QT5_BRANCH}"
+		git -C $QTBASE_SRC_DIR checkout -B $QT5_BRANCH
+		git -C $QTBASE_SRC_DIR pull
         else
                 rm -rf $QTBASE_SRC_DIR
 
@@ -99,8 +102,12 @@ qt5_update()
                 if [ -d $QT5_MODULE_DIR ] && [ -d $QT5_MODULE_DIR/.git ] ; then
                         # update sources
                         git -C $QT5_MODULE_DIR fetch origin
-                        git -C $QT5_MODULE_DIR reset --hard origin/$QT5_BRANCH
+                        git -C $QT5_MODULE_DIR reset --hard
                         git -C $QT5_MODULE_DIR clean -fd
+
+			echo "Checking out branch: ${QT5_BRANCH}"
+			git -C $QT5_MODULE_DIR checkout -B $QT5_BRANCH
+			git -C $QT5_MODULE_DIR pull
                 else
                         rm -rf $QT5_MODULE_DIR
 
@@ -121,7 +128,7 @@ qt5_update()
 
 qt5_apply_patch()
 {
-	PATCH_BASE_DIR=$QT5_CUSTOM_ROOT/patches/$KERNEL_ARCH
+	PATCH_BASE_DIR=$QT5_CUSTOM_ROOT/patches
 	PATCH_COUNT=$(ls $PATCH_BASE_DIR/qtbase/*.patch 2> /dev/null | wc -l)
 
         # apply qtbase patches

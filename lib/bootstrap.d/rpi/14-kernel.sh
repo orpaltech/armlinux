@@ -19,7 +19,7 @@ cp ${FIRMWARE_DIR}/boot/start_x.elf ${BOOT_DIR}/start_x.elf
 
 
 # Add serial console support
-if [ "$ENABLE_CONSOLE" = true ] ; then
+if [ "$ENABLE_CONSOLE" = yes ] ; then
   CMDLINE="console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 ${CMDLINE}"
 fi
 

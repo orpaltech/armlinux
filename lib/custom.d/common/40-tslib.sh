@@ -46,9 +46,7 @@ tslib_build()
 {
 	cd $TSLIB_SRC_DIR
 
-	if [ ! -f $TSLIB_SRC_DIR/configure ] ; then
-		./autogen.sh
-	fi
+	[[ ! -f ./configure ]] && ./autogen.sh
 
 	mkdir -p $TSLIB_OUT_DIR
 	rm -rf $TSLIB_OUT_DIR/*
@@ -56,14 +54,16 @@ tslib_build()
 
 	CC="${CROSS_COMPILE}gcc" \
 	CXX="${CROSS_COMPILE}g++" \
-		$TSLIB_SRC_DIR/configure --prefix=${R}/usr/local --host=$LINUX_PLATFORM
+		$TSLIB_SRC_DIR/configure \
+				--prefix=/usr/local \
+				--host=$LINUX_PLATFORM
 
 	echo "Making TSLIB..."
 
 	chrt -i 0 make -j${NUM_CPU_CORES}
 	[ $? -eq 0 ] || exit $?;
 
-	make install
+	make DESTDIR="${R}" install
 
 	echo "Make finished."
 }

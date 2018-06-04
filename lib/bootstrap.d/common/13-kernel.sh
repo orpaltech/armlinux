@@ -16,7 +16,7 @@ if [ -f ${USR_DIR}/include/linux/i2c-dev.h.kernel ] ; then
 fi
 
 # Install kernel headers
-if [ "$KERNEL_HEADERS" = true ] ; then
+if [ "$KERNEL_HEADERS" = yes ] ; then
   make -C "${KERNEL_DIR}" ARCH="${KERNEL_ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" INSTALL_HDR_PATH="${USR_DIR}" headers_install
 fi
 

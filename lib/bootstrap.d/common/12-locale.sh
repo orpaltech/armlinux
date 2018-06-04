@@ -3,7 +3,7 @@
 #
 
 # Install and setup timezone
-echo ${TIMEZONE} > "${ETC_DIR}/timezone"
+echo "${TIMEZONE}" > "${ETC_DIR}/timezone"
 chroot_exec dpkg-reconfigure -f noninteractive tzdata
 
 # Install and setup default locale and keyboard configuration

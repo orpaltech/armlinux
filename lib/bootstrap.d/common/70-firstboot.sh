@@ -6,7 +6,7 @@
 cat ${FILES_DIR}/firstboot/10-begin.sh > "${ETC_DIR}/rc.firstboot"
 
 # Ensure openssh server host keys are regenerated on first boot
-if [ "$ENABLE_SSHD" = true ] ; then
+if [ "$ENABLE_SSHD" = yes ] ; then
   cat ${FILES_DIR}/firstboot/21-generate-ssh-keys.sh >> "${ETC_DIR}/rc.firstboot"
 fi
 

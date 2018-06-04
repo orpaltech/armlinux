@@ -9,7 +9,7 @@ BOOT_DIR=/boot
 
 DEBIAN_RELEASE_ARCH=arm64
 KERNEL_ARCH=${SOC_ARCH}
-LINUX_PLATFORM="aarch64-linux-gnu"
+LINUX_PLATFORM=aarch64-linux-gnu
 
 CROSS_COMPILE=${CROSS_COMPILE:="${TOOLCHAINDIR}/7.2-2017.11/aarch64-linux-gnu/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-"}
 QEMU_BINARY="/usr/bin/qemu-aarch64-static"
@@ -31,6 +31,8 @@ KERNEL_MKIMAGE_LOADADDR=0x40080000
 KERNEL_IMAGE_SOURCE=Image
 KERNEL_IMAGE_TARGET=linux.uImage
 
-QT5_OPENGL_OPTION=-no-opengl
+# The option should be overriden if your board supports GPU
+QT5_OPENGL_OPTION="-no-opengl"
 
-APT_EXTRA_PACKAGES=
+# Install packages required for QT5 "eglfs_kms" integration
+APT_EXTRA_PACKAGES="libgbm-dev,libgles2-mesa-dev,weston"

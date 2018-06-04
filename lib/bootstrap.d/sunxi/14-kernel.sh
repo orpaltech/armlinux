@@ -3,7 +3,7 @@
 #
 
 # Add serial console support
-if [ "$ENABLE_CONSOLE" = true ] ; then
+if [ "$ENABLE_CONSOLE" = yes ] ; then
   CMDLINE="console=ttyS0,115200 ${CMDLINE}"
 fi
 

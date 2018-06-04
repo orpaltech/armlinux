@@ -102,35 +102,36 @@ APT_PROXY=${APT_PROXY:=""}
 APT_SERVER=${APT_SERVER:="deb.debian.org"}
 
 # Feature settings
-ENABLE_CONSOLE=${ENABLE_CONSOLE:=true}
+ENABLE_CONSOLE=${ENABLE_CONSOLE:="yes"}
 ENABLE_IPV6=${ENABLE_IPV6:="yes"}
-ENABLE_SSHD=${ENABLE_SSHD:=true}
+ENABLE_SSHD=${ENABLE_SSHD:="yes"}
 ENABLE_NONFREE=${ENABLE_NONFREE:="no"}
 ENABLE_WIRELESS=${ENABLE_WIRELESS:="no"}
-ENABLE_SOUND=${ENABLE_SOUND:=false}
-ENABLE_DBUS=${ENABLE_DBUS:=true}
-ENABLE_RSYSLOG=${ENABLE_RSYSLOG:=true}
-ENABLE_USER=${ENABLE_USER:=true}
+ENABLE_SOUND=${ENABLE_SOUND:="yes"}
+ENABLE_DBUS=${ENABLE_DBUS:="yes"}
+ENABLE_X11=${ENABLE_X11:="no"}
+ENABLE_RSYSLOG=${ENABLE_RSYSLOG:="yes"}
+ENABLE_USER=${ENABLE_USER:="no"}
 USER_NAME=${USER_NAME:="pi"}
-ENABLE_ROOT=${ENABLE_ROOT:=true}
-ENABLE_ROOT_SSH=${ENABLE_ROOT_SSH:=true}
+ENABLE_ROOT=${ENABLE_ROOT:="yes"}
+ENABLE_ROOT_SSH=${ENABLE_ROOT_SSH:="yes"}
 
 # Advanced settings
-ENABLE_MINBASE=${ENABLE_MINBASE:=false}
+ENABLE_MINBASE=${ENABLE_MINBASE:="no"}
 ENABLE_REDUCE=${ENABLE_REDUCE:="no"}
 ENABLE_HARDNET=${ENABLE_HARDNET:="no"}
 ENABLE_IPTABLES=${ENABLE_IPTABLES:="no"}
 
 # Kernel installation settings
-KERNEL_HEADERS=${KERNEL_HEADERS:=true}
+KERNEL_HEADERS=${KERNEL_HEADERS:="yes"}
 
 # Reduce disk usage settings
-REDUCE_APT=${REDUCE_APT:=true}
-REDUCE_DOC=${REDUCE_DOC:=true}
-REDUCE_MAN=${REDUCE_MAN:=true}
-REDUCE_BASH=${REDUCE_BASH:=false}
-REDUCE_HWDB=${REDUCE_HWDB:=true}
-REDUCE_LOCALE=${REDUCE_LOCALE:=true}
+REDUCE_APT=${REDUCE_APT:="yes"}
+REDUCE_DOC=${REDUCE_DOC:="yes"}
+REDUCE_MAN=${REDUCE_MAN:="yes"}
+REDUCE_BASH=${REDUCE_BASH:="no"}
+REDUCE_HWDB=${REDUCE_HWDB:="yes"}
+REDUCE_LOCALE=${REDUCE_LOCALE:="yes"}
 
 # Chroot scripts directory
 CHROOT_SCRIPTS=${CHROOT_SCRIPTS:=""}
@@ -156,7 +157,7 @@ else
 fi
 
 APT_INCLUDES="${APT_INCLUDES},avahi-daemon,rsync,apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,systemd"
-APT_INCLUDES="${APT_INCLUDES},wpasupplicant,psmisc,u-boot-tools,i2c-tools,usbutils,initramfs-tools,alsa-utils,console-setup"
+APT_INCLUDES="${APT_INCLUDES},wpasupplicant,psmisc,u-boot-tools,i2c-tools,usbutils,initramfs-tools,console-setup"
 APT_INCLUDES="${APT_INCLUDES},gdb,gdbserver"
 
 # See if board requires additional packages to install
@@ -169,7 +170,7 @@ APT_FORCE_YES="--allow-downgrades --allow-remove-essential"
 # Make absolute path to output rootfs
 BOOT_DIR="${R}${BOOT_DIR}"
 
-# individual toolchain components (required for GDB)
+# individual toolchain components
 DEV_GCC="${CROSS_COMPILE}gcc"
 DEV_CXX="${CROSS_COMPILE}g++"
 DEV_LD="${CROSS_COMPILE}ld"
@@ -230,7 +231,7 @@ if [ ! -d "./files/" ] ; then
 fi
 
 # Check if specified CHROOT_SCRIPTS directory exists
-if [ -n "$CHROOT_SCRIPTS" ] && [ ! -d "$CHROOT_SCRIPTS" ] ; then
+if [ -n "${CHROOT_SCRIPTS}" ] && [ ! -d "${CHROOT_SCRIPTS}" ] ; then
    echo "error: ${CHROOT_SCRIPTS} specified directory not found (CHROOT_SCRIPTS)!"
    exit 1
 fi
@@ -257,18 +258,22 @@ set -x
 trap cleanup 0 1 2 3 6
 
 # Add required packages for the minbase installation
-if [ "$ENABLE_MINBASE" = true ] ; then
+if [ "${ENABLE_MINBASE}" = yes ] ; then
   APT_INCLUDES="${APT_INCLUDES},vim-tiny,netbase,net-tools,ifupdown"
 fi
 
 # Add required locales packages
-if [ "$DEFLOCAL" != "en_US.UTF-8" ] ; then
+if [ "${DEFLOCAL}" != "en_US.UTF-8" ] ; then
   APT_INCLUDES="${APT_INCLUDES},locales,keyboard-configuration,console-setup"
 fi
 
 # Add dbus package, recommended if using systemd
-if [ "$ENABLE_DBUS" = true ] ; then
-  APT_INCLUDES="${APT_INCLUDES},dbus"
+if [ "${ENABLE_DBUS}" = yes ] ; then
+  APT_INCLUDES="${APT_INCLUDES},dbus,libdbus-1-dev"
+fi
+
+if [ "${ENABLE_X11}" = yes ] ; then
+  APT_INCLUDES="${APT_INCLUDES},libx11-dev,libxshmfence-dev"
 fi
 
 # Add iptables IPv4/IPv6 package
@@ -276,8 +281,12 @@ if [ "${ENABLE_IPTABLES}" = yes ] ; then
   APT_INCLUDES="${APT_INCLUDES},iptables"
 fi
 
+if [ "${ENABLE_SOUND}" = yes ] ; then
+  APT_INCLUDES="${APT_INCLUDES},alsa-utils,libasound2-dev"
+fi
+
 # Add openssh server package
-if [ "$ENABLE_SSHD" = true ] ; then
+if [ "${ENABLE_SSHD}" = yes ] ; then
   APT_INCLUDES="${APT_INCLUDES},openssh-server"
 fi
 
@@ -340,7 +349,7 @@ if [ -d $CUSTOM_D ] ; then
 fi
 
 # Execute custom scripts inside the chroot
-if [ -n "$CHROOT_SCRIPTS" ] && [ -d "$CHROOT_SCRIPTS" ] ; then
+if [ -n "${CHROOT_SCRIPTS}" ] && [ -d "${CHROOT_SCRIPTS}" ] ; then
   cp -r "${CHROOT_SCRIPTS}" "${R}/chroot_scripts"
   chroot_exec /bin/bash -x <<'EOF'
 for SCRIPT in /chroot_scripts/* ; do

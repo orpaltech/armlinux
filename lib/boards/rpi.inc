@@ -12,4 +12,4 @@ FIRMWARE_NAME=raspberrypi
 
 QT5_OPENGL_OPTION="-opengl es2"
 
-APT_EXTRA_PACKAGES=rng-tools
+APT_EXTRA_PACKAGES="rng-tools"
