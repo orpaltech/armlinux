@@ -109,6 +109,7 @@ ENABLE_NONFREE=${ENABLE_NONFREE:="no"}
 ENABLE_WIRELESS=${ENABLE_WIRELESS:="no"}
 ENABLE_SOUND=${ENABLE_SOUND:="yes"}
 ENABLE_DBUS=${ENABLE_DBUS:="yes"}
+ENABLE_GDB=${ENABLE_GDB:="no"}
 ENABLE_X11=${ENABLE_X11:="no"}
 ENABLE_RSYSLOG=${ENABLE_RSYSLOG:="yes"}
 ENABLE_USER=${ENABLE_USER:="no"}
@@ -157,8 +158,7 @@ else
 fi
 
 APT_INCLUDES="${APT_INCLUDES},avahi-daemon,rsync,apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,systemd"
-APT_INCLUDES="${APT_INCLUDES},wpasupplicant,psmisc,u-boot-tools,i2c-tools,usbutils,initramfs-tools,console-setup"
-APT_INCLUDES="${APT_INCLUDES},gdb,gdbserver"
+APT_INCLUDES="${APT_INCLUDES},psmisc,u-boot-tools,i2c-tools,usbutils,initramfs-tools,console-setup"
 
 # See if board requires additional packages to install
 if [ ! -z "${APT_EXTRA_PACKAGES}" ] ; then
@@ -288,6 +288,14 @@ fi
 # Add openssh server package
 if [ "${ENABLE_SSHD}" = yes ] ; then
   APT_INCLUDES="${APT_INCLUDES},openssh-server"
+fi
+
+if [ "${ENABLE_GDB}" = yes ] ; then
+  APT_INCLUDES="${APT_INCLUDES},gdb,gdbserver"
+fi
+
+if [ "${ENABLE_WIRELESS}" = yes ] ; then
+  APT_INCLUDES="${APT_INCLUDES},wpasupplicant"
 fi
 
 SCRIPTS_DIR=$BASEDIR/scripts

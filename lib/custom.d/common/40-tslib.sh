@@ -29,9 +29,11 @@ tslib_update()
 	fi
 	if [ -d $TSLIB_SRC_DIR ] && [ -d $TSLIB_SRC_DIR/.git ] ; then
 		# update sources
-		git -C $TSLIB_SRC_DIR fetch origin
-		git -C $TSLIB_SRC_DIR reset --hard origin/$TSLIB_BRANCH
+		git -C $TSLIB_SRC_DIR fetch origin --tags
+		git -C $TSLIB_SRC_DIR reset --hard
 		git -C $TSLIB_SRC_DIR clean -fd
+
+		git -C $TSLIB_SRC_DIR checkout -B origin/$TSLIB_BRANCH
 	else
 		rm -rf $TSLIB_SRC_DIR
 

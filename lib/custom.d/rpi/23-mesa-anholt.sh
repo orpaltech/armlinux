@@ -1,9 +1,11 @@
 MESA_REPO_URL="https://github.com/anholt/mesa.git"
 MESA_BRANCH="master"
 
+MESA_FORCE_UPDATE="no"
+MESA_FORCE_REBUILD="yes"
+
 MESA_SRC_DIR=$EXTRADIR/mesa-anholt
-MESA_OUT_DIR=$MESA_SRC_DIR
-#$MESA_SRC_DIR/build/$LINUX_PLATFORM
+MESA_OUT_DIR=$MESA_SRC_DIR/build/$LINUX_PLATFORM
 
 # -----------------------------------------------------------------------------
 
@@ -24,13 +26,12 @@ mesa_get_source()
 	fi
 	if [ -d $MESA_SRC_DIR ] && [ -d $MESA_SRC_DIR/.git ] ; then
 		# update sources
-		git -C $MESA_SRC_DIR fetch origin
+		git -C $MESA_SRC_DIR fetch origin --tags
 		git -C $MESA_SRC_DIR reset --hard
 		git -C $MESA_SRC_DIR clean -fd
 
 		echo "Checking out branch: ${MESA_BRANCH}"
-		git -C $MESA_SRC_DIR checkout -B $MESA_BRANCH
-                git -C $MESA_SRC_DIR pull
+		git -C $MESA_SRC_DIR checkout -B origin/$MESA_BRANCH
 	else
 		rm -rf $MESA_SRC_DIR
 
@@ -44,29 +45,30 @@ mesa_get_source()
 mesa_make()
 {
 	cd $MESA_SRC_DIR
-
 	[[ -f ./Makefile ]] && make distclean
-	[[ ! -f ./configure ]] && ./autogen.sh NOCONFIGURE=y
+	if [[ ! -f ./configure ]] ; then
+		NOCONFIGURE=y ./autogen.sh
+	fi
 
-#	mkdir -p $MESA_OUT_DIR
+	mkdir -p $MESA_OUT_DIR
 	cd $MESA_OUT_DIR
 
-#	[[ -f ./Makefile ]] && make distclean
+	if [ "${MESA_FORCE_REBUILD}" = yes ] ; then
+		echo "Force MESA rebuild"
+		[[ -f ./Makefile ]] && make distclean
+        fi
 
-#	if [ "${MESA_FORCE_REBUILD}" = yes ] ; then
-#		echo "Force MESA rebuild"
-#		rm -rf ./*
-#	fi
+	mkdir -p ./dist
+	rm -rf ./dist/*
 
-	rm -rf ./dist
-	mkdir ./dist
+	if [ ! -f ./Makefile ] ; then
+		echo "Configure MESA..."
 
-	echo "Configure MESA..."
-
-	$MESA_SRC_DIR/configure \
+		$MESA_SRC_DIR/configure \
 			--prefix=/usr \
-			--enable-gles2 --enable-gles1 --disable-glx \
-			--enable-egl --enable-gallium-egl \
+			--enable-gles2 --enable-gles1 \
+			--enable-egl \
+			--disable-glx \
 			--with-gallium-drivers=vc4 \
 			--with-dri-drivers=swrast \
 			--with-platforms=drm  \
@@ -78,7 +80,8 @@ mesa_make()
 			CFLAGS="--sysroot=${SYSROOT_DIR}" \
 			CXXFLAGS="--sysroot=${SYSROOT_DIR}" \
 			--enable-shared=yes
-	echo "Done."
+		echo "Done."
+	fi
 
 	echo "Making MESA..."
 

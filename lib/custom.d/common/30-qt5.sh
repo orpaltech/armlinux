@@ -3,7 +3,7 @@
 #
 
 # force clone the remote repository
-QT5_FORCE_UPDATE="no"
+QT5_FORCE_UPDATE="yes"
 
 # remove all binaries and intermediate files and go for full rebuild
 QT5_FORCE_REBUILD="yes"
@@ -12,34 +12,25 @@ QT5_GIT_ROOT="git://code.qt.io/qt"
 QT5_RELEASE="5.11"
 QT5_BRANCH="${QT5_RELEASE}"
 QT5_TAG=""
-QT5_MODULES=("qtxmlpatterns"
-             "qtimageformats"
-             "qtsvg"
-             "qtscript"
-             "qtdeclarative"
-             "qtquickcontrols"
-             "qtquickcontrols2"
-             "qtcharts"
-             "qtvirtualkeyboard")
-
-QT5_ROOT_DIR=$EXTRADIR/qt5-build/qt5
-QT5_DEVCFG_DIR=$QT5_ROOT_DIR/build/$QT5_DEVICE_CONFIG
-QTBASE_URL="${QT5_GIT_ROOT}/qtbase.git"
-QTBASE_SRC_DIR=$QT5_ROOT_DIR/qtbase
-QTBASE_OUT_DIR=$QT5_DEVCFG_DIR/qtbase
+QT5_MODULES=("qtxmlpatterns" "qtimageformats" "qtsvg" "qtscript" "qtdeclarative" "qtquickcontrols" "qtquickcontrols2" "qtcharts" "qtvirtualkeyboard")
+QT5_ROOT_DIR=${EXTRADIR}/qt5-build/qt5
+QT5_DEVCFG_DIR=${QT5_ROOT_DIR}/build/${QT5_DEVICE_CONFIG}
+QTBASE_URL=${QT5_GIT_ROOT}/qtbase.git
+QTBASE_SRC_DIR=${QT5_ROOT_DIR}/qtbase
+QTBASE_OUT_DIR=${QT5_DEVCFG_DIR}/qtbase
 
 # version directory is usually named as branch
-QT5_CUSTOM_VER="${QT5_RELEASE}"
+QT5_CUSTOM_VER=$QT5_RELEASE
 # here we keep resources needed for customizing Qt5
-QT5_CUSTOM_ROOT=$SRCDIR/custom.d/common/qt5/$QT5_CUSTOM_VER
+QT5_CUSTOM_ROOT=${SRCDIR}/custom.d/common/qt5/${QT5_CUSTOM_VER}
 
 QT5_TARGET_PREFIX=/usr/local/qt5pi
-QT5_HOST_PREFIX=$QT5_DEVCFG_DIR/qt5host
-QT5_EXT_PREFIX=$QT5_DEVCFG_DIR/qt5pi
-QT5_QMAKE=$QT5_HOST_PREFIX/bin/qmake
+QT5_HOST_PREFIX=${QT5_DEVCFG_DIR}/qt5host
+QT5_EXT_PREFIX=${QT5_DEVCFG_DIR}/qt5pi
+QT5_QMAKE=${QT5_HOST_PREFIX}/bin/qmake
 
 [[ -z "${QT5_TAG}" ]] && QT5_DEB_VER="${QT5_RELEASE}" || QT5_DEB_VER="${QT5_RELEASE}-tag-${QT5_TAG}"
-QT5_DEB_PKG_VER="${QT5_DEB_VER}-rel${VERSION}-${QT5_DEVICE_CONFIG}"
+QT5_DEB_PKG_VER="${QT5_DEB_VER}-${QT5_DEVICE_CONFIG}-${VERSION}"
 QT5_DEB_PKG="qt-${QT5_DEB_PKG_VER}"
 QT5_DEB_DIR=$BASEDIR/debs/$QT5_DEB_PKG-deb
 
@@ -65,13 +56,12 @@ qt5_update()
         fi
         if [ -d $QTBASE_SRC_DIR ] && [ -d $QTBASE_SRC_DIR/.git ] ; then
                 # update sources
-                git -C $QTBASE_SRC_DIR fetch origin
+                git -C $QTBASE_SRC_DIR fetch --tags --recurse-submodules
                 git -C $QTBASE_SRC_DIR reset --hard
                 git -C $QTBASE_SRC_DIR clean -fd
 
 		echo "Checking out branch: ${QT5_BRANCH}"
-		git -C $QTBASE_SRC_DIR checkout -B $QT5_BRANCH
-		git -C $QTBASE_SRC_DIR pull
+		git -C $QTBASE_SRC_DIR checkout -B origin/$QT5_BRANCH
         else
                 rm -rf $QTBASE_SRC_DIR
 
@@ -85,8 +75,8 @@ qt5_update()
 	fi
 
 	for MODULE in "${QT5_MODULES[@]}" ; do
-		QT5_MODULE_DIR="${QT5_ROOT_DIR}/${MODULE}"
-		QT5_MODULE_URL="${QT5_GIT_ROOT}/${MODULE}.git"
+		QT5_MODULE_DIR=${QT5_ROOT_DIR}/${MODULE}
+		QT5_MODULE_URL=${QT5_GIT_ROOT}/${MODULE}.git
 
 		if [ "${QT5_FORCE_UPDATE}" = yes ] ; then
 			echo "Forcing update ${MODULE}"
@@ -101,13 +91,12 @@ qt5_update()
 		fi
                 if [ -d $QT5_MODULE_DIR ] && [ -d $QT5_MODULE_DIR/.git ] ; then
                         # update sources
-                        git -C $QT5_MODULE_DIR fetch origin
+                        git -C $QT5_MODULE_DIR fetch --tags
                         git -C $QT5_MODULE_DIR reset --hard
                         git -C $QT5_MODULE_DIR clean -fd
 
 			echo "Checking out branch: ${QT5_BRANCH}"
-			git -C $QT5_MODULE_DIR checkout -B $QT5_BRANCH
-			git -C $QT5_MODULE_DIR pull
+			git -C $QT5_MODULE_DIR checkout -B origin/$QT5_BRANCH
                 else
                         rm -rf $QT5_MODULE_DIR
 
@@ -163,7 +152,7 @@ qt5_make_qtbase()
 
         if [ "${QT5_FORCE_REBUILD}" = yes ] ; then
 		echo "Force rebuild qtbase"
-		rm -rf $QTBASE_OUT_DIR/*
+		rm -rf ./*
 	fi
 
         # prepare prefix directories
@@ -177,7 +166,8 @@ qt5_make_qtbase()
 	${QTBASE_SRC_DIR}/configure \
                         -release \
 			-silent \
-                        -opensource -confirm-license \
+                        -opensource \
+			-confirm-license \
                         -device $QT5_DEVICE_CONFIG \
                         -device-option CROSS_COMPILE=$CROSS_COMPILE \
                         -sysroot $SYSROOT_DIR \
@@ -185,10 +175,10 @@ qt5_make_qtbase()
                         -hostprefix $QT5_HOST_PREFIX \
                         -extprefix $QT5_EXT_PREFIX \
 			-optimized-qmake \
-			-reduce-exports \
                         -v \
 			-make libs \
-                        -nomake examples -nomake tools -nomake tests \
+                        -nomake examples \
+			-nomake tests \
                         -no-pch \
                         -no-use-gold-linker \
                         -no-xcb \
@@ -229,10 +219,13 @@ qt5_make_modules()
 
 		if [ "${QT5_FORCE_REBUILD}" = yes ] ; then
 			echo "Force rebuild '${MODULE}'"
-			rm -rf $MODULE_BUILD_DIR/*
+			rm -rf ./*
+		else
+			# otherwise delete only makefiles
+			find ./ -type f -name Makefile -exec rm -f {} \;
 		fi
 
-		$QT5_HOST_PREFIX/bin/qmake $QT5_MODULE_DIR/
+		$QT5_QMAKE -makefile $QT5_MODULE_DIR/
 
 		chrt -i 0 make -j${NUM_CPU_CORES}
 		[ $? -eq 0 ] || exit $?;

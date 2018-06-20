@@ -34,6 +34,6 @@ if [ -d ${BOOTSTRAP_D}/packages ] ; then
   fi
 fi
 
-chroot_exec apt-get -qq -y -f install
+chroot_exec apt-get -qq -y -f install $(echo "${APT_INCLUDES}" | sed -e 's/,/ /g')
 
 chroot_exec apt-get -qq -y check

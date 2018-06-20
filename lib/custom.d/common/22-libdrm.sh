@@ -29,8 +29,8 @@ libdrm_make()
                 rm -rf ./*
         fi
 
-	rm -rf ./dist
-	mkdir ./dist
+	mkdir -p ./dist
+	rm -rf ./dist/*
 
         echo "Configure LIBDRM..."
 
