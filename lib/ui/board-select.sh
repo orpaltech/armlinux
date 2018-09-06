@@ -3,9 +3,9 @@
 # HEIGHT=15
 # WIDTH=40
 # CHOICE_HEIGHT=4
-# BACKTITLE="ORPALTECH ARM LINUX v1.0"
-# TITLE="Select board"
-# MENU="Choose one of the supported boards:"
+LABEL_BACKTITLE="ORPALTECH ARM LINUX [ ${CONFIG} v${VERSION} ]"
+LABEL_TITLE="Select board"
+LABEL_MENU="Choose one of the supported boards:"
 
 declare -a board_options
 
@@ -21,9 +21,10 @@ for board_conf in ${LIBDIR}/boards/*.conf; do
 done
 
 BOARD=$(dialog  --clear \
-		--backtitle "ORPALTECH ARM Linux v1.0" \
-		--title "Select board" \
-		--menu "Choose one of the supported boards:" \
+		--shadow \
+		--backtitle "${LABEL_BACKTITLE}" \
+		--title "${LABEL_TITLE}" \
+		--menu "${LABEL_MENU}" \
 		24 102 16 \
 		"${board_options[@]}" \
 		2>&1 >/dev/tty)

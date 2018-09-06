@@ -12,7 +12,7 @@ install_readonly "${UBOOT_SOURCE_DIR}/u-boot-sunxi-with-spl.bin" "${BOOT_DIR}/u-
 install_readonly "${FILES_DIR}/boot/uboot.mkimage" $BOOT_SCR_CMD
 
 if [ "${KERNEL_ARCH}" = arm64 ] ; then
-  [[ "${KERNEL_USE_MKIMAGE}" = yes ]] && BOOTCMD="bootm" || BOOTCMD="booti"
+  [[ "${KERNEL_MKIMAGE_WRAP}" = yes ]] && BOOTCMD="bootm" || BOOTCMD="booti"
 else
   BOOTCMD="bootz"
 fi

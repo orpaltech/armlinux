@@ -1,0 +1,26 @@
+From cc3946f98c7e86e5fe7cf522a71e9f9ce39a2e32 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Thu, 2 Aug 2018 21:16:18 +0300
+Subject: [PATCH] rpi: Maximum kernel image size to 64MB
+
+---
+ include/configs/rpi.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/include/configs/rpi.h b/include/configs/rpi.h
+index a97550b..870b514 100644
+--- a/include/configs/rpi.h
++++ b/include/configs/rpi.h
+@@ -23,6 +23,9 @@
+ 	(&((struct bcm2835_timer_regs *)BCM2835_TIMER_PHYSADDR)->clo)
+ #endif
+ 
++/* Increase the maximum kernel image size from the default to 64 MB */
++#define CONFIG_SYS_BOOTM_LEN		(64 * 1024 * 1024)
++
+ /*
+  * 2835 is a SKU in a series for which the 2708 is the first or primary SoC,
+  * so 2708 has historically been used rather than a dedicated 2835 ID.
+-- 
+2.18.0
+

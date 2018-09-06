@@ -1,0 +1,361 @@
+From 350d4641d9a06a2032d3afd7595aeeb7ecae704a Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sun, 2 Sep 2018 20:31:31 +0300
+Subject: [PATCH] sun50i-a64: Device tree updates for A64 SoC boards
+
+---
+ .../dts/allwinner/sun50i-a64-nanopi-a64.dts   | 83 +++++++++++++++++--
+ arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi | 83 +++++++++++++++++--
+ drivers/clk/sunxi-ng/ccu-sun50i-a64.h         | 12 ++-
+ include/dt-bindings/clock/sun50i-a64-ccu.h    |  6 ++
+ 4 files changed, 169 insertions(+), 15 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts b/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
+index 98dbff1..5d09104 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
+@@ -51,12 +51,28 @@
+ 	compatible = "friendlyarm,nanopi-a64", "allwinner,sun50i-a64";
+ 
+ 	aliases {
++		ethernet0 = &emac;
++		ethernet1 = &rtl8189etv;
+ 		serial0 = &uart0;
+ 	};
+ 
+ 	chosen {
+ 		stdout-path = "serial0:115200n8";
+ 	};
++
++	leds {
++		compatible = "gpio-leds";
++
++		blue {
++			label = "nanopi-a64:blue:status";
++			gpios = <&pio 3 24 GPIO_ACTIVE_LOW>; /* PD24 */
++		};
++	};
++
++	wifi_pwrseq: wifi_pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		reset-gpios = <&r_pio 0 2 GPIO_ACTIVE_LOW>; /* PL2 */
++	};
+ };
+ 
+ &ehci0 {
+@@ -67,15 +83,35 @@
+ 	status = "okay";
+ };
+ 
+-/* i2c1 connected with gpio headers like pine64, bananapi */
++&emac {
++	pinctrl-names = "default";
++	pinctrl-0 = <&rgmii_pins>;
++	phy-mode = "rgmii";
++	phy-handle = <&ext_rgmii_phy>;
++	phy-supply = <&reg_dc1sw>;
++	status = "okay";
++};
++
++&i2c0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c0_pins>;
++};
++
+ &i2c1 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&i2c1_pins>;
+-	status = "disabled";
+ };
+ 
+-&i2c1_pins {
+-	bias-pull-up;
++&i2c2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c2_pins>;
++};
++
++&mdio {
++	ext_rgmii_phy: ethernet-phy@7 {
++		compatible = "ethernet-phy-ieee802.3-c22";
++		reg = <7>;
++	};
+ };
+ 
+ &mmc0 {
+@@ -88,6 +124,24 @@
+ 	status = "okay";
+ };
+ 
++&mmc1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&mmc1_pins>;
++	vmmc-supply = <&reg_dcdc1>;
++	vqmmc-supply = <&reg_dldo4>;
++	mmc-pwrseq = <&wifi_pwrseq>;
++	non-removable;
++	bus-width = <4>;
++	status = "okay";
++
++	rtl8189etv: sdio_wifi@1 {
++		reg = <1>;
++		interrupt-parent = <&r_pio>;
++		interrupts = <0 3 IRQ_TYPE_LEVEL_LOW>; /* PL3 */
++		interrupt-names = "host-wake";
++	};
++};
++
+ &ohci0 {
+ 	status = "okay";
+ };
+@@ -96,6 +150,10 @@
+ 	status = "okay";
+ };
+ 
++&r_i2c {
++	status = "okay";
++};
++
+ &r_rsb {
+ 	status = "okay";
+ 
+@@ -109,6 +167,13 @@
+ 
+ #include "axp803.dtsi"
+ 
++&reg_aldo1 {
++	regulator-always-on;
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-pe";
++};
++
+ &reg_aldo2 {
+ 	regulator-always-on;
+ 	regulator-min-microvolt = <1800000>;
+@@ -125,9 +190,9 @@
+ 
+ &reg_dcdc1 {
+ 	regulator-always-on;
+-	regulator-min-microvolt = <3000000>;
+-	regulator-max-microvolt = <3000000>;
+-	regulator-name = "vcc-3v";
++	regulator-min-microvolt = <3300000>;
++	regulator-max-microvolt = <3300000>;
++	regulator-name = "vcc-3v3";
+ };
+ 
+ &reg_dcdc2 {
+@@ -153,6 +218,10 @@
+ 	regulator-name = "vdd-sys";
+ };
+ 
++&reg_dc1sw {
++	regulator-name = "vcc-phy";
++};
++
+ &reg_dldo1 {
+ 	regulator-always-on;
+ 	regulator-min-microvolt = <3300000>;
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+index d3daf90..f83204a 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+@@ -142,6 +142,7 @@
+ 	sound_spdif {
+ 		compatible = "simple-audio-card";
+ 		simple-audio-card,name = "On-board SPDIF";
++		status = "disabled";
+ 
+ 		simple-audio-card,cpu {
+ 			sound-dai = <&spdif>;
+@@ -228,6 +229,32 @@
+ 			#dma-cells = <1>;
+ 		};
+ 
++		mali: gpu@1c40000 {
++			compatible = "allwinner,sun50i-a64-mali",
++				     "allwinner,sun7i-a20-mali", "arm,mali-400";
++			reg = <0x01c40000 0x10000>;
++			interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "gp",
++					  "gpmmu",
++					  "pp0",
++					  "ppmmu0",
++					  "pp1",
++					  "ppmmu1",
++					  "pmu";
++			clocks = <&ccu CLK_BUS_GPU>, <&ccu CLK_GPU>;
++			clock-names = "bus", "core";
++			resets = <&ccu RST_BUS_GPU>;
++
++			assigned-clocks = <&ccu CLK_GPU>;
++			assigned-clock-rates = <384000000>;
++		};
++
+ 		mmc0: mmc@1c0f000 {
+ 			compatible = "allwinner,sun50i-a64-mmc";
+ 			reg = <0x01c0f000 0x1000>;
+@@ -372,16 +399,46 @@
+ 			interrupt-controller;
+ 			#interrupt-cells = <3>;
+ 
+-			i2c0_pins: i2c0_pins {
++			i2c0_pins: i2c0@0 {
+ 				pins = "PH0", "PH1";
+ 				function = "i2c0";
+ 			};
+ 
+-			i2c1_pins: i2c1_pins {
++			i2c1_pins: i2c1@0 {
+ 				pins = "PH2", "PH3";
+ 				function = "i2c1";
+ 			};
+ 
++			i2c2_pins: i2c2@0 {
++				pins = "PE14", "PE15";
++				function = "i2c2";
++			};
++
++			i2s0_pins_mclk: i2s0@0 {
++				pins = "PB3";
++				function = "i2s0";
++			};
++
++			i2s0_pins_bclk: i2s0@1 {
++				pins = "PB5";
++				function = "i2s0";
++			};
++
++			i2s0_pins_lrck: i2s0@2 {
++				pins = "PB4";
++				function = "i2s0";
++			};
++
++			i2s0_pins_do0: i2s0@3 {
++				pins = "PB6";
++				function = "i2s0";
++			};
++
++			i2s0_pins_di: i2s0@7 {
++				pins = "PB7";
++				function = "i2s0";
++			};
++
+ 			mmc0_pins: mmc0-pins {
+ 				pins = "PF0", "PF1", "PF2", "PF3",
+ 				       "PF4", "PF5";
+@@ -522,6 +579,20 @@
+ 			status = "disabled";
+ 		};
+ 
++		i2s2: i2s@1c22800 {
++			#sound-dai-cells = <0>;
++			compatible = "allwinner,sun50i-a64-i2s",
++				     "allwinner,sun8i-h3-i2s";
++			reg = <0x01c22800 0x400>;
++			interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_I2S2>, <&ccu CLK_I2S2>;
++			clock-names = "apb", "mod";
++			resets = <&ccu RST_BUS_I2S2>;
++			dma-names = "tx";
++			dmas = <&dma 27>;
++			status = "disabled";
++		};
++
+ 		uart0: serial@1c28000 {
+ 			compatible = "snps,dw-apb-uart";
+ 			reg = <0x01c28000 0x400>;
+@@ -722,6 +793,8 @@
+ 			interrupts = <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&r_ccu CLK_APB0_I2C>;
+ 			resets = <&r_ccu RST_APB0_I2C>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&r_i2c_pins_a>;
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+@@ -749,17 +822,17 @@
+ 			interrupt-controller;
+ 			#interrupt-cells = <3>;
+ 
+-			r_i2c_pins_a: i2c-a {
++			r_i2c_pins_a: r_i2c@0 {
+ 				pins = "PL8", "PL9";
+ 				function = "s_i2c";
+ 			};
+ 
+-			r_pwm_pin: pwm {
++			r_pwm_pin: pwm@0 {
+ 				pins = "PL10";
+ 				function = "s_pwm";
+ 			};
+ 
+-			r_rsb_pins: rsb {
++			r_rsb_pins: rsb@0 {
+ 				pins = "PL0", "PL1";
+ 				function = "s_rsb";
+ 			};
+diff --git a/drivers/clk/sunxi-ng/ccu-sun50i-a64.h b/drivers/clk/sunxi-ng/ccu-sun50i-a64.h
+index 061b6fb..c5ed3d4 100644
+--- a/drivers/clk/sunxi-ng/ccu-sun50i-a64.h
++++ b/drivers/clk/sunxi-ng/ccu-sun50i-a64.h
+@@ -27,7 +27,9 @@
+ #define CLK_PLL_AUDIO_2X		4
+ #define CLK_PLL_AUDIO_4X		5
+ #define CLK_PLL_AUDIO_8X		6
+-#define CLK_PLL_VIDEO0			7
++
++/* Exported 7 */
++
+ #define CLK_PLL_VIDEO0_2X		8
+ #define CLK_PLL_VE			9
+ #define CLK_PLL_DDR0			10
+@@ -37,13 +39,17 @@
+ #define CLK_PLL_PERIPH0_2X		12
+ #define CLK_PLL_PERIPH1			13
+ #define CLK_PLL_PERIPH1_2X		14
+-#define CLK_PLL_VIDEO1			15
++
++/* Exported 15 */
++
+ #define CLK_PLL_GPU			16
+ #define CLK_PLL_MIPI			17
+ #define CLK_PLL_HSIC			18
+ #define CLK_PLL_DE			19
+ #define CLK_PLL_DDR1			20
+-#define CLK_CPUX			21
++
++/* Exported 21 */
++
+ #define CLK_AXI				22
+ #define CLK_APB				23
+ #define CLK_AHB1			24
+diff --git a/include/dt-bindings/clock/sun50i-a64-ccu.h b/include/dt-bindings/clock/sun50i-a64-ccu.h
+index d66432c..c1086f5 100644
+--- a/include/dt-bindings/clock/sun50i-a64-ccu.h
++++ b/include/dt-bindings/clock/sun50i-a64-ccu.h
+@@ -43,8 +43,14 @@
+ #ifndef _DT_BINDINGS_CLK_SUN50I_A64_H_
+ #define _DT_BINDINGS_CLK_SUN50I_A64_H_
+ 
++#define CLK_PLL_VIDEO0		7
++
+ #define CLK_PLL_PERIPH0		11
+ 
++#define CLK_PLL_VIDEO1		15
++
++#define CLK_CPUX		21
++
+ #define CLK_BUS_MIPI_DSI	28
+ #define CLK_BUS_CE		29
+ #define CLK_BUS_DMA		30
+-- 
+2.17.1
+

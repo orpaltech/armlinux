@@ -3,6 +3,7 @@
 #------------------------------------------------------------------------
 
 IMAGE_SCRIPT="${LIBDIR}/sdcard-${SOC_FAMILY}.sh"
+
 if [ -f $IMAGE_SCRIPT ] ; then
 . $IMAGE_SCRIPT
 else
@@ -22,7 +23,7 @@ create_image()
 	sudo mkdir -p ${OUTPUTDIR}/images/${DEBIAN_RELEASE}/
 	sudo rm -rf ${OUTPUTDIR}/images/${DEBIAN_RELEASE}/build
 
-        sudo ARMLINUX_CONF="${LIBDIR}/armlinux.conf" \
+        sudo	CONFIG=${CONFIG} \
 		BOARD=${BOARD} \
 		TOOLCHAINDIR=${TOOLCHAINDIR} \
 		OUTPUTDIR=${OUTPUTDIR} \
@@ -46,8 +47,9 @@ create_image()
 		local block_size=1024
 		local rootfs_size=$(sudo du --block-size=1 --max-depth=0 $ROOTFS_DIR 2>/dev/null | tail -n 1 | tr -dc '0-9')
 
-		# Find number of block needed, add 200MB extra space
-		local blocks_count=$(((rootfs_size / block_size) + (1024 * 200)))
+		# Find number of blocks needed
+		# add 100MB extra space
+		local blocks_count=$(((rootfs_size / block_size) + (1024 * 100)))
 		local img_size=$((blocks_count * block_size))
 
 		echo "Create img file [rootfs size=${rootfs_size}; image size=${img_size}, block size=${block_size}, blocks=${blocks_count}]"
@@ -86,7 +88,7 @@ create_image()
 		exit 1
 	fi
 
-	prepare_disk
+	format_disk
 
 	write_image
 

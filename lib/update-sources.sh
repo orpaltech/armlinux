@@ -2,29 +2,6 @@
 
 #------------------------------------------------------------------------------------------------------
 
-get_build_deps()
-{
-	display_alert "Updating host packages..." "" "info"
-
-        sudo apt-get install -y \
-                debootstrap \
-                debian-archive-keyring \
-                qemu-user-static \
-                binfmt-support \
-                dosfstools \
-                rsync \
-		patch \
-                bmap-tools \
-                whois git bc \
-                device-tree-compiler \
-		cmake \
-		texi2html texinfo \
-		dialog
-	[ $? -eq 0 ] || exit $?;
-}
-
-#------------------------------------------------------------------------------------------------------
-
 get_uboot_source()
 {
 	local BRANCH_FIXED=$(echo $UBOOT_REPO_BRANCH | sed -e 's/\//-/g')
@@ -40,18 +17,23 @@ get_uboot_source()
 		display_alert "Updating U-Boot from" "${UBOOT_REPO_URL} | ${UBOOT_REPO_BRANCH}" "info"
 
                 # update sources
-		git -C $UBOOT_SOURCE_DIR fetch --tags origin $UBOOT_REPO_BRANCH
-		git -C $UBOOT_SOURCE_DIR reset --hard origin/$UBOOT_REPO_BRANCH
+		git -C $UBOOT_SOURCE_DIR fetch origin --tags --depth=1
+
+		git -C $UBOOT_SOURCE_DIR reset --hard
 		git -C $UBOOT_SOURCE_DIR clean -fd
+
+                echo "Checking out branch: ${UBOOT_REPO_BRANCH}"
+                git -C $UBOOT_SOURCE_DIR checkout -B $UBOOT_REPO_BRANCH origin/$UBOOT_REPO_BRANCH
+                git -C $UBOOT_SOURCE_DIR pull
 
 		rm -f "${UBOOT_SOURCE_DIR}/*.bin"
         else
 		display_alert "Cloning U-Boot from" "${UBOOT_REPO_URL} | ${UBOOT_REPO_BRANCH}" "info"
 
-                rm -rf $UBOOT_SOURCE_DIR
-                mkdir -p $UBOOT_BASE_DIR
+		[[ -d $UBOOT_SOURCE_DIR ]] && rm -rf $UBOOT_SOURCE_DIR
+		mkdir -p $UBOOT_BASE_DIR
 
-                git clone $UBOOT_REPO_URL -b $UBOOT_REPO_BRANCH --tags $UBOOT_SOURCE_DIR
+                git clone $UBOOT_REPO_URL -b $UBOOT_REPO_BRANCH --tags --depth=1 $UBOOT_SOURCE_DIR
         fi
 
         if [ ! -z "${UBOOT_REPO_TAG}" ] ; then
@@ -134,7 +116,7 @@ patch_uboot()
 
 		display_alert "Patching U-Boot..." "" "info"
 
-		local PATCH_COUNT=$(ls $PATCH_TMP_DIR/*.patch 2> /dev/null | wc -l)
+		local PATCH_COUNT=$(count_files "${PATCH_TMP_DIR}/*.patch")
 		if [ $PATCH_COUNT -gt 0 ] ; then
 			# patching
 			for PATCHFILE in $PATCH_TMP_DIR/*.patch; do
@@ -169,13 +151,18 @@ get_kernel_source()
 		display_alert "Updating kernel from" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_BRANCH}" "info"
 
 		# update sources
-		git -C $KERNEL_SOURCE_DIR fetch --tags --depth=1 origin $KERNEL_REPO_BRANCH
+		git -C $KERNEL_SOURCE_DIR fetch origin --tags --depth=1
+
 		git -C $KERNEL_SOURCE_DIR reset --hard origin/$KERNEL_REPO_BRANCH
 		git -C $KERNEL_SOURCE_DIR clean -fd
+
+		echo "Checking out branch: ${KERNEL_REPO_BRANCH}"
+                git -C $KERNEL_SOURCE_DIR checkout -B $KERNEL_REPO_BRANCH origin/$KERNEL_REPO_BRANCH
+                git -C $KERNEL_SOURCE_DIR pull
 	else
 		display_alert "Cloning kernel" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_BRANCH}" "info"
 
-		rm -rf $KERNEL_SOURCE_DIR
+		[[ -d $KERNEL_SOURCE_DIR ]] && rm -rf $KERNEL_SOURCE_DIR
 		mkdir -p $KERNEL_BASE_DIR
 
 		git clone $KERNEL_REPO_URL -b $KERNEL_REPO_BRANCH --depth=1 --tags $KERNEL_SOURCE_DIR
@@ -215,7 +202,7 @@ patch_kernel()
                         copy_patches $PATCH_BASE_DIR/$KERNEL_REPO_TAG	$PATCH_TMP_DIR
                 fi
 
-		local PATCH_COUNT=$(ls $PATCH_TMP_DIR/*.patch 2> /dev/null | wc -l)
+		local PATCH_COUNT=$(count_files "$PATCH_TMP_DIR/*.patch")
 		if [ $PATCH_COUNT -gt 0 ] ; then
 			# patching
 			for PATCHFILE in $PATCH_TMP_DIR/*.patch; do
@@ -251,6 +238,7 @@ get_firmware()
 
 	                git clone $FIRMWARE_URL -b $FIRMWARE_BRANCH --depth=1 $FIRMWARE_SOURCE_DIR
         	fi
+
 		echo "Done."
 	fi
 }

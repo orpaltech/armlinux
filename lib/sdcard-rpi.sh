@@ -2,7 +2,7 @@
 
 #------------------------------------------------------------------------
 
-prepare_disk()
+format_disk()
 {
         # makes sure it's not mounted
         sudo umount ${BLOCK_DEV}* 2> /dev/null

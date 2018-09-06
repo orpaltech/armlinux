@@ -1,6 +1,6 @@
-# This file contains utility functions used by rpi23-gen-image.sh
+# This file contains utility functions used by image-gen.sh
 
-cleanup (){
+cleanup() {
   set +x
   set +e
 

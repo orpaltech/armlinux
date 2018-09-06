@@ -1,0 +1,40 @@
+From 0fb2e054a465525b773ef0c0274c0a084200c727 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Wed, 8 Aug 2018 00:23:21 +0300
+Subject: [PATCH] drm/sun4i: Avoid failing fbdev without a connector
+
+---
+ drivers/gpu/drm/sun4i/sun4i_framebuffer.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/sun4i/sun4i_framebuffer.c b/drivers/gpu/drm/sun4i/sun4i_framebuffer.c
+index 5f29850..19a265e 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_framebuffer.c
++++ b/drivers/gpu/drm/sun4i/sun4i_framebuffer.c
+@@ -49,6 +49,8 @@ static struct drm_mode_config_helper_funcs sun4i_de_mode_config_helpers = {
+ 
+ int sun4i_framebuffer_init(struct drm_device *drm)
+ {
++	int ret;
++
+ 	drm_mode_config_reset(drm);
+ 
+ 	drm->mode_config.max_width = 8192;
+@@ -57,7 +59,13 @@ int sun4i_framebuffer_init(struct drm_device *drm)
+ 	drm->mode_config.funcs = &sun4i_de_mode_config_funcs;
+ 	drm->mode_config.helper_private = &sun4i_de_mode_config_helpers;
+ 
+-	return drm_fb_cma_fbdev_init(drm, 32, 0);
++	if (drm->mode_config.num_connector > 0) {
++		ret = drm_fb_cma_fbdev_init(drm, 32, 0);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
+ }
+ 
+ void sun4i_framebuffer_free(struct drm_device *drm)
+-- 
+2.18.0
+

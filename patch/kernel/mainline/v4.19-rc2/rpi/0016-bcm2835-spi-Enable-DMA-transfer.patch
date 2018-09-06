@@ -1,0 +1,25 @@
+From 4902ab228bdb2a2328b291e09dbd2cf37959fabd Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Wed, 5 Sep 2018 19:51:40 +0300
+Subject: [PATCH] bcm2835: spi: Enable DMA-transfer
+
+---
+ arch/arm/boot/dts/bcm283x.dtsi | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/arm/boot/dts/bcm283x.dtsi b/arch/arm/boot/dts/bcm283x.dtsi
+index 31b2964..025c639 100644
+--- a/arch/arm/boot/dts/bcm283x.dtsi
++++ b/arch/arm/boot/dts/bcm283x.dtsi
+@@ -421,6 +421,8 @@
+ 			reg = <0x7e204000 0x1000>;
+ 			interrupts = <2 22>;
+ 			clocks = <&clocks BCM2835_CLOCK_VPU>;
++			dmas = <&dma 6>, <&dma 7>;
++			dma-names = "tx", "rx";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+ 			status = "disabled";
+-- 
+2.17.1
+

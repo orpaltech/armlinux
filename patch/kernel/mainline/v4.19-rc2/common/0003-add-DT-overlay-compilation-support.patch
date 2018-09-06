@@ -1,0 +1,141 @@
+From 66cdc6b0c56420c89ba1f5fa94819145177455a8 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sat, 1 Sep 2018 21:26:00 +0300
+Subject: [PATCH] add DT-overlay compilation support
+
+---
+ arch/arm/Makefile              |  6 ++++++
+ arch/arm/boot/.gitignore       |  2 ++
+ arch/arm64/Makefile            |  6 ++++++
+ arch/arm64/boot/dts/.gitignore |  2 ++
+ scripts/Makefile.dtbinst       | 16 ++++++++++++++--
+ scripts/Makefile.lib           | 20 ++++++++++++++++++++
+ 6 files changed, 50 insertions(+), 2 deletions(-)
+ create mode 100644 arch/arm64/boot/dts/.gitignore
+
+diff --git a/arch/arm/Makefile b/arch/arm/Makefile
+index d1516f8..e32e463 100644
+--- a/arch/arm/Makefile
++++ b/arch/arm/Makefile
+@@ -342,6 +342,12 @@ $(INSTALL_TARGETS):
+ %.dtb: | scripts
+ 	$(Q)$(MAKE) $(build)=$(boot)/dts MACHINE=$(MACHINE) $(boot)/dts/$@
+ 
++%.dtbo: | scripts
++	$(Q)$(MAKE) $(build)=$(boot)/dts MACHINE=$(MACHINE) $(boot)/dts/$@
++
++%.scr: | scripts
++	$(Q)$(MAKE) $(build)=$(boot)/dts ARCH=$(ARCH) $(boot)/dts/$@
++
+ PHONY += dtbs dtbs_install
+ 
+ dtbs: prepare scripts
+diff --git a/arch/arm/boot/.gitignore b/arch/arm/boot/.gitignore
+index ce1c5ff..4e5c1d5 100644
+--- a/arch/arm/boot/.gitignore
++++ b/arch/arm/boot/.gitignore
+@@ -3,3 +3,5 @@ zImage
+ xipImage
+ bootpImage
+ uImage
++*.dtb*
++*.scr
+diff --git a/arch/arm64/Makefile b/arch/arm64/Makefile
+index 106039d..7ef6252 100644
+--- a/arch/arm64/Makefile
++++ b/arch/arm64/Makefile
+@@ -130,6 +130,12 @@ zinstall install:
+ %.dtb: scripts
+ 	$(Q)$(MAKE) $(build)=$(boot)/dts $(boot)/dts/$@
+ 
++%.dtbo: | scripts
++	$(Q)$(MAKE) $(build)=$(boot)/dts MACHINE=$(MACHINE) $(boot)/dts/$@
++
++%.scr: | scripts
++	$(Q)$(MAKE) $(build)=$(boot)/dts ARCH=$(ARCH) $(boot)/dts/$@
++
+ PHONY += dtbs dtbs_install
+ 
+ dtbs: prepare scripts
+diff --git a/arch/arm64/boot/dts/.gitignore b/arch/arm64/boot/dts/.gitignore
+new file mode 100644
+index 0000000..4bec63b
+--- /dev/null
++++ b/arch/arm64/boot/dts/.gitignore
+@@ -0,0 +1,2 @@
++*.dtb*
++*.scr
+diff --git a/scripts/Makefile.dtbinst b/scripts/Makefile.dtbinst
+index 7301ab5..74ff4b1 100644
+--- a/scripts/Makefile.dtbinst
++++ b/scripts/Makefile.dtbinst
+@@ -21,6 +21,9 @@ include $(src)/Makefile
+ 
+ dtbinst-files	:= $(sort $(dtb-y) $(if $(CONFIG_OF_ALL_DTBS), $(dtb-)))
+ dtbinst-dirs	:= $(subdir-y) $(subdir-m)
++dtboinst-files	:= $(dtbo-y)
++script-files	:= $(scr-y)
++readme-files	:= $(dtbotxt-y)
+ 
+ # Helper targets for Installing DTBs into the boot directory
+ quiet_cmd_dtb_install =	INSTALL $<
+@@ -34,7 +37,16 @@ $(dtbinst-files): %.dtb: $(obj)/%.dtb
+ $(dtbinst-dirs):
+ 	$(Q)$(MAKE) $(dtbinst)=$(obj)/$@
+ 
+-PHONY += $(dtbinst-files) $(dtbinst-dirs)
+-__dtbs_install: $(dtbinst-files) $(dtbinst-dirs)
++$(dtboinst-files): %.dtbo: $(obj)/%.dtbo
++	$(call cmd,dtb_install,$(install-dir))
++
++$(script-files): %.scr: $(obj)/%.scr
++	$(call cmd,dtb_install,$(install-dir))
++
++$(readme-files): %: $(src)/%
++	$(call cmd,dtb_install,$(install-dir))
++
++PHONY += $(dtbinst-files) $(dtbinst-dirs) $(dtboinst-files) $(script-files) $(readme-files)
++__dtbs_install: $(dtbinst-files) $(dtbinst-dirs) $(dtboinst-files) $(script-files) $(readme-files)
+ 
+ .PHONY: $(PHONY)
+diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
+index 61e5966..fcb52ea 100644
+--- a/scripts/Makefile.lib
++++ b/scripts/Makefile.lib
+@@ -244,6 +244,9 @@ cmd_gzip = (cat $(filter-out FORCE,$^) | gzip -n -f -9 > $@) || \
+ # ---------------------------------------------------------------------------
+ DTC ?= $(objtree)/scripts/dtc/dtc
+ 
++# Overlay support
++DTC_FLAGS += -@ -Wno-unit_address_format -Wno-simple_bus_reg
++
+ # Disable noisy checks by default
+ ifeq ($(findstring 1,$(KBUILD_ENABLE_EXTRA_GCC_CHECKS)),)
+ DTC_FLAGS += -Wno-unit_address_vs_reg \
+@@ -292,6 +295,23 @@ cmd_dtc = mkdir -p $(dir ${dtc-tmp}) ; \
+ $(obj)/%.dtb: $(src)/%.dts $(DTC) FORCE
+ 	$(call if_changed_dep,dtc)
+ 
++quiet_cmd_dtco = DTCO    $@
++cmd_dtco = mkdir -p $(dir ${dtc-tmp}) ; \
++	$(CPP) $(dtc_cpp_flags) -x assembler-with-cpp -o $(dtc-tmp) $< ; \
++	$(DTC) -O dtb -o $@ -b 0 \
++		-i $(dir $<) $(DTC_FLAGS) \
++		-d $(depfile).dtc.tmp $(dtc-tmp) ; \
++	cat $(depfile).pre.tmp $(depfile).dtc.tmp > $(depfile)
++
++$(obj)/%.dtbo: $(src)/%.dts FORCE
++	$(call if_changed_dep,dtco)
++
++quiet_cmd_scr = MKIMAGE  $@
++cmd_scr = mkimage -C none -A $(ARCH) -T script -d $< $@
++
++$(obj)/%.scr: $(src)/%.scr-cmd FORCE
++	$(call if_changed,scr)
++
+ dtc-tmp = $(subst $(comma),_,$(dot-target).dts.tmp)
+ 
+ # Bzip2
+-- 
+2.17.1
+

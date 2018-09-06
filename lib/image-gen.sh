@@ -20,26 +20,32 @@ if [ "$(id -u)" -ne "0" ] ; then
   exit 1
 fi
 
-# Fix issue that BOARD is cleared by config
-BOARD_=$BOARD
+if [ -z "${CONFIG}" ] ; then
+  echo "No config specified. Cannot continue."
+  exit 1
+fi
 
-if [ ! -f $ARMLINUX_CONF ] ; then
+LIBDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
+ARMLINUX_CONF=$LIBDIR/../${CONFIG}.conf
+
+# Fix issue that BOARD is cleared by config
+_BOARD_="${BOARD}"
+
+if [ ! -f "${ARMLINUX_CONF}" ] ; then
   echo "No config file found. Cannot continue."
   exit 1
 fi
 . $ARMLINUX_CONF
 
-BOARD=${BOARD:="${BOARD_}"}
+BOARD=${BOARD:="${_BOARD_}"}
+BOARD_CONF=$LIBDIR/boards/${BOARD}.conf
+BASEDIR=${OUTPUTDIR:="${LIBDIR}"}
+EXTRADIR=${BUILD_EXTRA_DIR:="${BASEDIR}/extra"}
 
 if [ -z "${BOARD}" ] ; then
   echo "error: board must be specified!"
   exit 1
 fi
-
-SRCDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
-BASEDIR=${OUTPUTDIR:="${SRCDIR}"}
-EXTRADIR=${BUILD_EXTRA_DIR:="${BASEDIR}/extra"}
-BOARD_CONF="${SRCDIR}/boards/${BOARD}.conf"
 
 if [ ! -d "${EXTRADIR}" ] ; then
   echo "error: '${EXTRADIR}' directory not found!"
@@ -47,16 +53,18 @@ if [ ! -d "${EXTRADIR}" ] ; then
 fi
 
 # Check if ./functions.sh script exists
-if [ ! -r "${SRCDIR}/functions.sh" ] ; then
+if [ ! -r "${LIBDIR}/functions.sh" ] ; then
   echo "error: 'functions.sh' required script not found!"
   exit 1
 fi
 
 # Load utility functions
-. $SRCDIR/functions.sh
+. $LIBDIR/common.sh
+. $LIBDIR/functions.sh
 
 # Introduce settings
 set -e
+
 echo -n -e "\n#\n# Bootstrap Settings\n#\n"
 set -x
 
@@ -74,7 +82,7 @@ R="${BUILDDIR}/chroot"
 ETC_DIR="${R}/etc"
 LIB_DIR="${R}/lib"
 USR_DIR="${R}/usr"
-KERNEL_DIR="${R}/usr/src/linux"
+
 
 # General settings
 HOST_NAME=${HOST_NAME:="${BOARD}-${DEBIAN_RELEASE}"}
@@ -106,16 +114,15 @@ ENABLE_CONSOLE=${ENABLE_CONSOLE:="yes"}
 ENABLE_IPV6=${ENABLE_IPV6:="yes"}
 ENABLE_SSHD=${ENABLE_SSHD:="yes"}
 ENABLE_NONFREE=${ENABLE_NONFREE:="no"}
-ENABLE_WIRELESS=${ENABLE_WIRELESS:="no"}
-ENABLE_SOUND=${ENABLE_SOUND:="yes"}
+ENABLE_SOUND=${ENABLE_SOUND:="no"}
 ENABLE_DBUS=${ENABLE_DBUS:="yes"}
-ENABLE_GDB=${ENABLE_GDB:="no"}
 ENABLE_X11=${ENABLE_X11:="no"}
 ENABLE_RSYSLOG=${ENABLE_RSYSLOG:="yes"}
 ENABLE_USER=${ENABLE_USER:="no"}
 USER_NAME=${USER_NAME:="pi"}
 ENABLE_ROOT=${ENABLE_ROOT:="yes"}
 ENABLE_ROOT_SSH=${ENABLE_ROOT_SSH:="yes"}
+ENABLE_WIRELESS=${ENABLE_WIRELESS:="no"}
 
 # Advanced settings
 ENABLE_MINBASE=${ENABLE_MINBASE:="no"}
@@ -137,32 +144,29 @@ REDUCE_LOCALE=${REDUCE_LOCALE:="yes"}
 # Chroot scripts directory
 CHROOT_SCRIPTS=${CHROOT_SCRIPTS:=""}
 
-# Packages required in the chroot build environment
-APT_INCLUDES=${APT_INCLUDES:=""}
-
-# Packages required for bootstrapping  (host PC)
-REQUIRED_PACKAGES="debootstrap debian-archive-keyring qemu-user-static binfmt-support dosfstools rsync bmap-tools whois git"
-MISSING_PACKAGES=""
-
-
 set +x
 
-
-if [ -f $BOARD_CONF ] ; then
-  . $BOARD_CONF
-
-  echo "Selected platform: ${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_ARCH}])"
-else
+if [ ! -f "${BOARD_CONF}" ] ; then
   echo "error: Board ${BOARD} is not supported!"
   exit 1
 fi
+. $BOARD_CONF
 
-APT_INCLUDES="${APT_INCLUDES},avahi-daemon,rsync,apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,systemd"
+
+display_alert "Selected platform:" "${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_ARCH}])" "info"
+
+
+APT_INCLUDES="avahi-daemon,rsync,apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,systemd"
 APT_INCLUDES="${APT_INCLUDES},psmisc,u-boot-tools,i2c-tools,usbutils,initramfs-tools,console-setup"
 
-# See if board requires additional packages to install
+# See if additional packages are required
 if [ ! -z "${APT_EXTRA_PACKAGES}" ] ; then
   APT_INCLUDES="${APT_INCLUDES},${APT_EXTRA_PACKAGES}"
+fi
+
+# See if board requires any packages
+if [ ! -z "${APT_BOARD_PACKAGES}" ] ; then
+  APT_INCLUDES="${APT_INCLUDES},${APT_BOARD_PACKAGES}"
 fi
 
 APT_FORCE_YES="--allow-downgrades --allow-remove-essential"
@@ -198,35 +202,19 @@ if [ ! -e "${UBOOT_SOURCE_DIR}/u-boot.bin" ] ; then
   exit 1
 fi
 
-# Check if all required packages are installed on the build system
-for package in $REQUIRED_PACKAGES ; do
-  if [ "`dpkg-query -W -f='${Status}' $package`" != "install ok installed" ] ; then
-    MISSING_PACKAGES="${MISSING_PACKAGES} $package"
-  fi
-done
-
-# Ask if missing packages should be installed right now
-if [ -n "$MISSING_PACKAGES" ] ; then
-  echo "the following packages needed by this script are not installed:"
-  echo "$MISSING_PACKAGES"
-
-  echo -n "\ndo you want to install the missing packages right now? [y/n] "
-  read confirm
-  [ "$confirm" != "y" ] && exit 1
-fi
-
-# Make sure all required packages are installed
-apt-get -qq -y install $REQUIRED_PACKAGES
+BOOTSTRAP_D="${LIBDIR}/bootstrap.d"
+FILES_D="${LIBDIR}/files"
+CUSTOM_D="${LIBDIR}/custom.d"
 
 # Check if ./bootstrap.d directory exists
-if [ ! -d "./bootstrap.d/" ] ; then
-  echo "error: './bootstrap.d' required directory not found!"
+if [ ! -d "${BOOTSTRAP_D}" ] ; then
+  echo "error: 'bootstrap.d' required directory not found!"
   exit 1
 fi
 
 # Check if ./files directory exists
-if [ ! -d "./files/" ] ; then
-  echo "error: './files' required directory not found!"
+if [ ! -d "${FILES_D}" ] ; then
+  echo "error: 'files' required directory not found!"
   exit 1
 fi
 
@@ -252,7 +240,6 @@ if [ "$(df --output=avail ${BUILDDIR} | sed "1d")" -le "524288" ] ; then
   exit 1
 fi
 
-set -x
 
 # Call "cleanup" function on various signals and errors
 trap cleanup 0 1 2 3 6
@@ -290,70 +277,91 @@ if [ "${ENABLE_SSHD}" = yes ] ; then
   APT_INCLUDES="${APT_INCLUDES},openssh-server"
 fi
 
-if [ "${ENABLE_GDB}" = yes ] ; then
-  APT_INCLUDES="${APT_INCLUDES},gdb,gdbserver"
-fi
-
 if [ "${ENABLE_WIRELESS}" = yes ] ; then
   APT_INCLUDES="${APT_INCLUDES},wpasupplicant"
 fi
 
 SCRIPTS_DIR=$BASEDIR/scripts
-BOOTSTRAP_D=$SRCDIR/bootstrap.d
-CUSTOM_D=$SRCDIR/custom.d
 BOOTSTRAP_DIR=$(mktemp -u $SCRIPTS_DIR/bootstrap.d.XXXXXXXXX)
 CUSTOM_DIR=$(mktemp -u $SCRIPTS_DIR/custom.d.XXXXXXXXX)
 FILES_DIR=$(mktemp -u $SCRIPTS_DIR/files.XXXXXXXXX)
+DEBS_DIR=$(mktemp -u $SCRIPTS_DIR/debs.XXXXXXXXX)
 
 mkdir -p $SCRIPTS_DIR
 
 # Cleanup possible left-overs
-rm -rf $SCRIPTS_DIR/bootstrap.d.*
-rm -rf $SCRIPTS_DIR/custom.d.*
-rm -rf $SCRIPTS_DIR/files.*
+rm -rf $SCRIPTS_DIR/*
+
+mkdir $FILES_DIR
+mkdir $BOOTSTRAP_DIR
+mkdir $CUSTOM_DIR
+mkdir $DEBS_DIR
 
 # Prepare files for bootstrapping
-mkdir $FILES_DIR
-cp -R $SRCDIR/files/common/* $FILES_DIR/
-if [ -d $SRCDIR/files/$SOC_FAMILY ] ; then
-  cp -R $SRCDIR/files/$SOC_FAMILY/* $FILES_DIR/
+FILE_COUNT=$(count_files "${FILES_D}/common/*")
+if [ $FILE_COUNT -gt 0 ] ; then
+  cp -R $FILES_D/common/* $FILES_DIR/
 fi
-if [ -d $SRCDIR/files/$SOC_FAMILY/$BOARD ] ; then
-  cp -R $SRCDIR/files/$SOC_FAMILY/$BOARD/* $FILES_DIR/
+FILE_COUNT=$(count_files "${FILES_D}/${SOC_FAMILY}/*")
+if [ $FILE_COUNT -gt 0 ] ; then
+  cp -R $FILES_D/$SOC_FAMILY/* $FILES_DIR/
+fi
+FILE_COUNT=$(count_files "${FILES_D}/${SOC_FAMILY}/${BOARD}/*")
+if [ $FILE_COUNT -gt 0 ] ; then
+  cp -R $FILES_D/$SOC_FAMILY/$BOARD/* $FILES_DIR/
+  rm -rf $FILES_DIR/$BOARD
 fi
 
 # Prepare bootstrap scripts
-mkdir $BOOTSTRAP_DIR
-cp -R $BOOTSTRAP_D/common/* $BOOTSTRAP_DIR/
-if [ -d $BOOTSTRAP_D/$SOC_FAMILY ] ; then
+FILE_COUNT=$(count_files "${BOOTSTRAP_D}/common/*")
+if [ $FILE_COUNT -gt 0 ] ; then
+  cp -R $BOOTSTRAP_D/common/* $BOOTSTRAP_DIR/
+fi
+FILE_COUNT=$(count_files "${BOOTSTRAP_D}/${SOC_FAMILY}/*")
+if [ $FILE_COUNT -gt 0 ] ; then
   cp -R $BOOTSTRAP_D/$SOC_FAMILY/* $BOOTSTRAP_DIR/
 fi
-if [ -d $BOOTSTRAP_D/$SOC_FAMILY/$BOARD ] ; then
+FILE_COUNT=$(count_files "${BOOTSTRAP_D}/${SOC_FAMILY}/${BOARD}/*")
+if [ $FILE_COUNT -gt 0 ] ; then
   cp -R $BOOTSTRAP_D/$SOC_FAMILY/$BOARD/* $BOOTSTRAP_DIR/
+  rm -rf $BOOTSTRAP_DIR/$BOARD
 fi
 
-# Execute bootstrap scripts
-for SCRIPT in $BOOTSTRAP_DIR/*.sh; do
-  head -n 3 $SCRIPT
-  . $SCRIPT
-done
-
-if [ -d $CUSTOM_D ] ; then
-  # Prepare custom scripts
-  mkdir $CUSTOM_DIR
-  cp -R $CUSTOM_D/common/* $CUSTOM_DIR/
-  if [ -d $CUSTOM_D/$SOC_FAMILY ] ; then
-    cp -R $CUSTOM_D/$SOC_FAMILY/* $CUSTOM_DIR/
-  fi
-  if [ -d $CUSTOM_D/$SOC_FAMILY/$BOARD ] ; then
-    cp -R $CUSTOM_D/$SOC_FAMILY/$BOARD/* $CUSTOM_DIR/
-  fi
-
-  # Execute custom bootstrap scripts
-  for SCRIPT in $CUSTOM_DIR/*.sh; do
+FILE_COUNT=$(count_files "${BOOTSTRAP_DIR}/*.sh")
+if [ $FILE_COUNT -gt 0 ] ; then
+  # Execute bootstrap scripts
+  for SCRIPT in $BOOTSTRAP_DIR/*.sh; do
     head -n 3 $SCRIPT
     . $SCRIPT
   done
+fi
+
+if [ -d "${CUSTOM_D}" ] ; then
+  # Prepare custom scripts
+  if [ -d "${CUSTOM_D}/${CONFIG}" ] ; then
+    FILE_COUNT=$(count_files "${CUSTOM_D}/${CONFIG}/common/*")
+    if [ $FILE_COUNT -gt 0 ] ; then
+      cp -R $CUSTOM_D/$CONFIG/common/* $CUSTOM_DIR/
+    fi
+    FILE_COUNT=$(count_files "${CUSTOM_D}/${CONFIG}/${SOC_FAMILY}/*")
+    if [ $FILE_COUNT -gt 0 ] ; then
+      cp -R $CUSTOM_D/$CONFIG/$SOC_FAMILY/* $CUSTOM_DIR/
+    fi
+    FILE_COUNT=$(count_files "${CUSTOM_D}/${CONFIG}/${SOC_FAMILY}/${BOARD}/*")
+    if [ $FILE_COUNT -gt 0 ] ; then
+      cp -R $CUSTOM_D/$CONFIG/$SOC_FAMILY/$BOARD/* $CUSTOM_DIR/
+      rm -rf $CUSTOM_DIR/$BOARD
+    fi
+  fi
+
+  FILE_COUNT=$(count_files "${CUSTOM_DIR}/*.sh")
+  if [ $FILE_COUNT -gt 0 ] ; then
+    # Execute custom bootstrap scripts
+    for SCRIPT in $CUSTOM_DIR/*.sh; do
+      head -n 3 $SCRIPT
+      . $SCRIPT
+    done
+  fi
 fi
 
 # Execute custom scripts inside the chroot
@@ -378,9 +386,8 @@ echo -n "${MACHINE_ID}" > "${R}/var/lib/dbus/machine-id"
 echo -n "${MACHINE_ID}" > "${ETC_DIR}/machine-id"
 
 # APT Cleanup
+chroot_exec apt-get -y --purge autoremove
 chroot_exec apt-get -y clean
-chroot_exec apt-get -y autoclean
-chroot_exec apt-get -y autoremove
 
 # Unmount mounted filesystems
 umount -l "${R}/proc"

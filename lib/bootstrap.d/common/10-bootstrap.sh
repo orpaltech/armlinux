@@ -2,7 +2,7 @@
 # Debootstrap basic system
 #
 
-ROOTFS_PKG="rootfs-${DEBIAN_RELEASE}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}-${VERSION}"
+ROOTFS_PKG="rootfs-${DEBIAN_RELEASE}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}-${CONFIG}-${VERSION}"
 
 mkdir -p ${BASEDIR}/debs
 
@@ -17,28 +17,32 @@ if [ ! -f "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" ] ; then
 
   # Use non-free Debian packages if needed
   if [ "${ENABLE_NONFREE}" = yes ] ; then
-    COMPONENTS="main,non-free"
+    COMPONENTS="${COMPONENTS},non-free"
   fi
 
   # Use minbase bootstrap variant which only includes essential packages
-  if [ "$ENABLE_MINBASE" = yes ] ; then
+  if [ "${ENABLE_MINBASE}" = yes ] ; then
     VARIANT="--variant=minbase"
   fi
 
   # Base debootstrap (unpack only)
-  http_proxy=${APT_PROXY} debootstrap --arch="${DEBIAN_RELEASE_ARCH}" --foreign ${VARIANT} --components="${COMPONENTS}" --include="${APT_INCLUDES}" "${DEBIAN_RELEASE}" "${R}" "http://${APT_SERVER}/debian"
+  http_proxy=${APT_PROXY} \
+    debootstrap --arch="${DEBIAN_RELEASE_ARCH}" --foreign ${VARIANT} --components="${COMPONENTS}" --include="${APT_INCLUDES}" \
+                "${DEBIAN_RELEASE}" "${R}" "http://${APT_SERVER}/debian"
+    [ $? -eq 0 ] || exit $?;
 
   # Copy qemu emulator binary to chroot
   install -m 755 -o root -g root "${QEMU_BINARY}" "${R}${QEMU_BINARY}"
 
   # Copy debian-archive-keyring.pgp
   mkdir -p "${R}/usr/share/keyrings"
-  install_readonly /usr/share/keyrings/debian-archive-keyring.gpg "${R}/usr/share/keyrings/debian-archive-keyring.gpg"
+  install_readonly "/usr/share/keyrings/debian-archive-keyring.gpg" "${R}/usr/share/keyrings/debian-archive-keyring.gpg"
 
   # Complete the bootstrapping process
   chroot_exec /debootstrap/debootstrap --second-stage
+  [ $? -eq 0 ] || exit $?;
 
-  echo "Compress rootfs to speed up subsequent builds"
+  echo "Compress rootfs to speed-up next builds"
   tar -czf "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" -C "${BUILDDIR}/" "chroot"
 
 else

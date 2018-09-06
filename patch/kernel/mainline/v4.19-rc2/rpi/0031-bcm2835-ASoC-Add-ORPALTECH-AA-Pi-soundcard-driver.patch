@@ -1,0 +1,233 @@
+From 0b5db77470962d9099e4fa23f02a187a3159f0ae Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Fri, 6 Jul 2018 17:03:19 +0300
+Subject: [PATCH] bcm2835: ASoC: Add ORPALTECH AA-Pi soundcard driver
+
+---
+ sound/soc/bcm/Kconfig            |   7 ++
+ sound/soc/bcm/Makefile           |   3 +
+ sound/soc/bcm/orpal-aapi-sound.c | 183 +++++++++++++++++++++++++++++++
+ 3 files changed, 193 insertions(+)
+ create mode 100644 sound/soc/bcm/orpal-aapi-sound.c
+
+diff --git a/sound/soc/bcm/Kconfig b/sound/soc/bcm/Kconfig
+index 02f50b7..7071d06 100644
+--- a/sound/soc/bcm/Kconfig
++++ b/sound/soc/bcm/Kconfig
+@@ -8,6 +8,13 @@ config SND_BCM2835_SOC_I2S
+ 	  the BCM2835 I2S interface. You will also need
+ 	  to select the audio interfaces to support below.
+ 
++config SND_ORPAL_AAPI
++	tristate "ORPALTECH AA-Pi Soundcard driver for Broadcom BCM2835 family"
++	depends on SND_BCM2835_SOC_I2S
++	select SND_SOC_WM8731
++	help
++	  Say Y or M if you want to add support for ORPALTECH AA-Pi Soundcard.
++
+ config SND_SOC_CYGNUS
+ 	tristate "SoC platform audio for Broadcom Cygnus chips"
+ 	depends on ARCH_BCM_CYGNUS || COMPILE_TEST
+diff --git a/sound/soc/bcm/Makefile b/sound/soc/bcm/Makefile
+index fc739d0..704fa18 100644
+--- a/sound/soc/bcm/Makefile
++++ b/sound/soc/bcm/Makefile
+@@ -8,3 +8,6 @@ snd-soc-cygnus-objs := cygnus-pcm.o cygnus-ssp.o
+ 
+ obj-$(CONFIG_SND_SOC_CYGNUS) += snd-soc-cygnus.o
+ 
++# ORPAL-AA-Pi Soundcard Support
++snd-soc-orpal-aapi-objs	:= orpal-aapi-sound.o
++obj-$(CONFIG_SND_ORPAL_AAPI) += snd-soc-orpal-aapi.o
+diff --git a/sound/soc/bcm/orpal-aapi-sound.c b/sound/soc/bcm/orpal-aapi-sound.c
+new file mode 100644
+index 0000000..2708db6
+--- /dev/null
++++ b/sound/soc/bcm/orpal-aapi-sound.c
+@@ -0,0 +1,183 @@
++/*
++ * ASoC Driver for ORPALTECH AA-Pi Soundcard (capture only).
++ *
++ *  Created on:	06-Jan-2018
++ *  	Author:	Sergey Suloev <ssuloev@orpaltech.com>
++ *
++ * Copyright (C) 2017-2018 ORPAL Technology, Inc.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#include <linux/module.h>
++#include <linux/types.h>
++
++#include <sound/core.h>
++#include <sound/soc.h>
++#include <sound/pcm_params.h>
++#include <sound/control.h>
++
++#include "../codecs/wm8731.h"
++
++#define BOARD_XTAL_FREQ	12288000
++
++static const unsigned int bcm2835_rates[] = {
++        48000, 96000,
++};
++
++static struct snd_pcm_hw_constraint_list bcm2835_constraints = {
++	.list	= bcm2835_rates,
++	.count	= ARRAY_SIZE(bcm2835_rates),
++};
++
++static int orpal_aapi_soundcard_startup(struct snd_pcm_substream *substream)
++{
++	/* Setup constraints, because there is a 12.288 MHz XTAL on the board */
++	snd_pcm_hw_constraint_list(substream->runtime, 0,
++				SNDRV_PCM_HW_PARAM_RATE,
++				&bcm2835_constraints);
++	return 0;
++}
++
++static int orpal_aapi_soundcard_hw_params(struct snd_pcm_substream *substream,
++					  struct snd_pcm_hw_params *params)
++{
++	struct snd_soc_pcm_runtime *rtd = substream->private_data;
++	struct snd_soc_card *card = rtd->card;
++	struct snd_soc_dai *codec_dai = rtd->codec_dai,
++			*cpu_dai = rtd->cpu_dai;
++	int ret;
++
++	/* WM8731 will use BCLK = 64*SR when not in USB mode */
++	ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 64);
++	if (ret < 0) {
++		dev_err(card->dev, "Failed to set BCLK ratio: %d\n", ret);
++		return ret;
++	}
++
++	/* Set sysclk */
++	ret = snd_soc_dai_set_sysclk(codec_dai, WM8731_SYSCLK_XTAL,
++				     BOARD_XTAL_FREQ, SND_SOC_CLOCK_IN);
++	if (ret < 0) {
++		dev_err(card->dev, "Failed to set WM8731 SYSCLK: %d\n", ret);
++		return ret;
++	}
++
++	return 0;
++}
++
++/* machine stream operations */
++static struct snd_soc_ops snd_orpal_aapi_soundcard_ops = {
++	.startup	= orpal_aapi_soundcard_startup,
++	.hw_params	= orpal_aapi_soundcard_hw_params,
++};
++
++static struct snd_soc_dai_link orpal_aapi_soundcard_dai = {
++	.name		= "orpal-aapi-dai",
++	.stream_name	= "orpal-aapi-audio",
++	.cpu_dai_name	= "bcm2835-i2s.0",
++	.codec_dai_name	= "wm8731-hifi",
++	.platform_name	= "bcm2835-i2s.0",
++	.codec_name	= "wm8731.1-001a",
++	.ops		= &snd_orpal_aapi_soundcard_ops,
++	.dai_fmt	= SND_SOC_DAIFMT_CBM_CFM |
++			SND_SOC_DAIFMT_I2S |
++			SND_SOC_DAIFMT_NB_NF,
++};
++
++static const struct snd_soc_dapm_widget wm8731_dapm_widgets[] = {
++	SND_SOC_DAPM_LINE("Line In Jacks", NULL),
++};
++
++static const struct snd_soc_dapm_route orpal_aapi_audio_map[] = {
++	{ "LLINEIN", NULL, "Line In Jacks" },
++	{ "RLINEIN", NULL, "Line In Jacks" },
++};
++
++static struct snd_soc_card snd_soc_orpal_aapi = {
++	.name		= "orpal-aapi-sound",
++	.owner		= THIS_MODULE,
++	.dai_link	= &orpal_aapi_soundcard_dai,
++	.num_links	= 1,
++
++	.dapm_widgets	= wm8731_dapm_widgets,
++	.num_dapm_widgets = ARRAY_SIZE(wm8731_dapm_widgets),
++	.dapm_routes	= orpal_aapi_audio_map,
++	.num_dapm_routes = ARRAY_SIZE(orpal_aapi_audio_map),
++};
++
++static int orpal_aapi_soundcard_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct snd_soc_card *card = &snd_soc_orpal_aapi;
++	int ret;
++
++	card->dev = dev;
++
++	if (dev->of_node) {
++		struct snd_soc_dai_link *dai = card->dai_link;
++		struct device_node *cpu_node = of_parse_phandle(dev->of_node,
++								"cpu-node", 0);
++		struct device_node *codec_node = of_parse_phandle(dev->of_node,
++								"codec-node", 0);
++
++		if (cpu_node) {
++			dai->cpu_dai_name = NULL;
++			dai->cpu_of_node = cpu_node;
++			dai->platform_name = NULL;
++			dai->platform_of_node = cpu_node;
++		} else
++			if (!dai->cpu_of_node) {
++				dev_err(dev,
++					"Property 'cpu-node' missing or invalid\n");
++				return -EINVAL;
++			}
++
++		if (codec_node) {
++			dai->codec_name = NULL;
++			dai->codec_of_node = codec_node;
++		} else
++			if (!dai->codec_of_node) {
++				dev_err(dev,
++					"Property 'codec-node' missing or invalid\n");
++				return -EINVAL;
++			}
++	}
++
++	ret = snd_soc_register_card(card);
++	if (ret && ret != -EPROBE_DEFER) {
++		dev_err(dev, "snd_soc_register_card() failed: (%d)\n", ret);
++	}
++
++	return ret;
++}
++
++static int orpal_aapi_soundcard_remove(struct platform_device *pdev)
++{
++	struct snd_soc_card *card = platform_get_drvdata(pdev);
++	return snd_soc_unregister_card(card);
++}
++
++static const struct of_device_id orpal_aapi_soundcard_of_match[] = {
++	{ .compatible = "orpaltech,aapi-sound", },
++	{},
++};
++MODULE_DEVICE_TABLE(of, orpal_aapi_soundcard_of_match);
++
++static struct platform_driver orpal_aapi_soundcard_driver = {
++	.probe	= orpal_aapi_soundcard_probe,
++	.remove	= orpal_aapi_soundcard_remove,
++	.driver	= {
++		.name		= "orpal-aapi-sound",
++		.of_match_table	= orpal_aapi_soundcard_of_match,
++	},
++};
++module_platform_driver(orpal_aapi_soundcard_driver);
++
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
++MODULE_DESCRIPTION("ORPALTECH AA-Pi Soundcard driver");
++MODULE_LICENSE("GPL v2");
++MODULE_ALIAS("platform:orpal-aapi-sound");
+-- 
+2.18.0
+

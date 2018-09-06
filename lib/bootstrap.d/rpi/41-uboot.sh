@@ -12,7 +12,7 @@ install_readonly "${UBOOT_SOURCE_DIR}/u-boot.bin" "${BOOT_DIR}/u-boot.bin"
 install_readonly "${FILES_DIR}/boot/uboot.mkimage" $BOOT_SCR_CMD
 
 if [ "${KERNEL_ARCH}" = arm64 ] ; then
-  [[ "${KERNEL_USE_MKIMAGE}" = yes ]] && BOOTCMD="bootm" || BOOTCMD="booti"
+  [[ "${KERNEL_MKIMAGE_WRAP}" = yes ]] && BOOTCMD="bootm" || BOOTCMD="booti"
 else
   BOOTCMD="bootz"
 fi
@@ -39,7 +39,7 @@ ${UBOOT_SOURCE_DIR}/tools/mkimage -A "${KERNEL_ARCH}" -O linux -T script -C none
 printf "\n# boot u-boot kernel\nkernel=u-boot.bin\n" >> "${BOOT_DIR}/config.txt"
 
 
-if [ "$KERNEL_ARCH" = "arm64" ] ; then
+if [ "${KERNEL_ARCH}" = arm64 ] ; then
   # See:
   # https://kernelnomicon.org/?p=682
   # https://www.raspberrypi.org/forums/viewtopic.php?f=72&t=137963

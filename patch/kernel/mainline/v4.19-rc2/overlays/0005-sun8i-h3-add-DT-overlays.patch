@@ -1,0 +1,1210 @@
+From 138a2e2e95ad0bc20a6546425342da6725268199 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Wed, 5 Sep 2018 20:36:03 +0300
+Subject: [PATCH] sun8i-h3: add DT-overlays
+
+---
+ arch/arm/boot/dts/Makefile                    |   2 +
+ arch/arm/boot/dts/overlays/Makefile           |  33 +++++
+ .../dts/overlays/README.sun8i-h3-overlays     |  14 +++
+ .../boot/dts/overlays/sun8i-h3-aapi-sound.dts |  44 +++++++
+ arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts  |  67 ++++++++++
+ .../overlays/sun8i-h3-audioinjector-pi.dts    |  45 +++++++
+ arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts |  29 +++++
+ .../dts/overlays/sun8i-h3-ertft0356-drm.dts   | 102 +++++++++++++++
+ .../boot/dts/overlays/sun8i-h3-fixup.scr-cmd  | 116 ++++++++++++++++++
+ .../overlays/sun8i-h3-gy-pcm5102-sound.dts    |  34 +++++
+ arch/arm/boot/dts/overlays/sun8i-h3-ir.dts    |  13 ++
+ .../boot/dts/overlays/sun8i-h3-nrf24-spi.dts  |  71 +++++++++++
+ arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts   |  39 ++++++
+ .../boot/dts/overlays/sun8i-h3-spi-cs1.dts    |  41 +++++++
+ .../arm/boot/dts/overlays/sun8i-h3-spidev.dts |  42 +++++++
+ arch/arm/boot/dts/overlays/sun8i-h3-uart1.dts |  22 ++++
+ arch/arm/boot/dts/overlays/sun8i-h3-uart2.dts |  22 ++++
+ arch/arm/boot/dts/overlays/sun8i-h3-uart3.dts |  22 ++++
+ .../boot/dts/overlays/sun8i-h3-usbhost0.dts   |  20 +++
+ .../boot/dts/overlays/sun8i-h3-usbhost1.dts   |  27 ++++
+ .../boot/dts/overlays/sun8i-h3-usbhost2.dts   |  20 +++
+ .../boot/dts/overlays/sun8i-h3-usbhost3.dts   |  20 +++
+ .../dts/overlays/sun8i-h3-waveshare35-drm.dts |  68 ++++++++++
+ .../overlays/sun8i-h3-waveshare35-fbtft.dts   |  93 ++++++++++++++
+ 24 files changed, 1006 insertions(+)
+ create mode 100644 arch/arm/boot/dts/overlays/Makefile
+ create mode 100644 arch/arm/boot/dts/overlays/README.sun8i-h3-overlays
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-audioinjector-pi.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-ertft0356-drm.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-fixup.scr-cmd
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-ir.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-nrf24-spi.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-spi-cs1.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-spidev.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-uart1.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-uart2.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-uart3.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-usbhost0.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-usbhost1.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-usbhost2.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-usbhost3.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-waveshare35-drm.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-waveshare35-fbtft.dts
+
+diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
+index b5bd3de..98d005e 100644
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -1207,3 +1207,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+ 	aspeed-bmc-opp-zaius.dtb \
+ 	aspeed-bmc-portwell-neptune.dtb \
+ 	aspeed-bmc-quanta-q71l.dtb
++
++subdir-y	:= overlays
+diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
+new file mode 100644
+index 0000000..4743570
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/Makefile
+@@ -0,0 +1,33 @@
++# SPDX-License-Identifier: GPL-2.0
++ifeq ($(CONFIG_OF_OVERLAY),y)
++
++dtbo-$(CONFIG_MACH_SUN8I) += \
++	sun8i-h3-audioinjector-pi.dtbo \
++	sun8i-h3-aapi-sound.dtbo \
++	sun8i-h3-aapi.dtbo \
++	sun8i-h3-dht11.dtbo \
++	sun8i-h3-gy-pcm5102-sound.dtbo \
++	sun8i-h3-ir.dtbo \
++	sun8i-h3-nrf24-spi.dtbo \
++	sun8i-h3-pwm.dtbo \
++	sun8i-h3-spi-cs1.dtbo \
++	sun8i-h3-spidev.dtbo \
++	sun8i-h3-uart1.dtbo \
++	sun8i-h3-uart2.dtbo \
++	sun8i-h3-uart3.dtbo \
++	sun8i-h3-usbhost0.dtbo \
++	sun8i-h3-usbhost2.dtbo \
++	sun8i-h3-usbhost3.dtbo \
++	sun8i-h3-ertft0356-drm.dtbo \
++	sun8i-h3-waveshare35-drm.dtbo \
++	sun8i-h3-waveshare35-fbtft.dtbo
++
++scr-$(CONFIG_MACH_SUN8I) += sun8i-h3-fixup.scr
++
++dtbotxt-$(CONFIG_MACH_SUN8I) += README.sun8i-h3-overlays
++
++targets	+= $(dtbo-y) $(scr-y) $(dtbotxt-y)
++
++endif
++
++extra-y	:= $(dtbo-y) $(scr-y) $(dtbotxt-y)
+diff --git a/arch/arm/boot/dts/overlays/README.sun8i-h3-overlays b/arch/arm/boot/dts/overlays/README.sun8i-h3-overlays
+new file mode 100644
+index 0000000..62eb974
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/README.sun8i-h3-overlays
+@@ -0,0 +1,14 @@
++This document describes overlays provided in the kernel packages
++For generic Armbian overlays documentation please see
++https://docs.armbian.com/User-Guide_Allwinner_overlays/
++
++### Platform:
++
++sun8i-h3 (Allwinner H3)
++
++### Platform details:
++
++Supported pin banks: PA, PC, PD, PG
++
++Both SPI controllers have only one hardware CS pin exposed,
++adding fixed software (GPIO) chip selects is possible with a separate overlay
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts b/arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts
+new file mode 100644
+index 0000000..a90dfb0
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts
+@@ -0,0 +1,44 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
++				    <&i2s0_pins_di>;
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&i2c0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			wm8731: wm8731@1a {
++				#sound-dai-cells = <0>;
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/";
++		__overlay__ {
++			sound {
++				compatible = "orpaltech,aapi-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&wm8731>;
++				status = "okay";
++                        };
++                };
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts b/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts
+new file mode 100644
+index 0000000..b81a9fe
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts
+@@ -0,0 +1,67 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			vna-aapi {
++				compatible = "orpaltech,aapi-160";
++				clocks = <&aapi_clk 0>,
++					 <&aapi_clk 1>;
++				clock-names = "clk0",
++					      "clk1";
++				intermediate-frequency = <10031>;
++				initial-frequency = <14000000>;
++				status = "okay";
++			};
++
++			sound-aapi {
++				compatible = "orpaltech,aapi-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&aapi_codec>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&i2c0>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			aapi_codec: wm8731@1a {
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				#sound-dai-cells = <0>;
++				status = "okay";
++			};
++
++			aapi_clk: clk-aapi@60 {
++				compatible = "orpaltech,aapi-clk-si5351";
++				reg = <0x60>;
++				#clock-cells = <1>;
++				status = "okay";
++
++				xtal-frequency = <27000000>;
++				xtal-correction = <0 0>; /*<corr,sign>*/
++
++				clock-output-names = "clk0", "clk1";
++			};
++		};
++	};
++
++	fragment@2 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_di>;
++			pinctrl-names = "default";
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-audioinjector-pi.dts b/arch/arm/boot/dts/overlays/sun8i-h3-audioinjector-pi.dts
+new file mode 100644
+index 0000000..e1aa824
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-audioinjector-pi.dts
+@@ -0,0 +1,45 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
++				    <&i2s0_pins_do0>, <&i2s0_pins_di>;
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&i2c0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			wm8731: wm8731@1a {
++				#sound-dai-cells = <0>;
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/";
++		__overlay__ {
++			sound {
++				compatible = "flatmax,audioinjector-pi-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&wm8731>;
++				hw-audio-format = <1>; /*I2S*/
++				status = "okay";
++                        };
++                };
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts b/arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts
+new file mode 100644
+index 0000000..8da5556
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts
+@@ -0,0 +1,29 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++                target = <&pio>;
++                __overlay__ {
++                        dht11_pins_0: dht11_pins_0 {
++                                pins = "PA8";           /*pin 31 on 40-pin GPIO connector*/
++                                function = "gpio_in";	/*in*/
++                        };
++                };
++        };
++
++	fragment@1 {
++		target-path="/";
++		__overlay__ {
++			dht11_0: dht11@0 {
++				compatible = "dht11";
++				pinctrl-names = "default";
++                                pinctrl-0 = <&dht11_pins_0>;
++				gpios = <&pio 0 8 0>;
++				status = "okay";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-ertft0356-drm.dts b/arch/arm/boot/dts/overlays/sun8i-h3-ertft0356-drm.dts
+new file mode 100644
+index 0000000..3f66286
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-ertft0356-drm.dts
+@@ -0,0 +1,102 @@
++/*
++ * Device Tree overlay for EastRising 3.5inch TFT LCD 
++ * on SPI bus via TinyDRM
++ */
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&pio>;
++		__overlay__ {
++			ertft_tp_pins: ertft_tp@01 {
++                                pins = "PA1";
++                                function = "gpio_in";
++                        };
++
++			ertft_pins_rst: ertft@02 {
++                                pins = "PA2";
++                                function = "gpio_out";
++                        };
++
++			ertft_pins_dc: ertft@27 {
++                                pins = "PC7";
++                                function = "gpio_out";
++                        };
++
++			ertft_pins_bl: ertft@03 {
++				pins = "PA3";
++				function = "gpio_out";
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&spi0>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			ertft {
++				compatible = "eastrising,er-tft035-6",
++					     "ilitek,ili9488";
++				reg = <0>;
++				spi-max-frequency = <20000000>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&ertft_pins_rst &ertft_pins_dc &ertft_pins_bl>;
++
++				reset-gpios = <&pio 0 2 GPIO_ACTIVE_HIGH>;	/* PA2 */
++				dc-gpios = <&pio 2 7 GPIO_ACTIVE_HIGH>;		/* PC7 */
++
++				rotation = <0>;
++				backlight = <&ertft_bl>;
++				status = "disabled";
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc";
++		__overlay__ {
++			ertft_bl: backlight@03 {
++				compatible = "gpio-backlight";
++				gpios = <&pio 0 3 GPIO_ACTIVE_HIGH>;	/* PA3 */
++			};
++		};
++	};
++
++	fragment@3 {
++		target = <&i2c0>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			ertft_tp {
++				compatible = "focaltech,ft6236";
++				reg = <0x38>;
++
++				pinctrl-names = "default";
++                                pinctrl-0 = <&ertft_tp_pins>;
++
++				interrupt-parent = <&pio>;
++				interrupts = <0 1 IRQ_TYPE_EDGE_FALLING>;	/* PA1 */
++
++				touchscreen-size-x = <320>;
++				touchscreen-size-y = <480>;
++				/*touchscreen-inverted-x;*/
++				/*touchscreen-inverted-y;*/
++				touchscreen-swapped-x-y;
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-fixup.scr-cmd b/arch/arm/boot/dts/overlays/sun8i-h3-fixup.scr-cmd
+new file mode 100644
+index 0000000..8fb1d5c
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-fixup.scr-cmd
+@@ -0,0 +1,116 @@
++# overlays fixup script
++# implements (or rather substitutes) overlay arguments functionality
++# using u-boot scripting, environment variables and "fdt" command
++
++
++if test -n "${param_i2s0_slot_width}"; then
++	fdt set /soc/i2s@1c22000 allwinner,slot-width-override "<${param_i2s0_slot_width}>";
++fi
++
++if test -n "${param_spidev_spi_bus}"; then
++        test "${param_spidev_spi_bus}" = "0" && setenv tmp_spi_path "spi@1c68000"
++        test "${param_spidev_spi_bus}" = "1" && setenv tmp_spi_path "spi@1c69000"
++
++        fdt set /soc/${tmp_spi_path} status "okay"
++        fdt set /soc/${tmp_spi_path}/spidev status "okay"
++
++        if test -n "${param_spidev_max_freq}"; then
++                fdt set /soc/${tmp_spi_path}/spidev spi-max-frequency "<${param_spidev_max_freq}>"
++        fi
++        if test "${param_spidev_spi_cs}" = "1"; then
++                fdt set /soc/${tmp_spi_path}/spidev reg "<1>"
++        fi
++
++        env delete tmp_spi_path
++fi
++
++if test -n "${param_nrf24_spi_bus}"; then
++        test "${param_nrf24_spi_bus}" = "0" && setenv tmp_spi_path "spi@1c68000"
++        test "${param_nrf24_spi_bus}" = "1" && setenv tmp_spi_path "spi@1c69000"
++
++        fdt set /soc/${tmp_spi_path} status "okay"
++        fdt set /soc/${tmp_spi_path}/nrf24 status "okay"
++
++        if test -n "${param_nrf24_max_freq}"; then
++                fdt set /soc/${tmp_spi_path}/nrf24 spi-max-frequency "<${param_nrf24_max_freq}>"
++        fi
++        if test "${param_nrf24_spi_cs}" = "1"; then
++                fdt set /soc/${tmp_spi_path}/nrf24 reg "<1>"
++        fi
++
++        env delete tmp_spi_path
++fi
++
++if test "${param_waveshare35_spi_bus}" = "0"; then
++	setenv tmp_spi_path "spi@1c68000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/waveshare35 status "okay"
++	fdt set /soc/${tmp_spi_path}/waveshare35_ts status "okay"
++
++	if test -n "${param_waveshare35_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/waveshare35 spi-max-frequency "<${param_waveshare35_max_freq}>"
++	fi
++	if test -n "${param_waveshare35_rotation}"; then
++		fdt set /soc/${tmp_spi_path}/waveshare35 rotation "<${param_waveshare35_rotation}>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test "${param_ertft_spi_bus}" = "0"; then
++	setenv tmp_spi_path "spi@1c68000"
++	setenv tmp_i2c_path "i2c@1c2ac00"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/ertft status "okay"
++	fdt set /soc/${tmp_i2c_path} status "okay"
++	fdt set /soc/${tmp_i2c_path}/ertft_tp status "okay"
++
++	if test -n "${param_ertft_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/ertft spi-max-frequency "<${param_ertft_max_freq}>"
++	fi
++	if test -n "${param_ertft_rotation}"; then
++		fdt set /soc/${tmp_spi_path}/ertft rotation "<${param_ertft_rotation}>"
++	fi
++
++	if test "${param_ertft_tp_inverted_x}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-inverted-x
++	fi
++	if test "${param_ertft_tp_inverted_y}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-inverted-y
++	fi
++	if test "${param_ertft_tp_swapped_x_y}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-swapped-x-y
++	fi
++
++	env delete tmp_spi_path
++	env delete tmp_i2c_path
++fi
++
++if test "${param_uart1_rtscts}" = "1"; then
++	fdt get value tmp_phandle1 /soc/pinctrl@01c20800/uart1 phandle
++	fdt get value tmp_phandle2 /soc/pinctrl@01c20800/uart1_rts_cts phandle
++	fdt set /soc/serial@01c28400 pinctrl-names "default" "default"
++	fdt set /soc/serial@01c28400 pinctrl-0 "<${tmp_phandle1}>"
++	fdt set /soc/serial@01c28400 pinctrl-1 "<${tmp_phandle2}>"
++	env delete tmp_phandle1 tmp_phandle2
++fi
++
++if test "${param_uart2_rtscts}" = "1"; then
++	fdt get value tmp_phandle1 /soc/pinctrl@01c20800/uart2 phandle
++	fdt get value tmp_phandle2 /soc/pinctrl@01c20800/uart2_rts_cts phandle
++	fdt set /soc/serial@01c28800 pinctrl-names "default" "default"
++	fdt set /soc/serial@01c28800 pinctrl-0 "<${tmp_phandle1}>"
++	fdt set /soc/serial@01c28800 pinctrl-1 "<${tmp_phandle2}>"
++	env delete tmp_phandle1 tmp_phandle2
++fi
++
++if test "${param_uart3_rtscts}" = "1"; then
++	fdt get value tmp_phandle1 /soc/pinctrl@01c20800/uart3 phandle
++	fdt get value tmp_phandle2 /soc/pinctrl@01c20800/uart3_rts_cts phandle
++	fdt set /soc/serial@01c28c00 pinctrl-names "default" "default"
++	fdt set /soc/serial@01c28c00 pinctrl-0 "<${tmp_phandle1}>"
++	fdt set /soc/serial@01c28c00 pinctrl-1 "<${tmp_phandle2}>"
++	env delete tmp_phandle1 tmp_phandle2
++fi
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts b/arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts
+new file mode 100644
+index 0000000..da479c8
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts
+@@ -0,0 +1,34 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-0 = <&i2s0_pins_bclk>,
++				    <&i2s0_pins_lrck>,
++				    <&i2s0_pins_do0>;
++			pinctrl-names = "default";
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target-path = "/soc/";
++		__overlay__ {
++			pcm5102: pcm5102a-i2s@0 {
++				compatible = "ti,pcm5102a";
++				status = "okay";
++			};
++
++			sound-pcm5102 {
++				compatible = "orpaltech,gy-pcm5102-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&pcm5102>;
++				status = "okay";
++                        };
++                };
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-ir.dts b/arch/arm/boot/dts/overlays/sun8i-h3-ir.dts
+new file mode 100644
+index 0000000..6e413f1
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-ir.dts
+@@ -0,0 +1,13 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&i2c0>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-nrf24-spi.dts b/arch/arm/boot/dts/overlays/sun8i-h3-nrf24-spi.dts
+new file mode 100644
+index 0000000..eae2d1a
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-nrf24-spi.dts
+@@ -0,0 +1,71 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++        compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@01c68000";
++			spi1 = "/soc/spi@01c69000";
++		};
++	};
++
++	fragment@1 {
++                target = <&pio>;
++                __overlay__ {
++                        nrf24_int: nrf24@14 {
++				pins = "PA14";		/*pin 10 on 40-pin GPIO connector*/
++				function = "gpio_in";	/*in*/
++			};
++
++			nrf24_ce: nrf24@13 {
++				pins = "PA13";		/*pin 8 on 40-pin GPIO connector */
++				function = "gpio_out";	/*out*/
++			};
++		};
++	};
++
++
++	fragment@2 {
++		target = <&spi0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			nrf24 {
++				compatible = "nordic,nrf24";
++				reg = <0>; /* CS0 */
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_int &nrf24_ce>;
++				interrupt-parent = <&pio>;
++				interrupts = <0 14 2>;		/* PA14, irq, falling edge */
++				irq-gpios = <&pio 0 14 0>;	/* PA14, pio, */
++				ce-gpios = <&pio 0 13 0>;	/* PA13, pio  */
++				spi-max-frequency = <8000000>;
++			};
++		};
++	};
++
++	fragment@3 {
++		target = <&spi1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			nrf24 {
++				compatible = "nordic,nrf24";
++				reg = <0>; /* CS0 */
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_int &nrf24_ce>;
++				interrupt-parent = <&pio>;
++				interrupts = <0 14 2>;		/* PA14, irq, falling edge */
++				irq-gpios = <&pio 0 14 0>;	/* PA14, pio, */
++				ce-gpios = <&pio 0 13 0>;	/* PA13, pio  */
++				spi-max-frequency = <8000000>;
++			};
++		};
++	
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts b/arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts
+new file mode 100644
+index 0000000..ed3b8e6
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts
+@@ -0,0 +1,39 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target-path = "/chosen";
++		__overlay__ {
++			/delete-property/ stdout-path;
++		};
++	};
++
++	fragment@1 {
++		target = <&uart0>;
++		__overlay__ {
++			status = "disabled";
++		};
++	};
++
++	fragment@2 {
++		target = <&pio>;
++		__overlay__ {
++			pwm0_pin: pwm0 {
++				pins = "PA5";
++				function = "pwm0";
++			};
++		};
++	};
++
++	fragment@3 {
++		target = <&pwm>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&pwm0_pin>;
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-spi-cs1.dts b/arch/arm/boot/dts/overlays/sun8i-h3-spi-cs1.dts
+new file mode 100644
+index 0000000..83016ea
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-spi-cs1.dts
+@@ -0,0 +1,41 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&pio>;
++		__overlay__ {
++			spi0_cs1: spi0@1 {
++				pins = "PA21";
++				function = "gpio_out";
++				output-high;
++			};
++
++			spi1_cs1: spi1@1 {
++				pins = "PA10";
++				function = "gpio_out";
++				output-high;
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&spi0>;
++		__overlay__ {
++			pinctrl-names = "default", "default";
++			pinctrl-1 = <&spi0_cs1>;
++			cs-gpios = <0>, <&pio 0 21 0>; /* PA21 */
++		};
++	};
++
++	fragment@2 {
++		target = <&spi1>;
++		__overlay__ {
++			pinctrl-names = "default", "default";
++			pinctrl-1 = <&spi1_cs1>;
++			cs-gpios = <0>, <&pio 0 10 0>; /* PA10 */
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-spidev.dts b/arch/arm/boot/dts/overlays/sun8i-h3-spidev.dts
+new file mode 100644
+index 0000000..a34c88f
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-spidev.dts
+@@ -0,0 +1,42 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@01c68000";
++			spi1 = "/soc/spi@01c69000";
++		};
++	};
++
++	fragment@1 {
++		target = <&spi0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			spidev {
++				compatible = "spidev";
++				status = "disabled";
++				reg = <0>;
++				spi-max-frequency = <2000000>;
++			};
++		};
++	};
++
++	fragment@2 {
++		target = <&spi1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			spidev {
++				compatible = "spidev";
++				status = "disabled";
++				reg = <0>;
++				spi-max-frequency = <2000000>;
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-uart1.dts b/arch/arm/boot/dts/overlays/sun8i-h3-uart1.dts
+new file mode 100644
+index 0000000..8a4f7e4
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-uart1.dts
+@@ -0,0 +1,22 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			serial1 = "/soc/serial@01c28400";
++		};
++	};
++
++	fragment@1 {
++		target = <&uart1>;
++		 __overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&uart1_pins>;
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-uart2.dts b/arch/arm/boot/dts/overlays/sun8i-h3-uart2.dts
+new file mode 100644
+index 0000000..499a1b4
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-uart2.dts
+@@ -0,0 +1,22 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			serial2 = "/soc/serial@01c28800";
++		};
++	};
++
++	fragment@1 {
++		target = <&uart2>;
++		 __overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&uart2_pins>;
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-uart3.dts b/arch/arm/boot/dts/overlays/sun8i-h3-uart3.dts
+new file mode 100644
+index 0000000..b5734c5
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-uart3.dts
+@@ -0,0 +1,22 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			serial3 = "/soc/serial@01c28c00";
++		};
++	};
++
++	fragment@1 {
++		target = <&uart3>;
++		 __overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&uart3_pins>;
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-usbhost0.dts b/arch/arm/boot/dts/overlays/sun8i-h3-usbhost0.dts
+new file mode 100644
+index 0000000..ff1d82f
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-usbhost0.dts
+@@ -0,0 +1,20 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&ehci0>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&ohci0>;
++		 __overlay__ {
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-usbhost1.dts b/arch/arm/boot/dts/overlays/sun8i-h3-usbhost1.dts
+new file mode 100644
+index 0000000..1a919ac
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-usbhost1.dts
+@@ -0,0 +1,27 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&ehci1>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&ohci1>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@2 {
++		target = <&usbphy>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-usbhost2.dts b/arch/arm/boot/dts/overlays/sun8i-h3-usbhost2.dts
+new file mode 100644
+index 0000000..bf0c4f5
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-usbhost2.dts
+@@ -0,0 +1,20 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&ehci2>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&ohci2>;
++		 __overlay__ {
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-usbhost3.dts b/arch/arm/boot/dts/overlays/sun8i-h3-usbhost3.dts
+new file mode 100644
+index 0000000..f737075
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-usbhost3.dts
+@@ -0,0 +1,20 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&ehci3>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&ohci3>;
++		 __overlay__ {
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-waveshare35-drm.dts b/arch/arm/boot/dts/overlays/sun8i-h3-waveshare35-drm.dts
+new file mode 100644
+index 0000000..7f970e9
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-waveshare35-drm.dts
+@@ -0,0 +1,68 @@
++/*
++ * Device Tree overlay for Waveshare 3.5inch TFT LCD
++ * on SPI via TinyDRM
++ */
++
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&pio>;
++		__overlay__ {
++			waveshare35_int: waveshare35@01 {
++				pins = "PA1";
++				function = "gpio_in";
++			};
++			waveshare35_rst: waveshare35@02 {
++                                pins = "PA2";
++                                function = "gpio_out";
++                        };
++			waveshare35_dc: waveshare35@27 {
++                                pins = "PC7";
++                                function = "gpio_out";
++                        };
++		};
++	};
++
++	fragment@1 {
++		target = <&spi0>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			waveshare35 {
++				compatible = "waveshare,rpi-lcd-35",
++					     "ilitek,ili9486";
++				reg = <0>;
++				spi-max-frequency = <16000000>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&waveshare35_int>,
++					    <&waveshare35_rst>,
++					    <&waveshare35_dc>;
++				reset-gpios = <&pio 0 2 0>;	/* PA2 */
++				dc-gpios = <&pio 2 7 0>;	/* PC7 */
++				rotation = <0>;
++				status = "disabled";
++			};
++
++			waveshare35_ts {
++				compatible = "ti,ads7846";
++				reg = <1>;
++				spi-max-frequency = <2000000>;
++				interrupts = <0 1 IRQ_TYPE_EDGE_FALLING>; /* PA1, irq */
++				interrupt-parent = <&pio>;
++				pendown-gpio = <&pio 0 1 0>; /* PA1 */
++				ti,swap-xy;
++				ti,x-plate-ohms = /bits/ 16 <60>;
++				ti,pressure-max = /bits/ 16 <255>;
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-waveshare35-fbtft.dts b/arch/arm/boot/dts/overlays/sun8i-h3-waveshare35-fbtft.dts
+new file mode 100644
+index 0000000..3695986
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-waveshare35-fbtft.dts
+@@ -0,0 +1,93 @@
++/*
++ * Device Tree overlay for waveshare 3.5inch TFT LCD(A)
++ * via FBTFT
++ */
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++                target-path = "/aliases";
++                __overlay__ {
++                        spi0 = "/soc/spi@01c68000";
++                };
++        };
++
++	fragment@1 {
++		target = <&pio>;
++		__overlay__ {
++			waveshare35a_int: waveshare35a_int {
++                                pins = "PA1";
++                                function = "gpio_in";
++                        };
++                        waveshare35a_rst: waveshare35a_rst {
++                                pins = "PA2";
++                                function = "gpio_out";
++                        };
++                        waveshare35a_dc: waveshare35a_dc {
++                                pins = "PC7";
++                                function = "gpio_out";
++                        };
++
++		};
++	};
++
++	fragment@2 {
++		target = <&spi0>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			waveshare35a: waveshare35a {
++				compatible = "ilitek,ili9486";
++				reg = <0>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&waveshare35a_int &waveshare35a_rst &waveshare35a_dc>;
++
++				spi-max-frequency = <16000000>;
++				txbuflen = <32768>;
++				rotate = <90>;
++				bgr = <0>;
++				fps = <30>;
++				buswidth = <8>;
++				regwidth = <16>;
++				reset-gpios = <&pio 0 2 0>;	/* PA2, pio out */
++				dc-gpios = <&pio 2 7 0>;	/* PC7, pio out */
++				debug = <0>;
++
++				init = <0x10000b0 0x00
++				        0x1000011
++					0x20000ff
++					0x100003a 0x55
++					0x1000036 0x28
++					0x10000c2 0x44
++					0x10000c5 0x00 0x00 0x00 0x00
++					0x10000e0 0x0f 0x1f 0x1c 0x0c 0x0f 0x08 0x48 0x98 0x37 0x0a 0x13 0x04 0x11 0x0d 0x00
++					0x10000e1 0x0f 0x32 0x2e 0x0b 0x0d 0x05 0x47 0x75 0x37 0x06 0x10 0x03 0x24 0x20 0x00
++					0x10000e2 0x0f 0x32 0x2e 0x0b 0x0d 0x05 0x47 0x75 0x37 0x06 0x10 0x03 0x24 0x20 0x00
++					/* piscreen -> waveshare35a */
++					0x1000036 0x28
++					0x1000011
++					0x1000029>;
++			};
++
++			waveshare35a_ts: waveshare35a_ts {
++				compatible = "ti,ads7846";
++				reg = <1>;
++				spi-max-frequency = <2000000>;
++
++				interrupts = <0 1 2>;		/* PA1, interrupt, falling edge */
++				interrupt-parent = <&pio>;
++				pendown-gpio = <&pio 0 1 0>;	/* PA1, pio in */
++
++				ti,x-plate-ohms = /bits/ 16 <60>;
++				ti,pressure-max = /bits/ 16 <255>;
++			};
++		};
++	};
++};
+-- 
+2.17.1
+

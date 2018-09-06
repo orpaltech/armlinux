@@ -7,19 +7,19 @@ SRCDIR=$BASEDIR/sources
 LIBDIR=$BASEDIR/lib
 TOOLCHAINDIR=$BASEDIR/toolchains
 OUTPUTDIR=$BASEDIR/output
+CONFIG=${CONFIG:="armlinux"}
+ARMLINUX_CONF=$BASEDIR/${CONFIG}.conf
 
 . $LIBDIR/common.sh
+. $LIBDIR/update-packages.sh
 
 #--------------------------------------------------------------
 
-if [ ! -f $BASEDIR/armlinux.conf ] ; then
+if [ ! -f $ARMLINUX_CONF ] ; then
     echo "No config file found. Cannot continue."
     exit 1
 fi
-
-display_alert "Using config file" "${BASEDIR}/armlinux.conf" "info"
-
-. $BASEDIR/armlinux.conf
+. $ARMLINUX_CONF
 
 # ---------------------------------------------------------------
 # Start background sudo monitor
@@ -33,6 +33,8 @@ if [ ! -d "${BUILD_EXTRA_DIR}" ] ; then
   echo "error: '${BUILD_EXTRA_DIR}' directory not found!"
   exit 1
 fi
+
+get_host_pkgs
 
 if [ -z "${BOARD}" ] ; then
 . $LIBDIR/ui/board-select.sh
@@ -54,30 +56,29 @@ fi
 
 [[ -z "${FIRMWARE_NAME}" ]] && FIRMWARE_NAME="${SOC_FAMILY}"
 
-FIRMWARE_BASE_DIR=$SRCDIR/firmware
-FIRMWARE_SOURCE_DIR=$FIRMWARE_BASE_DIR/$FIRMWARE_NAME
+FIRMWARE_BASE_DIR=${SRCDIR}/firmware
+FIRMWARE_SOURCE_DIR=${FIRMWARE_BASE_DIR}/${FIRMWARE_NAME}
 
-UBOOT_BASE_DIR=$SRCDIR/u-boot
-KERNEL_BASE_DIR=$SRCDIR/linux-$KERNEL_REPO_NAME
+UBOOT_BASE_DIR=${SRCDIR}/u-boot
+KERNEL_BASE_DIR=${SRCDIR}/linux-${KERNEL_REPO_NAME}
 
 
-. $LIBDIR/update-packages.sh
-. $LIBDIR/update-sources.sh
-. $LIBDIR/compile.sh
-. $LIBDIR/create-image.sh
+. ${LIBDIR}/update-sources.sh
+. ${LIBDIR}/compile.sh
+. ${LIBDIR}/create-image.sh
 
 # ---------------------------------------------------------------
 
-echo "Selected platform: ${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_ARCH}])"
+display_alert "Build configuration:" "${CONFIG}" "info"
+display_alert "Selected platform:" "${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_ARCH}])" "info"
+
 
 # ---------------------------------------------------------------
 # Prepare build system
 # ---------------------------------------------------------------
 
-TICKS_BEGIN=$SECONDS
+TICKS_BEGIN=${SECONDS}
 DATETIME_BEGIN=$(date '+%d/%m/%Y %H:%M:%S')
-
-get_host_pkgs
 
 get_toolchains
 
@@ -94,6 +95,8 @@ patch_kernel
 # ---------------------------------------------------------------
 # Build U-boot & Kernel & optional firmware
 # ---------------------------------------------------------------
+
+display_alert "Selected toolchain:" "${CROSS_COMPILE}gcc" "ext"
 
 compile_firmware
 

@@ -3,7 +3,7 @@
 #
 
 # Install and setup APT proxy configuration
-if [ -z "$APT_PROXY" ] ; then
+if [ -z "${APT_PROXY}" ] ; then
   install_readonly "${FILES_DIR}/apt/10proxy" "${ETC_DIR}/apt/apt.conf.d/10proxy"
   sed -i "s/\"\"/\"${APT_PROXY}\"/" "${ETC_DIR}/apt/apt.conf.d/10proxy"
 fi
@@ -24,14 +24,12 @@ fi
 chroot_exec apt-get -qq -y update
 chroot_exec apt-get -qq -y -u dist-upgrade
 
-if [ -d ${BOOTSTRAP_D}/packages ] ; then
-  pkgcount=$(ls ${BOOTSTRAP_D}/packages/*.deb 2> /dev/null | wc -l)
-  if [ $pkgcount -gt 0 ] ; then
-    for package in ${BOOTSTRAP_D}/packages/*.deb ; do
-      cp $package ${R}/tmp
-      chroot_exec dpkg --unpack /tmp/$(basename $package)
-    done
-  fi
+local PKG_COUNT=$(count_files "${BOOTSTRAP_D}/${CONFIG}/packages/*.deb")
+if [ $PKG_COUNT -gt 0 ] ; then
+  for package in ${BOOTSTRAP_D}/${CONFIG}/packages/*.deb ; do
+    cp $package ${R}/tmp
+    chroot_exec dpkg --unpack /tmp/$(basename $package)
+  done
 fi
 
 chroot_exec apt-get -qq -y -f install $(echo "${APT_INCLUDES}" | sed -e 's/,/ /g')
