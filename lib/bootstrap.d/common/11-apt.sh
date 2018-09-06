@@ -24,7 +24,7 @@ fi
 chroot_exec apt-get -qq -y update
 chroot_exec apt-get -qq -y -u dist-upgrade
 
-local PKG_COUNT=$(count_files "${BOOTSTRAP_D}/${CONFIG}/packages/*.deb")
+PKG_COUNT=$(count_files "${BOOTSTRAP_D}/${CONFIG}/packages/*.deb")
 if [ $PKG_COUNT -gt 0 ] ; then
   for package in ${BOOTSTRAP_D}/${CONFIG}/packages/*.deb ; do
     cp $package ${R}/tmp
