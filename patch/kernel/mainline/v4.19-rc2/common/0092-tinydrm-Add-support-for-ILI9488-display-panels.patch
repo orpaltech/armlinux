@@ -1,6 +1,6 @@
-From b0de7ca8a9d238ce1c53a48308996dbec539df14 Mon Sep 17 00:00:00 2001
+From 41a8f3da141362f26abd318188e0e73e6dbe7627 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 1 Sep 2018 23:09:04 +0300
+Date: Thu, 6 Sep 2018 21:58:46 +0300
 Subject: [PATCH] tinydrm: Add support for ILI9488 display panels
 
 ---
@@ -13,23 +13,23 @@ Subject: [PATCH] tinydrm: Add support for ILI9488 display panels
  create mode 100644 drivers/gpu/drm/tinydrm/ili9488.h
 
 diff --git a/drivers/gpu/drm/tinydrm/Kconfig b/drivers/gpu/drm/tinydrm/Kconfig
-index 16f4b5c..5967726 100644
+index 16f4b5c..9efdae2 100644
 --- a/drivers/gpu/drm/tinydrm/Kconfig
 +++ b/drivers/gpu/drm/tinydrm/Kconfig
 @@ -31,6 +31,17 @@ config TINYDRM_ILI9341
  
  	  If M is selected the module will be called ili9341.
  
-+config TINYDRM_ILI9486
-+	tristate "DRM support for ILI9486 display panels"
++config TINYDRM_ILI9488
++	tristate "DRM support for ILI9488 display panels"
 +	depends on DRM_TINYDRM && SPI
 +	depends on BACKLIGHT_CLASS_DEVICE
 +	select TINYDRM_MIPI_DBI
 +	help
-+	  DRM driver for the following Ilitek ILI9486 panels:
-+	  * Waveshare 3.5inch RPi LCD, 320*480
++	  DRM driver for the following Ilitek ILI9488 panels:
++	  * EastRising 3.5inch LCD, 320*480
 +
-+	  If M is selected the module will be called ili9486.
++	  If M is selected the module will be called ili9488.
 +
  config TINYDRM_MI0283QT
  	tristate "DRM support for MI0283QT"
