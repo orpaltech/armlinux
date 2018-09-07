@@ -9,8 +9,8 @@ cd $SRCDIR
 
 # adjust symlinks to be relative
 if [ ! -f ./sysroot-relativelinks.py ] ; then
-        wget "https://raw.githubusercontent.com/riscv/riscv-poky/master/scripts/sysroot-relativelinks.py"
-        chmod +x ./sysroot-relativelinks.py
+	wget "https://raw.githubusercontent.com/riscv/riscv-poky/master/scripts/sysroot-relativelinks.py"
+	chmod +x ./sysroot-relativelinks.py
 fi
 ./sysroot-relativelinks.py $TARGET_DIR
 

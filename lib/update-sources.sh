@@ -5,15 +5,15 @@
 get_uboot_source()
 {
 	local BRANCH_FIXED=$(echo $UBOOT_REPO_BRANCH | sed -e 's/\//-/g')
-        UBOOT_SOURCE_DIR=$UBOOT_BASE_DIR/$BRANCH_FIXED
+        UBOOT_SOURCE_DIR="${UBOOT_BASE_DIR}/${BRANCH_FIXED}"
 
-        if [ -d $UBOOT_SOURCE_DIR ] && [ -d $UBOOT_SOURCE_DIR/.git ] ; then
+        if [ -d "${UBOOT_SOURCE_DIR}" ] && [ -d "${UBOOT_SOURCE_DIR}/.git" ] ; then
 		local UBOOT_OLD_URL=$(git -C $UBOOT_SOURCE_DIR config --get remote.origin.url)
 		if [ "${UBOOT_OLD_URL}" != "${UBOOT_REPO_URL}" ] ; then
 			rm -rf $UBOOT_SOURCE_DIR
 		fi
 	fi
-	if [ -d $UBOOT_SOURCE_DIR ] && [ -d $UBOOT_SOURCE_DIR/.git ] ; then
+	if [ -d "${UBOOT_SOURCE_DIR}" ] && [ -d "${UBOOT_SOURCE_DIR}/.git" ] ; then
 		display_alert "Updating U-Boot from" "${UBOOT_REPO_URL} | ${UBOOT_REPO_BRANCH}" "info"
 
                 # update sources
@@ -36,7 +36,7 @@ get_uboot_source()
                 git clone $UBOOT_REPO_URL -b $UBOOT_REPO_BRANCH --tags --depth=1 $UBOOT_SOURCE_DIR
         fi
 
-        if [ ! -z "${UBOOT_REPO_TAG}" ] ; then
+        if [ -n "${UBOOT_REPO_TAG}" ] ; then
 		display_alert "Checking out u-boot tag" "tags/${UBOOT_REPO_TAG}" "info"
 		git -C $UBOOT_SOURCE_DIR checkout tags/$UBOOT_REPO_TAG
 	fi
@@ -51,9 +51,9 @@ copy_patches()
 {
 	local PATCH_SRC_DIR=$1
 	local PATCH_TMP_DIR=$2
-	local PATCH_OVERLAY_DIR=$PATCH_SRC_DIR/overlays
-	local PATCH_SOC_DIR=$PATCH_SRC_DIR/$SOC_FAMILY
-	local PATCH_BOARD_DIR=$PATCH_SOC_DIR/$BOARD
+	local PATCH_OVERLAY_DIR="${PATCH_SRC_DIR}/overlays"
+	local PATCH_SOC_DIR="${PATCH_SRC_DIR}/${SOC_FAMILY}"
+	local PATCH_BOARD_DIR="${PATCH_SOC_DIR}/${BOARD}"
 
 	#
 	# Phase 1 - copy common patches
@@ -64,7 +64,7 @@ copy_patches()
 	#
 	# Pahes 2 - copy SoC-spec patches, allow ovewrite the common patches
 	#
-	if [ -d $PATCH_SOC_DIR ] ; then
+	if [ -d "${PATCH_SOC_DIR}" ] ; then
 		echo "--- 2) Copy SoC-specific patches from '${PATCH_SOC_DIR}'"
 		cp $PATCH_SOC_DIR/*.patch $PATCH_TMP_DIR/ 2> /dev/null
 	fi
@@ -72,7 +72,7 @@ copy_patches()
 	#
 	# Phase 3 - copy board-spec patches, allow ovewrite the common & SoC-spec patches
 	#
-	if [ -d $PATCH_BOARD_DIR ] ; then
+	if [ -d "${PATCH_BOARD_DIR}" ] ; then
 		echo "--- 3) Copy board-specific patches '${PATCH_BOARD_DIR}'"
 		cp $PATCH_BOARD_DIR/*.patch $PATCH_TMP_DIR/ 2> /dev/null
 	fi
@@ -80,7 +80,7 @@ copy_patches()
 	#
 	# Phase 4 - kernel specific - copy DT-overlay patches
 	#
-	if [ ! -z "${OVERLAY_PREFIX}" ]  &&  [ -d $PATCH_OVERLAY_DIR ] ; then
+	if [ ! -z "${OVERLAY_PREFIX}" ]  &&  [ -d "${PATCH_OVERLAY_DIR}" ] ; then
 		local PATCHFILE=$(find $PATCH_OVERLAY_DIR -regextype posix-extended -regex ".*[0-9]+-${OVERLAY_PREFIX}-.*\.patch")
 		if [ ! -z "${PATCHFILE}" ] && [ -f $PATCHFILE ] ; then
 			echo "--- 4) Copy DT-overlays patch '${PATCHFILE}'"
@@ -98,7 +98,7 @@ patch_uboot()
 
 	rm -rf $PATCH_OUT_DIR/u-boot.*
 
-	if [[ "$UBOOT_DISABLE_PATCH" != "yes"  &&  -d $PATCH_BASE_DIR ]] ; then
+	if [ "${UBOOT_PATCH_DISABLE}" != yes ]  && [ -d "${PATCH_BASE_DIR}" ] ; then
 		local PATCH_TMP_DIR=$(mktemp -u $PATCH_OUT_DIR/u-boot.XXXXXXXXX)
 
 		# Prepare files for patching
@@ -106,12 +106,18 @@ patch_uboot()
 
 		echo "Copy U-Boot base patches"
 
-		copy_patches $PATCH_BASE_DIR	$PATCH_TMP_DIR
+		# Copy normal-priority patches
+		copy_patches $PATCH_BASE_DIR $PATCH_TMP_DIR
 
-		if [ -d $PATCH_BASE_DIR/$UBOOT_REPO_TAG ] ; then
-			echo "Copy U-Boot tag-specific patches for '${UBOOT_REPO_TAG}', allow ovewrite base patches"
+		# Check if high-priority patches are available and, if yes, copy too
+		local PATCH_HIGH_DIR="${UBOOT_PATCH_HIGH_DIR}"
+		if [ -z "${PATCH_HIGH_DIR}" ] ; then
+			PATCH_HIGH_DIR="${UBOOT_REPO_TAG}"
+		fi
+		if [ -n "${PATCH_HIGH_DIR}" ]  && [ -d "${PATCH_BASE_DIR}/${PATCH_HIGH_DIR}" ] ; then
+			echo "Copy U-Boot high-priority patches from '${PATCH_HIGH_DIR}', allow ovewrite base patches"
 
-			copy_patches $PATCH_BASE_DIR/$UBOOT_REPO_TAG	$PATCH_TMP_DIR
+			copy_patches $PATCH_BASE_DIR/$PATCH_HIGH_DIR  $PATCH_TMP_DIR
 		fi
 
 		display_alert "Patching U-Boot..." "" "info"
@@ -136,9 +142,9 @@ patch_uboot()
 get_kernel_source()
 {
 	local BRANCH_FIXED=$(echo $KERNEL_REPO_BRANCH | sed -e 's/\//-/g')
-	KERNEL_SOURCE_DIR="$KERNEL_BASE_DIR/$BRANCH_FIXED"
+	KERNEL_SOURCE_DIR="${KERNEL_BASE_DIR}/${BRANCH_FIXED}"
 
-	if [ -d $KERNEL_SOURCE_DIR ] && [ -d $KERNEL_SOURCE_DIR/.git ] ; then
+	if [ -d "${KERNEL_SOURCE_DIR}" ] && [ -d "${KERNEL_SOURCE_DIR}/.git" ] ; then
                 local KERNEL_OLD_URL=$(git -C $KERNEL_SOURCE_DIR config --get remote.origin.url)
                 if [ "${KERNEL_OLD_URL}" != "${KERNEL_REPO_URL}" ] ; then
 			echo "Kernel repository has changed, clean up directory ?"
@@ -147,7 +153,7 @@ get_kernel_source()
                 fi
         fi
 
-	if [ -d $KERNEL_SOURCE_DIR ] && [ -d $KERNEL_SOURCE_DIR/.git ] ; then
+	if [ -d "${KERNEL_SOURCE_DIR}" ] && [ -d "${KERNEL_SOURCE_DIR}/.git" ] ; then
 		display_alert "Updating kernel from" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_BRANCH}" "info"
 
 		# update sources
@@ -168,7 +174,7 @@ get_kernel_source()
 		git clone $KERNEL_REPO_URL -b $KERNEL_REPO_BRANCH --depth=1 --tags $KERNEL_SOURCE_DIR
 	fi
 
-	if [ ! -z $KERNEL_REPO_TAG ] ; then
+	if [ -n "${KERNEL_REPO_TAG}" ] ; then
 		display_alert "Checking out kernel tag" "tags/${KERNEL_REPO_TAG}" "info"
 		git -C $KERNEL_SOURCE_DIR checkout tags/$KERNEL_REPO_TAG
 	fi
@@ -185,7 +191,7 @@ patch_kernel()
 
 	rm -rf $PATCH_OUT_DIR/kernel.*
 
-	if [[ "$KERNEL_DISABLE_PATCH" != "yes"  &&  -d $PATCH_BASE_DIR ]] ; then
+	if [[ "${KERNEL_PATCH_DISABLE}" != "yes"  &&  -d "${PATCH_BASE_DIR}" ]] ; then
                 local PATCH_TMP_DIR=$(mktemp -u $PATCH_OUT_DIR/kernel.XXXXXXXXX)
 
 		display_alert "Patching kernel..." "" "info"
@@ -194,12 +200,18 @@ patch_kernel()
 
                 echo "Copy Kernel base patches"
 
-                copy_patches $PATCH_BASE_DIR	$PATCH_TMP_DIR
+		# Copy base/normal-priority patches
+                copy_patches $PATCH_BASE_DIR $PATCH_TMP_DIR
 
-                if [ -d $PATCH_BASE_DIR/$KERNEL_REPO_TAG ] ; then
-                        echo "Copy Kernel tag-specific patches for '${KERNEL_REPO_TAG}', allow ovewrite base patches"
+		# Check if high-priority patches are available and, if yes, copy too
+		local PATCH_HIGH_DIR="${KERNEL_PATCH_HIGH_DIR}"
+		if [ -z "${PATCH_HIGH_DIR}" ] ; then
+			PATCH_HIGH_DIR="${KERNEL_REPO_TAG}"
+		fi
+                if [ -n "${PATCH_HIGH_DIR}" ] && [ -d "${PATCH_BASE_DIR}/${PATCH_HIGH_DIR}" ] ; then
+                        echo "Copy Kernel high-priority patches from '${PATCH_HIGH_DIR}', allow ovewrite base patches"
 
-                        copy_patches $PATCH_BASE_DIR/$KERNEL_REPO_TAG	$PATCH_TMP_DIR
+                        copy_patches $PATCH_BASE_DIR/$PATCH_HIGH_DIR  $PATCH_TMP_DIR
                 fi
 
 		local PATCH_COUNT=$(count_files "$PATCH_TMP_DIR/*.patch")
@@ -224,7 +236,7 @@ get_firmware()
 	if [ ! -z "${FIRMWARE_URL}" ] ; then
 		mkdir -p $FIRMWARE_BASE_DIR
 
-		if [ -d $FIRMWARE_SOURCE_DIR ] && [ -d $FIRMWARE_SOURCE_DIR/.git ] ; then
+		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
 			display_alert "Updating Firmware in" "${FIRMWARE_SOURCE_DIR}" "info"
 
                 	# update sources
