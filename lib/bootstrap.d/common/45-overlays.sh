@@ -2,31 +2,37 @@
 # Install DT overlays
 #
 
-BOOT_OVERLAY_DIR="${BOOT_DIR}/overlays"
+DEST_OVERLAY_DIR="${BOOT_DIR}/overlays"
 
-BUILD_OVERLAY_DIR="${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/dts"
+BUILD_BOOT_DTS_DIR="${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/dts"
 if [ -z "${KERNEL_OVERLAY_DIR}" ] ; then
-  BUILD_OVERLAY_DIR="${BUILD_OVERLAY_DIR}/overlays"
+  BUILD_OVERLAY_DIR="${BUILD_BOOT_DTS_DIR}/overlays"
 else
-  BUILD_OVERLAY_DIR="${BUILD_OVERLAY_DIR}/${KERNEL_OVERLAY_DIR}"
+  BUILD_OVERLAY_DIR="${BUILD_BOOT_DTS_DIR}/${KERNEL_OVERLAY_DIR}"
 fi
 
-if [ -d $BUILD_OVERLAY_DIR ] ; then
-	mkdir -p ${BOOT_OVERLAY_DIR}
+OVERLAY_DTBO_COUNT=$(count_files "${BUILD_OVERLAY_DIR}/${OVERLAY_PREFIX}-*.dtbo")
+if [ $OVERLAY_DTBO_COUNT -gt 0 ] ; then
+	mkdir -p ${DEST_OVERLAY_DIR}
 
 	for path in ${BUILD_OVERLAY_DIR}/${OVERLAY_PREFIX}-*.dtbo ; do
 		test -f "$path" || continue
-		install_readonly "$path" "${BOOT_OVERLAY_DIR}/$(basename ${path})"
+		echo "Installing $path"
+		install_readonly "$path" "${DEST_OVERLAY_DIR}/$(basename ${path})"
 	done
 
 	for path in ${BUILD_OVERLAY_DIR}/${OVERLAY_PREFIX}-*.scr ; do
 		test -f "$path" || continue
-		install_readonly "$path" "${BOOT_OVERLAY_DIR}/$(basename ${path})"
+		echo "Installing $path"
+		install_readonly "$path" "${DEST_OVERLAY_DIR}/$(basename ${path})"
 	done
 
-	README_OVERLAY_FILE="README.${OVERLAY_PREFIX}-overlays"
+	OVERLAY_README_FILE="README.${OVERLAY_PREFIX}-overlays"
 
-	if [ -f ${BUILD_OVERLAY_DIR}/${README_OVERLAY_FILE} ] ; then
-		install_readonly "${BUILD_OVERLAY_DIR}/${README_OVERLAY_FILE}" "${BOOT_OVERLAY_DIR}/${README_OVERLAY_FILE}"
+	if [ -f "${BUILD_OVERLAY_DIR}/${OVERLAY_README_FILE}" ] ; then
+		echo "Installing ${BUILD_OVERLAY_DIR}/${OVERLAY_README_FILE}"
+		install_readonly "${BUILD_OVERLAY_DIR}/${OVERLAY_README_FILE}" "${DEST_OVERLAY_DIR}/${OVERLAY_README_FILE}"
 	fi
+elif [ -d $BUILD_OVERLAY_DIR ] ; then
+	echo "WARNING: Overlay directory exists in linux source tree, but no overlay has been built."
 fi

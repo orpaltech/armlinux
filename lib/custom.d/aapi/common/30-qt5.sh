@@ -3,7 +3,7 @@
 #
 
 # force clone the remote repository
-QT5_FORCE_UPDATE="no"
+QT5_RELOAD_SOURCES="no"
 
 # remove all intermediate files and go for a full rebuild
 QT5_FORCE_REBUILD="yes"
@@ -22,7 +22,6 @@ QTBASE_OUT_DIR=${QT5_DEVCFG_DIR}/qtbase
 # version directory is named after the branch
 QT5_CUSTOM_VER="${QT5_RELEASE}"
 # here we keep resources needed for QT5 customization
-#QT5_CUSTOM_ROOT=${LIBDIR}/custom.d/common/qt5/${QT5_CUSTOM_VER}
 QT5_CUSTOM_ROOT=${FILES_DIR}/qt5/${QT5_CUSTOM_VER}
 
 QT5_TARGET_LOCATION="/usr/local"
@@ -45,8 +44,8 @@ qt5_update()
 	# make sure qt5 root directory exists
 	mkdir -p $QT5_ROOT_DIR
 
-	if [ "${QT5_FORCE_UPDATE}" = yes ] ; then
-		echo "Forcing update qtbase"
+	if [ "${QT5_RELOAD_SOURCES}" = yes ] ; then
+		echo "Forcing full source update qtbase"
 		rm -rf $QTBASE_SRC_DIR
 	fi
 
@@ -82,8 +81,8 @@ qt5_update()
 		QT5_MODULE_DIR=${QT5_ROOT_DIR}/${MODULE}
 		QT5_MODULE_URL=${QT5_GIT_ROOT}/${MODULE}.git
 
-		if [ "${QT5_FORCE_UPDATE}" = yes ] ; then
-			echo "Forcing update ${MODULE}"
+		if [ "${QT5_RELOAD_SOURCES}" = yes ] ; then
+			echo "Forcing full source update ${MODULE}"
 			rm -rf $QT5_MODULE_DIR
 		fi
 

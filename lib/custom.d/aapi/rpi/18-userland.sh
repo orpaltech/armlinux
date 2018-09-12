@@ -6,8 +6,15 @@ USERLAND_URL="https://github.com/raspberrypi/userland.git"
 USERLAND_BRANCH="master"
 USERLAND_DIR=$EXTRADIR/userland
 
+USERLAND_FORCE_UPDATE="yes"
+
 get_userland_source()
 {
+	if [ "${USERLAND_FORCE_UPDATE}" = yes ] ; then
+		echo "Force userland update"
+		rm -rf $USERLAND_DIR
+	fi
+
         if [ -d $USERLAND_DIR ] && [ -d $USERLAND_DIR/.git ] ; then
                 # update sources
 		git -C $USERLAND_DIR fetch origin --tags
@@ -17,7 +24,7 @@ get_userland_source()
 
 		echo "Checking out branch: ${USERLAND_BRANCH}"
 		git -C $USERLAND_DIR checkout -B $USERLAND_BRANCH origin/$USERLAND_BRANCH
-
+		git -C $USERLAND_DIR pull
         else
                 [[ -d $USERLAND_DIR ]] && rm -rf $USERLAND_DIR
 
@@ -58,7 +65,8 @@ EOF
 	cmake -DCMAKE_TOOLCHAIN_FILE="../../makefiles/cmake/toolchains/${BOARD}-linux-gnueabihf.cmake" \
 		-DCMAKE_BUILD_TYPE="Release" ../..
 
-	make -j${NUM_CPU_CORES}
+        chrt -i 0 make -j${NUM_CPU_CORES}
+        [ $? -eq 0 ] || exit $?;
 	make install DESTDIR=${R}
 
         rsync -az ${R}/opt/vc	${SYSROOT_DIR}/opt
