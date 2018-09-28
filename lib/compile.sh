@@ -10,7 +10,7 @@ NUM_CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
 
 compile_uboot()
 {
-        display_alert "Make u-boot" "${UBOOT_REPO_TAG:=\"${UBOOT_REPO_BRANCH}\"} | ${SOC_ARCH}" "info"
+        display_alert "Make u-boot" "${UBOOT_REPO_TAG:=\"${UBOOT_REPO_BRANCH}\"}" "info"
 
         export USE_PRIVATE_LIBGCC="yes"
 	export ARCH="${SOC_ARCH}"
@@ -42,7 +42,7 @@ compile_uboot()
 
 compile_kernel()
 {
-	display_alert "Make kernel" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_TAG:=${KERNEL_REPO_BRANCH}} | ${SOC_ARCH}" "info"
+	display_alert "Make kernel" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_TAG:=${KERNEL_REPO_BRANCH}}" "info"
 
 	export ARCH="${SOC_ARCH}"
 	export CROSS_COMPILE="${CROSS_COMPILE}"
@@ -80,12 +80,21 @@ compile_firmware()
 {
 	display_alert "Make firmware" "${SOC_FAMILY} | ${SOC_PLAT}" "info"
 
+	export CROSS_COMPILE="${CROSS_COMPILE}"
+
 	case $SOC_PLAT in
     	    sun50i*)
 		echo "*** ARM trusted firmware ***"
 		cd $FIRMWARE_SOURCE_DIR
-        	CROSS_COMPILE="${CROSS_COMPILE}" make PLAT="${SOC_PLAT}" DEBUG=1 bl31
-		cp "${FIRMWARE_SOURCE_DIR}/build/${SOC_PLAT}/debug/bl31.bin" $UBOOT_SOURCE_DIR/
+
+		if [[ $CLEAN_OPTIONS =~ (^|,)"firmware"(,|$) ]] ; then
+			echo "Clean firmware directory"
+			make clean
+			rm -rf ./build/${SOC_PLAT}/*
+		fi
+
+        	make PLAT="${SOC_PLAT}" DEBUG=1 bl31
+		cp ./build/${SOC_PLAT}/debug/bl31.bin $UBOOT_SOURCE_DIR/
 		SUNXI_ATF_USED="yes"
     	  	;;
 	esac

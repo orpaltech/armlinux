@@ -110,7 +110,7 @@ patch_uboot()
 		copy_patches $PATCH_BASE_DIR $PATCH_TMP_DIR
 
 		# Check if high-priority patches are available and, if yes, copy too
-		local PATCH_HIGH_DIR="${UBOOT_PATCH_HIGH_DIR}"
+		local PATCH_HIGH_DIR="${UBOOT_PATCH_HIGH_PRIORITY_DIR}"
 		if [ -z "${PATCH_HIGH_DIR}" ] ; then
 			PATCH_HIGH_DIR="${UBOOT_REPO_TAG}"
 		fi
@@ -204,7 +204,7 @@ patch_kernel()
                 copy_patches $PATCH_BASE_DIR $PATCH_TMP_DIR
 
 		# Check if high-priority patches are available and, if yes, copy too
-		local PATCH_HIGH_DIR="${KERNEL_PATCH_HIGH_DIR}"
+		local PATCH_HIGH_DIR="${KERNEL_PATCH_HIGH_PRIORITY_DIR}"
 		if [ -z "${PATCH_HIGH_DIR}" ] ; then
 			PATCH_HIGH_DIR="${KERNEL_REPO_TAG}"
 		fi

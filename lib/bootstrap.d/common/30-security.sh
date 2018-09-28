@@ -13,7 +13,7 @@ if [ "$ENABLE_USER" = yes ] ; then
   chroot_exec usermod -p "${ENCRYPTED_PASSWORD}" $USER_NAME
 fi
 
-# Setup root password or not
+# Setup root password
 if [ "$ENABLE_ROOT" = yes ] ; then
   chroot_exec usermod -p "${ENCRYPTED_PASSWORD}" root
 
