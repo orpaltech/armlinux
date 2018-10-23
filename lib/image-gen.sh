@@ -1,18 +1,22 @@
 #!/bin/bash
 
 ########################################################################
-# image-gen.sh					       2017-2018
+# image-gen.sh
 #
-# Advanced Debian "jessie" and "stretch"  bootstrap script for RPi2/3
+# Description:	Image generation script for ORPALTECH ARMLINUX
+#		build framework.
+#
+# Author:	Sergey Suloev <ssuloev@orpaltech.com>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2018 Sergey Suloev <ssuloev@orpaltech.com>
+# Copyright (C) 2013-2018 ORPAL Technology, Inc.
 #
 ########################################################################
+
 
 # Are we running as root?
 if [ "$(id -u)" -ne "0" ] ; then
@@ -28,8 +32,9 @@ fi
 LIBDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 ARMLINUX_CONF=$LIBDIR/../${CONFIG}.conf
 
-# Fix issue that BOARD is cleared by config
+# Fix possible clearing up variables by config
 _BOARD_="${BOARD}"
+_CLEAN_="${CLEAN}"
 
 if [ ! -f "${ARMLINUX_CONF}" ] ; then
   echo "No config file found. Cannot continue."
@@ -37,13 +42,19 @@ if [ ! -f "${ARMLINUX_CONF}" ] ; then
 fi
 . $ARMLINUX_CONF
 
+ENABLE_WIRELESS="${ENABLE_WIRELESS_GLOBAL}"
 BOARD=${BOARD:="${_BOARD_}"}
 BOARD_CONF=$LIBDIR/boards/${BOARD}.conf
+CLEAN=${CLEAN:="${_CLEAN_}"}
 BASEDIR=${OUTPUTDIR:="${LIBDIR}"}
 EXTRADIR=${BUILD_EXTRA_DIR:="${BASEDIR}/extra"}
 
 if [ -z "${BOARD}" ] ; then
   echo "error: board must be specified!"
+  exit 1
+fi
+if [ ! -f "${BOARD_CONF}" ] ; then
+  echo "error: board ${BOARD} is not supported!"
   exit 1
 fi
 
@@ -52,9 +63,13 @@ if [ ! -d "${EXTRADIR}" ] ; then
   exit 1
 fi
 
-# Check if ./functions.sh script exists
+# Check if scripts exist
 if [ ! -r "${LIBDIR}/functions.sh" ] ; then
-  echo "error: 'functions.sh' required script not found!"
+  echo "error: required script 'functions.sh' not found!"
+  exit 1
+fi
+if [ ! -r "${LIBDIR}/common.sh" ] ; then
+  echo "error: required script 'common.sh' not found!"
   exit 1
 fi
 
@@ -62,13 +77,18 @@ fi
 . $LIBDIR/common.sh
 . $LIBDIR/functions.sh
 
+# Apply board configuration
+. $BOARD_CONF
+
+CPUINFO_NUM_CORES=$(grep -c ^processor /proc/cpuinfo)
+
 # Introduce settings
 set -e
 
 echo -n -e "\n#\n# Bootstrap Settings\n#\n"
 set -x
 
-NUM_CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
+NUM_CPU_CORES=$CPUINFO_NUM_CORES
 
 # Debian release
 DEBIAN_RELEASE=${DEBIAN_RELEASE:="stretch"}
@@ -131,7 +151,8 @@ ENABLE_HARDNET=${ENABLE_HARDNET:="no"}
 ENABLE_IPTABLES=${ENABLE_IPTABLES:="no"}
 
 # Kernel installation settings
-KERNEL_HEADERS=${KERNEL_HEADERS:="yes"}
+KERNEL_INSTALL_HEADERS=${KERNEL_INSTALL_HEADERS:="yes"}
+KERNEL_INSTALL_SOURCE=${KERNEL_INSTALL_SOURCE:="yes"}
 
 # Reduce disk usage settings
 REDUCE_APT=${REDUCE_APT:="yes"}
@@ -145,12 +166,6 @@ REDUCE_LOCALE=${REDUCE_LOCALE:="yes"}
 CHROOT_SCRIPTS=${CHROOT_SCRIPTS:=""}
 
 set +x
-
-if [ ! -f "${BOARD_CONF}" ] ; then
-  echo "error: Board ${BOARD} is not supported!"
-  exit 1
-fi
-. $BOARD_CONF
 
 
 display_alert "Selected platform:" "${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_ARCH}])" "info"

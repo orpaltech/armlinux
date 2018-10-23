@@ -1,5 +1,4 @@
-#!/bin/bash
-
+This file contains utility functions used by image-gen.sh
 ########################################################################
 # functions.sh
 #

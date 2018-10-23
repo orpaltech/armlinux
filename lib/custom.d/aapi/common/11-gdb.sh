@@ -6,9 +6,9 @@
 GDB_FORCE_UPDATE="no"
 
 # remove all binaries and intermediate files and go for full rebuild
-GDB_FORCE_REBUILD="no"
+GDB_FORCE_REBUILD="yes"
 
-GDB_VERSION="8.1.1"
+GDB_VERSION="8.2"
 GDB_NAME="gdb-${GDB_VERSION}"
 
 GDB_SRC_DIR=${EXTRADIR}/${GDB_NAME}

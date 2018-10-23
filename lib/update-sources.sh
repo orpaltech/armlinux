@@ -1,8 +1,24 @@
 #!/bin/bash
 
-#------------------------------------------------------------------------------------------------------
+########################################################################
+# update-sources.sh
+#
+# Description:	U-Boot, Firmware and Kernel preparation script
+#		for ORPALTECH ARMLINUX build framework.
+#
+# Author:	Sergey Suloev <ssuloev@orpaltech.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# Copyright (C) 2013-2018 ORPAL Technology, Inc.
+#
+########################################################################
 
-get_uboot_source()
+
+update_uboot()
 {
 	local BRANCH_FIXED=$(echo $UBOOT_REPO_BRANCH | sed -e 's/\//-/g')
         UBOOT_SOURCE_DIR="${UBOOT_BASE_DIR}/${BRANCH_FIXED}"
@@ -44,9 +60,9 @@ get_uboot_source()
 	echo "Done."
 }
 
-#------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 # copy_patches(src_dir, patch_dir)
-#------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 copy_patches()
 {
 	local PATCH_SRC_DIR=$1
@@ -89,7 +105,7 @@ copy_patches()
 	fi
 }
 
-#------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
 patch_uboot()
 {
@@ -137,9 +153,9 @@ patch_uboot()
 	fi
 }
 
-#------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
-get_kernel_source()
+update_kernel()
 {
 	local BRANCH_FIXED=$(echo $KERNEL_REPO_BRANCH | sed -e 's/\//-/g')
 	KERNEL_SOURCE_DIR="${KERNEL_BASE_DIR}/${BRANCH_FIXED}"
@@ -182,7 +198,7 @@ get_kernel_source()
 	echo "Done."
 }
 
-#------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
 patch_kernel()
 {
@@ -206,7 +222,7 @@ patch_kernel()
 		# Check if high-priority patches are available and, if yes, copy too
 		local PATCH_HIGH_DIR="${KERNEL_PATCH_HIGH_PRIORITY_DIR}"
 		if [ -z "${PATCH_HIGH_DIR}" ] ; then
-			PATCH_HIGH_DIR="${KERNEL_REPO_TAG}"
+			PATCH_HIGH_DIR="${KERNEL_RELEASE}"
 		fi
                 if [ -n "${PATCH_HIGH_DIR}" ] && [ -d "${PATCH_BASE_DIR}/${PATCH_HIGH_DIR}" ] ; then
                         echo "Copy Kernel high-priority patches from '${PATCH_HIGH_DIR}', allow ovewrite base patches"
@@ -229,9 +245,9 @@ patch_kernel()
 	fi
 }
 
-#------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
-get_firmware()
+update_firmware()
 {
 	if [ ! -z "${FIRMWARE_URL}" ] ; then
 		mkdir -p $FIRMWARE_BASE_DIR
@@ -254,5 +270,3 @@ get_firmware()
 		echo "Done."
 	fi
 }
-
-#------------------------------------------------------------------------------------------------------

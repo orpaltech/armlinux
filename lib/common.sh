@@ -1,11 +1,29 @@
 #!/bin/bash
 
-# ------------------------------------------------------------------------------
-# Let's have unique way of displaying alerts
+########################################################################
+# common.sh
 #
+# Description:	This file contains functions used in build scripts.
+#
+# Author:	Sergey Suloev <ssuloev@orpaltech.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# Copyright (C) 2013-2018 ORPAL Technology, Inc.
+#
+########################################################################
+
+# common clean options, can be overriden in board-specific config files
+CLEAN_OPTIONS="uboot firmware kernel rootfs qt5"
+
+# ----------------------------------------------------------------------
 # void display_alert(message, outline, type)
-# ------------------------------------------------------------------------------
-display_alert() {
+# ----------------------------------------------------------------------
+display_alert()
+{
   # log function parameters to install.log
   [[ -n ${LOG_DEST} ]] && echo "Displaying message: $@" >> ${LOG_DEST}/debug/output.log
 
@@ -35,8 +53,9 @@ display_alert() {
   esac
 }
 
-# ------------------------------------------------------------------------------
-sudo_init() {
+# ----------------------------------------------------------------------
+sudo_init()
+{
   # Ask for the administrator password upfront
   sudo -v
   [[ $? != 0 ]] && exit 1
@@ -45,16 +64,18 @@ sudo_init() {
   ( while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null ) &
 }
 
-# ------------------------------------------------------------------------------
-pause() {
+# ----------------------------------------------------------------------
+pause()
+{
   local PAUSE_MSG=$1
   local PAUSE_MSG=${PAUSE_MSG:="Press any key to continue or Ctrl+C to exit..."}
   echo "$PAUSE_MSG"
   read -n1 -rs
 }
 
-# ------------------------------------------------------------------------------
-function count_files() {
+# ----------------------------------------------------------------------
+function count_files()
+{
   local FILE_PATH=$1
   local FILE_COUNT=$(ls $FILE_PATH 2> /dev/null | wc -l)
   echo "$FILE_COUNT"

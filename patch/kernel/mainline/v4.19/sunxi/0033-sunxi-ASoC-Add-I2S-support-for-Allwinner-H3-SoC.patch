@@ -1,13 +1,13 @@
-From c23e996ec89fe3d85a5477e23cdd001b2fac932e Mon Sep 17 00:00:00 2001
+From 6d53c2b203a17c4197fd50c87c3ddc53b1674a34 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Mon, 27 Aug 2018 23:50:56 +0300
+Date: Wed, 17 Oct 2018 11:28:40 +0300
 Subject: [PATCH] sunxi: ASoC: Add I2S support for Allwinner H3 SoC
 
 ---
  sound/soc/codecs/wm8731.c   |   26 +-
- sound/soc/sunxi/sun4i-i2s.c | 1933 +++++++++++++++++++++--------------
+ sound/soc/sunxi/sun4i-i2s.c | 1931 +++++++++++++++++++++--------------
  sound/soc/sunxi/sun4i-i2s.h |  234 +++++
- 3 files changed, 1410 insertions(+), 783 deletions(-)
+ 3 files changed, 1410 insertions(+), 781 deletions(-)
  create mode 100644 sound/soc/sunxi/sun4i-i2s.h
 
 diff --git a/sound/soc/codecs/wm8731.c b/sound/soc/codecs/wm8731.c
@@ -110,7 +110,7 @@ index 7c8fad8..a5a6e36 100644
  
  static const struct regmap_config wm8731_regmap = {
 diff --git a/sound/soc/sunxi/sun4i-i2s.c b/sound/soc/sunxi/sun4i-i2s.c
-index a4aa931..e076868 100644
+index a4aa931..0602802 100644
 --- a/sound/soc/sunxi/sun4i-i2s.c
 +++ b/sound/soc/sunxi/sun4i-i2s.c
 @@ -1,16 +1,17 @@
@@ -2324,7 +2324,7 @@ index a4aa931..e076868 100644
 +	.set_hw_config		= sun8i_i2s_set_hw_config,
 +};
 +
-+static const struct sun4i_i2s_quirks sun50i_a64_i2s_ap_quirks = {
++static const struct sun4i_i2s_quirks sun50i_a64_codec_i2s_quirks = {
 +	.has_reset		= 1,
 +	.reg_offset_txdata	= SUN8I_I2S_REG_TX_FIFO,
 +	.regmap_cfg		= &sun4i_i2s_regmap_config,
@@ -2352,8 +2352,8 @@ index a4aa931..e076868 100644
  	},
 -	{}
 +	{
-+		.compatible = "allwinner,sun50i-a64-i2s-codec",
-+		.data = &sun50i_a64_i2s_ap_quirks,
++		.compatible = "allwinner,sun50i-a64-codec-i2s",
++		.data = &sun50i_a64_codec_i2s_quirks,
 +	},
 +	{ /* sentinel */ },
  };
@@ -2376,12 +2376,10 @@ index a4aa931..e076868 100644
  		.name		= "sun4i-i2s",
  		.of_match_table	= sun4i_i2s_match,
  		.pm		= &sun4i_i2s_pm_ops,
-@@ -1189,7 +1563,6 @@ static struct platform_driver sun4i_i2s_driver = {
- };
- module_platform_driver(sun4i_i2s_driver);
+@@ -1191,5 +1565,6 @@ module_platform_driver(sun4i_i2s_driver);
  
--MODULE_AUTHOR("Andrea Venturi <be17068@iperbole.bo.it>");
--MODULE_AUTHOR("Maxime Ripard <maxime.ripard@free-electrons.com>");
+ MODULE_AUTHOR("Andrea Venturi <be17068@iperbole.bo.it>");
+ MODULE_AUTHOR("Maxime Ripard <maxime.ripard@free-electrons.com>");
 -MODULE_DESCRIPTION("Allwinner A10 I2S driver");
 +MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
 +MODULE_DESCRIPTION("Allwinner sunXi I2S interface driver");

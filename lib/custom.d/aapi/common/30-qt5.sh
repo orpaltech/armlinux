@@ -3,13 +3,13 @@
 #
 
 # force clone the remote repository
-QT5_RELOAD_SOURCES="no"
+QT5_UPDATE_SOURCES=${QT5_UPDATE_SOURCES:="no"}
 
 # remove all intermediate files and go for a full rebuild
-QT5_FORCE_REBUILD="yes"
+QT5_FORCE_REBUILD=${QT5_FORCE_REBUILD:="yes"}
 
 QT5_GIT_ROOT="git://code.qt.io/qt"
-QT5_RELEASE="5.11"
+QT5_RELEASE="5.12"
 QT5_BRANCH="${QT5_RELEASE}"
 QT5_TAG=""
 QT5_MODULES=("qtxmlpatterns" "qtimageformats" "qtgraphicaleffects" "qtsvg" "qtscript" "qtdeclarative" "qtquickcontrols" "qtquickcontrols2" "qtcharts" "qtvirtualkeyboard")
@@ -44,7 +44,7 @@ qt5_update()
 	# make sure qt5 root directory exists
 	mkdir -p $QT5_ROOT_DIR
 
-	if [ "${QT5_RELOAD_SOURCES}" = yes ] ; then
+	if [ "${QT5_UPDATE_SOURCES}" = yes ] ; then
 		echo "Forcing full source update qtbase"
 		rm -rf $QTBASE_SRC_DIR
 	fi
@@ -81,7 +81,7 @@ qt5_update()
 		QT5_MODULE_DIR=${QT5_ROOT_DIR}/${MODULE}
 		QT5_MODULE_URL=${QT5_GIT_ROOT}/${MODULE}.git
 
-		if [ "${QT5_RELOAD_SOURCES}" = yes ] ; then
+		if [ "${QT5_UPDATE_SOURCES}" = yes ] ; then
 			echo "Forcing full source update ${MODULE}"
 			rm -rf $QT5_MODULE_DIR
 		fi
@@ -122,7 +122,7 @@ qt5_update()
 
 qt5_apply_patch()
 {
-	local PATCH_BASE_DIR=$QT5_CUSTOM_ROOT/patches
+	local PATCH_BASE_DIR=$QT5_CUSTOM_ROOT/patch
 	local PATCH_COUNT=$(count_files "${PATCH_BASE_DIR}/qtbase/*.patch")
 
         # apply qtbase patches
@@ -326,7 +326,7 @@ EOF
 
 if [ ! -z "${QT5_DEVICE_CONFIG}" ] ; then
 
-  if [[ $CLEAN_OPTIONS =~ (^|,)"qt5"(,|$) ]] ; then
+  if [[ $CLEAN =~ (^|,)"qt5"(,|$) ]] ; then
 	rm -f ${BASEDIR}/debs/${QT5_DEB_PKG}.deb
   fi
 

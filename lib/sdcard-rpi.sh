@@ -1,6 +1,22 @@
 #!/bin/bash
 
-#------------------------------------------------------------------------
+########################################################################
+# sdcard-rpi.sh
+#
+# Description:	RaspberryPi-specific part of the image creation scenario
+#		for ORPALTECH ARMLINUX build framework.
+#
+# Author:	Sergey Suloev <ssuloev@orpaltech.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# Copyright (C) 2013-2018 ORPAL Technology, Inc.
+#
+########################################################################
+
 
 format_disk()
 {

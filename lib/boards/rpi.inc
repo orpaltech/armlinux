@@ -15,3 +15,6 @@ APT_BOARD_PACKAGES="rng-tools"
 
 # Temporarily disable wireless due to broken SDHCI
 ENABLE_WIRELESS="no"
+
+# Raspberry-specific clean options
+CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa userland"

@@ -18,11 +18,6 @@ cp ${FIRMWARE_DIR}/boot/start.elf ${BOOT_DIR}/start.elf
 cp ${FIRMWARE_DIR}/boot/start_x.elf ${BOOT_DIR}/start_x.elf
 
 
-# Add serial console support
-if [ "$ENABLE_CONSOLE" = yes ] ; then
-  CMDLINE="console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 ${CMDLINE}"
-fi
-
 # Setup firmware boot cmdline
 CMDLINE="dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootflags=commit=100,data=writeback elevator=deadline cma=256M@512M ${CMDLINE}"
 

@@ -1,5 +1,22 @@
 #!/bin/bash
 
+########################################################################
+# update-packages.sh
+#
+# Description:	Host machine preparation script for ORPALTECH ARMLINUX
+#		build framework.
+#
+# Author:	Sergey Suloev <ssuloev@orpaltech.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# Copyright (C) 2013-2018 ORPAL Technology, Inc.
+#
+########################################################################
+
 REQUIRED_PACKAGES="autoconf \
 bc binfmt-support bison bmap-tools \
 cmake \
@@ -16,7 +33,7 @@ whois"
 
 MISSING_PACKAGES=""
 
-#------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
 get_host_pkgs()
 {
@@ -30,7 +47,7 @@ get_host_pkgs()
 	done
 
 	if [ -n "${MISSING_PACKAGES}" ] ; then
-		echo "The following packages needed by this script are not installed:"
+		echo "The following packages needed by build scripts are not installed:"
 		echo "${MISSING_PACKAGES}"
 
 		# Make sure all required packages are installed
@@ -41,9 +58,9 @@ get_host_pkgs()
 	echo "Done."
 }
 
-#------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
-get_toolchains()
+update_toolchains()
 {
         display_alert "Prepare toolchains..." "" "info"
 

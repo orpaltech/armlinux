@@ -1,17 +1,33 @@
 #!/bin/bash
 
-#------------------------------------------------------------------------
+########################################################################
+# create-image.sh
+#
+# Description:	The entry point of the image creation scenario
+#		for ORPALTECH ARMLINUX build framework.
+#
+# Author:	Sergey Suloev <ssuloev@orpaltech.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# Copyright (C) 2013-2018 ORPAL Technology, Inc.
+#
+########################################################################
+
 
 IMAGE_SCRIPT="${LIBDIR}/sdcard-${SOC_FAMILY}.sh"
 
-if [ -f $IMAGE_SCRIPT ] ; then
+if [ -f "${IMAGE_SCRIPT}" ] ; then
 . $IMAGE_SCRIPT
 else
   echo "error: no image creation script found for ${SOC_FAMILY}!"
   exit 1
 fi
 
-#------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
 create_image()
 {
@@ -24,6 +40,7 @@ create_image()
 	sudo rm -rf ${OUTPUTDIR}/images/${DEBIAN_RELEASE}/build
 
         sudo	CONFIG=${CONFIG} \
+		CLEAN=${CLEAN} \
 		BOARD=${BOARD} \
 		TOOLCHAINDIR=${TOOLCHAINDIR} \
 		OUTPUTDIR=${OUTPUTDIR} \
@@ -35,10 +52,10 @@ create_image()
 	[ $? -eq 0 ] || exit $?;
 
 
-	ROOTFS_DIR=${OUTPUTDIR}/images/${DEBIAN_RELEASE}/build/chroot
+	ROOTFS_DIR="${OUTPUTDIR}/images/${DEBIAN_RELEASE}/build/chroot"
 
 
-	if [ $DEST_DEV_TYPE = "img" ] ; then
+	if [ "${DEST_DEV_TYPE}" = img ] ; then
 
 		local img_name="${DEST_IMG_PREFIX}-${DEST_VERSION}-${BOARD}-${KERNEL_VERSION}-${DEBIAN_RELEASE}"
 		local img_file="${OUTPUTDIR}/images/${img_name}.img"
@@ -54,6 +71,8 @@ create_image()
 
 		echo "Create img file [rootfs size=${rootfs_size}; image size=${img_size}, block size=${block_size}, blocks=${blocks_count}]"
 
+		[[ -f $img_file ]] && sudo rm -f $img_file
+
 		sudo fallocate -l $img_size $img_file
 
 		BLOCK_DEV=$(sudo losetup --show -f $img_file)
@@ -62,7 +81,7 @@ create_image()
 
                 echo "Loop device ${BLOCK_DEV} allocated for image file ${img_file}"
 
-	elif [ $DEST_DEV_TYPE = "sd" ] ; then
+	elif [ "${DEST_DEV_TYPE}" = sd ] ; then
 		#
 		# Write directly to SD-card
 		#
@@ -92,9 +111,7 @@ create_image()
 
 	write_image
 
-	#
 	# Release loop device
-	#
 	if [[ $BLOCK_DEV =~ ^/dev/loop[0-9]+$ ]] ; then
 		sudo losetup -d $BLOCK_DEV
 	fi

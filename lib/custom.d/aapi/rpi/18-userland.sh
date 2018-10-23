@@ -5,17 +5,25 @@
 USERLAND_URL="https://github.com/raspberrypi/userland.git"
 USERLAND_BRANCH="master"
 USERLAND_DIR=$EXTRADIR/userland
+# fake version required by deb package
+USERLAND_VER="1.0.0"
 
-USERLAND_FORCE_UPDATE="yes"
+USERLAND_FORCE_UPDATE="no"
 
-get_userland_source()
+userland_update()
 {
 	if [ "${USERLAND_FORCE_UPDATE}" = yes ] ; then
 		echo "Force userland update"
 		rm -rf $USERLAND_DIR
 	fi
 
-        if [ -d $USERLAND_DIR ] && [ -d $USERLAND_DIR/.git ] ; then
+	if [ -d $USERLAND_DIR/.git ] ; then
+		local OLD_URL=$(git -C $USERLAND_DIR config --get remote.origin.url)
+		if [ "${OLD_URL}" != "${USERLAND_URL}" ] ; then
+			rm -rf $USERLAND_DIR
+		fi
+	fi
+        if [ -d $USERLAND_DIR/.git ] ; then
                 # update sources
 		git -C $USERLAND_DIR fetch origin --tags
 
@@ -28,11 +36,17 @@ get_userland_source()
         else
                 [[ -d $USERLAND_DIR ]] && rm -rf $USERLAND_DIR
 
-                git clone $USERLAND_URL -b $USERLAND_BRANCH	$USERLAND_DIR
+                git clone $USERLAND_URL -b $USERLAND_BRANCH  $USERLAND_DIR
         fi
+
+        LAST_COMMIT_ID=$(git -C ${USERLAND_DIR} log --format="%h" -n 1)
+        USERLAND_DEB_VER="${USERLAND_VER}-${LAST_COMMIT_ID}"
+	USERLAND_DEB_PKG_VER="${USERLAND_DEB_VER}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}"
+        USERLAND_DEB_PKG="userland-${USERLAND_DEB_PKG_VER}"
+        USERLAND_DEB_DIR="${DEBS_DIR}/${USERLAND_DEB_PKG}-deb"
 }
 
-make_userland_libs()
+userland_make()
 {
 	cd $USERLAND_DIR
 
@@ -67,20 +81,88 @@ EOF
 
         chrt -i 0 make -j${NUM_CPU_CORES}
         [ $? -eq 0 ] || exit $?;
-	make install DESTDIR=${R}
 
-        rsync -az ${R}/opt/vc	${SYSROOT_DIR}/opt
-	${LIBDIR}/make-relativelinks.sh	${SYSROOT_DIR}/opt
+	mkdir -p ./dist
+	make install DESTDIR="${USERLAND_DIR}/build/${BOARD}/dist"
+
+}
+
+userland_deb_pkg()
+{
+	echo "Create Userland deb package..."
+
+	mkdir -p $USERLAND_DEB_DIR
+        rm -rf ${USERLAND_DEB_DIR}/*
+
+        mkdir ${USERLAND_DEB_DIR}/DEBIAN
+
+        cat <<-EOF > ${USERLAND_DEB_DIR}/DEBIAN/control
+Package: $USERLAND_DEB_PKG
+Version: $USERLAND_DEB_PKG_VER
+Maintainer: $MAINTAINER_NAME <$MAINTAINER_EMAIL>
+Architecture: all
+Priority: optional
+Description: This package provides RaspberryPi Userland libraries
+EOF
+
+	cat <<-EOF > ${USERLAND_DEB_DIR}/DEBIAN/postinst
+#!/bin/sh
+
+set -e
+
+case "\$1" in
+  configure)
+    echo "/opt/vc/lib" > /etc/ld.so.conf.d/00-vmcs.conf
+    ldconfig -X
+    ;;
+esac
+
+exit 0
+EOF
+	chmod +x ${USERLAND_DEB_DIR}/DEBIAN/postinst
+
+	rsync -az ${USERLAND_DIR}/build/${BOARD}/dist/  ${USERLAND_DEB_DIR}
+
+	dpkg-deb -z0 -b $USERLAND_DEB_DIR  ${BASEDIR}/debs/${USERLAND_DEB_PKG}.deb
+	[ $? -eq 0 ] || exit $?;
+
+	rm -rf $USERLAND_DEB_DIR
+
+	echo "Done."
+}
+
+userland_deploy()
+{
+	echo "Deploying Userland..."
+
+	mkdir -p ${USERLAND_DEB_DIR}
+        dpkg -x ${BASEDIR}/debs/${USERLAND_DEB_PKG}.deb  ${USERLAND_DEB_DIR} 2> /dev/null
+	mkdir -p ${SYSROOT_DIR}/opt
+        rsync -az ${USERLAND_DEB_DIR}/opt/  ${SYSROOT_DIR}/opt
+        ${LIBDIR}/make-relativelinks.sh  ${SYSROOT_DIR}/opt/vc/lib
+        rm -rf ${USERLAND_DEB_DIR}
+
+        cp ${BASEDIR}/debs/${USERLAND_DEB_PKG}.deb  ${R}/tmp/
+        chroot_exec dpkg -i /tmp/${USERLAND_DEB_PKG}.deb
+        rm -f ${R}/tmp/${USERLAND_DEB_PKG}.deb
+
+        echo "Done."
 }
 
 if [ "${SOC_ARCH}" = "arm" ] ; then
 
-	get_userland_source
+	userland_update
 
-	make_userland_libs
+	if [[ $CLEAN =~ (^|,)"userland"(,|$) ]] ; then
+		rm -f ${BASEDIR}/debs/${USERLAND_DEB_PKG}.deb
+	fi
 
+	if [ ! -f ${BASEDIR}/debs/${USERLAND_DEB_PKG}.deb ] ; then
+		userland_make
+		userland_deb_pkg
+	fi
 
-	echo "/opt/vc/lib" > "${ETC_DIR}/ld.so.conf.d/00-vmcs.conf"
+	userland_deploy
 else
-	echo "Skip userland compilation for ${SOC_ARCH}"
+	echo "Skip userland build for ${SOC_ARCH}"
 fi

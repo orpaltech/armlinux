@@ -1,12 +1,28 @@
 #!/bin/bash
 
-#-----------------------------------------------------------------------------------
+########################################################################
+# compile.sh
+#
+# Description:	U-Boot, Firmware and Kernel compilation script
+#		for ORPALTECH ARMLINUX build framework.
+#
+# Author:	Sergey Suloev <ssuloev@orpaltech.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# Copyright (C) 2013-2018 ORPAL Technology, Inc.
+#
+########################################################################
+
 
 NUM_CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
 
 [[ "${KBUILD_VERBOSE}" = "yes" ]] && KERNEL_V="V=1"
 
-#-----------------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
 compile_uboot()
 {
@@ -18,7 +34,7 @@ compile_uboot()
 
         cd $UBOOT_SOURCE_DIR
 
-	if [[ $CLEAN_OPTIONS =~ (^|,)"uboot"(,|$) ]] ; then
+	if [[ $CLEAN =~ (^|,)"uboot"(,|$) ]] ; then
 		echo "Clean u-boot directory"
 		make clean
 	fi
@@ -38,7 +54,7 @@ compile_uboot()
 	echo "Done."
 }
 
-#-----------------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
 compile_kernel()
 {
@@ -50,12 +66,17 @@ compile_kernel()
 
 	cd $KERNEL_SOURCE_DIR
 
-	if [[ $CLEAN_OPTIONS =~ (^|,)"kernel"(,|$) ]] ; then
+	if [[ $CLEAN =~ (^|,)"kernel"(,|$) ]] ; then
 		echo "Clean kernel directory"
 		make mrproper
 	fi
 
-	local USER_CONFIG="${BASEDIR}/config/kernel/${KERNEL_BUILD_USER_CONFIG}"
+	local CONFIG_BASE_DIR="${BASEDIR}/config/kernel"
+	local CONFIG_DIR="${CONFIG_BASE_DIR}/${KERNEL_REPO_NAME}"
+	local USER_CONFIG="${CONFIG_DIR}/${KERNEL_RELEASE}/${KERNEL_BUILD_USER_CONFIG}"
+	if [ ! -f $USER_CONFIG  ] ; then
+		USER_CONFIG="${CONFIG_DIR}/${KERNEL_BUILD_USER_CONFIG}"
+	fi
 
 	if [ -f $USER_CONFIG ] ; then
 		cp $USER_CONFIG "${KERNEL_SOURCE_DIR}/.config"
@@ -74,7 +95,7 @@ compile_kernel()
 	echo "Done."
 }
 
-#-----------------------------------------------------------------------------------
+#-----------------------------------------------------------------------
 
 compile_firmware()
 {
@@ -87,7 +108,7 @@ compile_firmware()
 		echo "*** ARM trusted firmware ***"
 		cd $FIRMWARE_SOURCE_DIR
 
-		if [[ $CLEAN_OPTIONS =~ (^|,)"firmware"(,|$) ]] ; then
+		if [[ $CLEAN =~ (^|,)"firmware"(,|$) ]] ; then
 			echo "Clean firmware directory"
 			make clean
 			rm -rf ./build/${SOC_PLAT}/*
@@ -101,6 +122,3 @@ compile_firmware()
 
 	echo "Done."
 }
-
-#-----------------------------------------------------------------------------------
-

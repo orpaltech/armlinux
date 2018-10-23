@@ -2,8 +2,8 @@
 # Build kernel module for RTL8189-series Ethernet adapter (sunxi)
 #
 
+# RTL8189_URL="https://github.com/jwrdegoede/rtl8189ES_linux.git"
 RTL8189_URL="https://github.com/sergey-suloev/rtl8189ES_linux.git"
-#https://github.com/jwrdegoede/rtl8189ES_linux.git
 # Will be selected later on
 RTL8189_BRANCH=""
 
@@ -33,7 +33,11 @@ rtl8189_make()
 
         cd $RTL8189_DIR
 
-        ARCH="${KERNEL_ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" KSRC="${KERNEL_SOURCE_DIR}" make
+        export ARCH="${KERNEL_ARCH}"
+	export CROSS_COMPILE="${CROSS_COMPILE}"
+	export KSRC="${KERNEL_SOURCE_DIR}"
+
+	make
 
 	MODDESTDIR=${R}/lib/modules/${KERNEL_VERSION}/extra
 	mkdir -p $MODDESTDIR
@@ -63,7 +67,7 @@ if [ "${ENABLE_WIRELESS}" = yes ] ; then
   if [ ! -z "${RTL8189_BRANCH}" ] ; then
     rtl8189_get_src
     rtl8189_make
+  else
+    echo "Skip."
   fi
 fi
-
-#----------------------------------------------------------------------------

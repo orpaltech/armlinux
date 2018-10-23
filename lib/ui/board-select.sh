@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# HEIGHT=15
-# WIDTH=40
-# CHOICE_HEIGHT=4
 LABEL_BACKTITLE="ORPALTECH ARM LINUX [ ${CONFIG} v${VERSION} ]"
 LABEL_TITLE="Select board"
 LABEL_MENU="Choose one of the supported boards:"
@@ -24,9 +21,11 @@ BOARD=$(dialog  --clear \
 		--shadow \
 		--backtitle "${LABEL_BACKTITLE}" \
 		--title "${LABEL_TITLE}" \
-		--menu "${LABEL_MENU}" \
-		24 102 16 \
+		--menu "${LABEL_MENU}" 24 92 16 \
 		"${board_options[@]}" \
 		2>&1 >/dev/tty)
 
-clear
+if [ $? -ne 0 ] ; then
+	echo "User cancelled"
+	exit 1
+fi

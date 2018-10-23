@@ -6,7 +6,7 @@ ROOTFS_PKG="rootfs-${DEBIAN_RELEASE}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}-${CONF
 
 mkdir -p ${BASEDIR}/debs
 
-if [[ $CLEAN_OPTIONS =~ (^|,)"rootfs"(,|$) ]] ; then
+if [[ $CLEAN =~ (^|,)"rootfs"(,|$) ]] ; then
   rm -f "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz"
 fi
 

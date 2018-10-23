@@ -2,8 +2,11 @@
 # Build and Setup Kernel (Main script)
 #
 
-if [ "${KERNEL_COPY_SOURCE}" = yes ] ; then
-  # Copy kernel sources
+export ARCH="${KERNEL_ARCH}"
+export CROSS_COMPILE="${CROSS_COMPILE}"
+
+# Install kernel sources (optional)
+if [ "${KERNEL_INSTALL_SOURCE}" = yes ] ; then
   KERNEL_DIR="${R}/usr/src/linux"
   mkdir -p $KERNEL_DIR
   rsync -a --exclude=".git" "${KERNEL_SOURCE_DIR}/" "${KERNEL_DIR}/"
@@ -12,7 +15,7 @@ else
 fi
 
 # Install kernel modules
-make -C "${KERNEL_DIR}" ARCH="${KERNEL_ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH="${R}" modules_install
+make -C "${KERNEL_DIR}" INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH="${R}" modules_install
 
 # Preserve headers from being updated by kernel
 if [ -f $USR_DIR/include/linux/i2c-dev.h.kernel ] ; then
@@ -20,8 +23,8 @@ if [ -f $USR_DIR/include/linux/i2c-dev.h.kernel ] ; then
 fi
 
 # Install kernel headers
-if [ "${KERNEL_HEADERS}" = yes ] ; then
-  make -C "${KERNEL_DIR}" ARCH="${KERNEL_ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" INSTALL_HDR_PATH="${USR_DIR}" headers_install
+if [ "${KERNEL_INSTALL_HEADERS}" = yes ] ; then
+  make -C "${KERNEL_DIR}" INSTALL_HDR_PATH="${USR_DIR}" headers_install
 fi
 
 # Restore headers
@@ -31,7 +34,7 @@ if [ -f $USR_DIR/include/linux/i2c-dev.h.temp ] ; then
 fi
 
 # Prepare boot (firmware) directory
-mkdir -p "${BOOT_DIR}"
+mkdir -p $BOOT_DIR
 
 # Copy kernel configuration file to the boot directory
 install_readonly "${KERNEL_DIR}/.config" "${R}/boot/config-${KERNEL_VERSION}"
@@ -45,9 +48,9 @@ if [ "${KERNEL_ARCH}" = arm64 ] && [ "${KERNEL_MKIMAGE_WRAP}" = yes ] ; then
   # The default Linux kernel 'make' target generates an uncompressed 'Image' and a gzip-compresesd 'Image.gz'.
   # If we use latter and wrap it into an uImage then u-boot can decompress gzip images.
   # See https://www.kernel.org/doc/Documentation/arm64/booting.txt
-  ${UBOOT_SOURCE_DIR}/tools/mkimage -A ${KERNEL_ARCH} -O linux -T kernel \
-	-C ${KERNEL_MKIMAGE_COMPRESS} \
-	-a ${KERNEL_MKIMAGE_LOADADDR} -e ${KERNEL_MKIMAGE_LOADADDR} \
+  ${UBOOT_SOURCE_DIR}/tools/mkimage -A $KERNEL_ARCH -O linux -T kernel \
+	-C $KERNEL_MKIMAGE_COMPRESS \
+	-a $KERNEL_MKIMAGE_LOADADDR -e $KERNEL_MKIMAGE_LOADADDR \
 	-d "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_SOURCE}" "${BOOT_DIR}/${KERNEL_IMAGE_TARGET}"
 else
   # The default Linux kernel 'make' target generates a self-extracting 'zImage'.
@@ -58,7 +61,7 @@ fi
 
 if [ "${KERNEL_DIR}" != "${KERNEL_SOURCE_DIR}" ] ; then
   # Clean the kernel sources in the chroot
-  make -C "${KERNEL_DIR}" ARCH="${KERNEL_ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" mrproper
+  make -C "${KERNEL_DIR}" mrproper
 fi
 
 
@@ -71,10 +74,18 @@ if [ "${ENABLE_IPV6}" != yes ] ; then
 fi
 
 # Automatically assign predictable network interface names
-if [ "${ENABLE_IFNAMES}" != yes ] ; then
-  CMDLINE="net.ifnames=0 ${CMDLINE}"
-else
+if [ "${ENABLE_IFNAMES}" = yes ] ; then
   CMDLINE="net.ifnames=1 ${CMDLINE}"
+else
+  CMDLINE="net.ifnames=0 ${CMDLINE}"
+fi
+
+# Add serial console support
+if [ "$ENABLE_CONSOLE" = yes ] ; then
+  CMDLINE="console=ttyS0,115200 ${CMDLINE}"
+
+  # Enable serial console systemd style
+  chroot_exec systemctl --no-reload enable serial-getty\@ttyS0.service
 fi
 
 # Install and setup fstab

@@ -1,10 +1,11 @@
-From c41e69ebd4259aefe31a48fccf583ab301832b94 Mon Sep 17 00:00:00 2001
+From 4d25d1df50aeb660cf17d28a6286556179ee4a01 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Thu, 13 Sep 2018 23:09:10 +0300
+Date: Sat, 29 Sep 2018 16:34:27 +0300
 Subject: [PATCH] bcm2835: add DT-overlays
 
 ---
  arch/arm/boot/dts/Makefile                    |   2 +
+ arch/arm/boot/dts/bcm2837-rpi-3-b.dts         |   5 +
  arch/arm/boot/dts/overlays/Makefile           |  24 ++++
  .../boot/dts/overlays/README.bcm2835-overlays |   1 +
  .../boot/dts/overlays/bcm2835-aapi-clk.dts    |  28 +++++
@@ -32,7 +33,7 @@ Subject: [PATCH] bcm2835: add DT-overlays
  .../dts/broadcom/overlays/bcm2835-spidev.dts  |  68 +++++++++++
  .../overlays/bcm2835-waveshare35-drm.dts      |  70 +++++++++++
  .../overlays/bcm2835-waveshare35-fbtft.dts    |  89 ++++++++++++++
- 28 files changed, 1456 insertions(+)
+ 29 files changed, 1461 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.bcm2835-overlays
  create mode 100644 arch/arm/boot/dts/overlays/bcm2835-aapi-clk.dts
@@ -70,6 +71,22 @@ index b5bd3de..98d005e 100644
  	aspeed-bmc-quanta-q71l.dtb
 +
 +subdir-y	:= overlays
+diff --git a/arch/arm/boot/dts/bcm2837-rpi-3-b.dts b/arch/arm/boot/dts/bcm2837-rpi-3-b.dts
+index c318bcb..80ea0b0 100644
+--- a/arch/arm/boot/dts/bcm2837-rpi-3-b.dts
++++ b/arch/arm/boot/dts/bcm2837-rpi-3-b.dts
+@@ -47,6 +47,11 @@
+ 	};
+ };
+ 
++&i2c1_gpio2 {
++	/* RPI3 has pull-up resistors. This probably should make use of them. */
++	bias-pull-up;
++};
++
+ &pwm {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pwm0_gpio40 &pwm1_gpio41>;
 diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
 new file mode 100644
 index 0000000..d88f2be
