@@ -71,6 +71,8 @@ else
   exit 1
 fi
 
+BUILD_IMAGE=${BUILD_IMAGE:="yes"}
+
 # clean options
 if [ -z "${CLEAN}" ] ; then
 . $LIBDIR/ui/clean-options.sh
@@ -82,8 +84,8 @@ FIRMWARE_BASE_DIR=${SRCDIR}/firmware
 FIRMWARE_SOURCE_DIR=${FIRMWARE_BASE_DIR}/${FIRMWARE_NAME}
 
 # declare directories for u-boot & kernel
-UBOOT_BASE_DIR=${SRCDIR}/u-boot
-KERNEL_BASE_DIR=${SRCDIR}/linux-${KERNEL_REPO_NAME}
+UBOOT_BASE_DIR=${SRCDIR}/u-boot/${UBOOT_REPO_NAME}
+KERNEL_BASE_DIR=${SRCDIR}/linux/${KERNEL_REPO_NAME}
 
 # source library scripts
 . ${LIBDIR}/update-sources.sh
@@ -120,8 +122,10 @@ compile_uboot
 compile_kernel
 
 
-# create a SD-card image
-create_image
+if [ "${BUILD_IMAGE}" = yes ] ; then
+  # create a SD-card image
+  create_image
+fi
 
 # build finished
 DATETIME_END=$(date '+%d/%m/%Y %H:%M:%S')

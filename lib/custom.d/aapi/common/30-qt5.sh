@@ -39,7 +39,7 @@ QT5_DEB_DIR="${DEBS_DIR}/${QT5_DEB_PKG}-deb"
 
 qt5_update()
 {
-        echo "Prepare QT5 sources..."
+        display_alert "Prepare QT5 sources..." "${QT5_GIT_ROOT}" "info"
 
 	# make sure qt5 root directory exists
 	mkdir -p $QT5_ROOT_DIR
@@ -115,7 +115,7 @@ qt5_update()
 		fi
         done
 
-        echo "Sources ready."
+	display_alert "Sources ready" "release ${QT5_RELEASE}" "info"
 }
 
 # ----------------------------------------------------------------------------

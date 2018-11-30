@@ -1,0 +1,102 @@
+From 7e02b92dec5b88594edd8f10f64e26f6f85ee630 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sun, 25 Nov 2018 12:55:14 +0300
+Subject: [PATCH] bcm2835: i2c: Restore back original delays
+
+---
+ drivers/i2c/busses/i2c-bcm2835.c | 25 +++++++++++++++++++------
+ 1 file changed, 19 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-bcm2835.c b/drivers/i2c/busses/i2c-bcm2835.c
+index 44deae7..c9aaa18 100644
+--- a/drivers/i2c/busses/i2c-bcm2835.c
++++ b/drivers/i2c/busses/i2c-bcm2835.c
+@@ -20,6 +20,7 @@
+ #include <linux/module.h>
+ #include <linux/platform_device.h>
+ #include <linux/slab.h>
++#include <linux/spinlock.h>
+ 
+ #define BCM2835_I2C_C		0x0
+ #define BCM2835_I2C_S		0x4
+@@ -59,6 +60,7 @@
+ struct bcm2835_i2c_dev {
+ 	struct device *dev;
+ 	void __iomem *regs;
++	spinlock_t lock;
+ 	struct clk *clk;
+ 	int irq;
+ 	u32 bus_clk_rate;
+@@ -204,6 +206,10 @@ static irqreturn_t bcm2835_i2c_isr(int this_irq, void *data)
+ {
+ 	struct bcm2835_i2c_dev *i2c_dev = data;
+ 	u32 val, err;
++	bool handled = true;
++	unsigned long flags;
++
++	spin_lock_irqsave(&i2c_dev->lock, flags);
+ 
+ 	val = bcm2835_i2c_readl(i2c_dev, BCM2835_I2C_S);
+ 
+@@ -240,8 +246,7 @@ static irqreturn_t bcm2835_i2c_isr(int this_irq, void *data)
+ 			i2c_dev->curr_msg++;
+ 			bcm2835_i2c_start_transfer(i2c_dev);
+ 		}
+-
+-		return IRQ_HANDLED;
++		goto exit;
+ 	}
+ 
+ 	if (val & BCM2835_I2C_S_RXR) {
+@@ -251,10 +256,11 @@ static irqreturn_t bcm2835_i2c_isr(int this_irq, void *data)
+ 		}
+ 
+ 		bcm2835_drain_rxfifo(i2c_dev);
+-		return IRQ_HANDLED;
++		goto exit;
+ 	}
+ 
+-	return IRQ_NONE;
++	handled = false;
++	goto exit;
+ 
+ complete:
+ 	bcm2835_i2c_writel(i2c_dev, BCM2835_I2C_C, BCM2835_I2C_C_CLEAR);
+@@ -262,7 +268,10 @@ complete:
+ 			   BCM2835_I2C_S_ERR | BCM2835_I2C_S_DONE);
+ 	complete(&i2c_dev->completion);
+ 
+-	return IRQ_HANDLED;
++exit:
++	spin_unlock_irqrestore(&i2c_dev->lock, flags);
++
++	return handled ? IRQ_HANDLED : IRQ_NONE;
+ }
+ 
+ static int bcm2835_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
+@@ -279,9 +288,11 @@ static int bcm2835_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
+ 			return -EOPNOTSUPP;
+ 		}
+ 
++
+ 	ret = bcm2835_i2c_set_divider(i2c_dev);
+-	if (ret)
++	if (ret) {
+ 		return ret;
++	}
+ 
+ 	i2c_dev->curr_msg = msgs;
+ 	i2c_dev->num_msgs = num;
+@@ -340,7 +351,9 @@ static int bcm2835_i2c_probe(struct platform_device *pdev)
+ 		return -ENOMEM;
+ 	platform_set_drvdata(pdev, i2c_dev);
+ 	i2c_dev->dev = &pdev->dev;
++
+ 	init_completion(&i2c_dev->completion);
++	spin_lock_init(&i2c_dev->lock);
+ 
+ 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+ 	i2c_dev->regs = devm_ioremap_resource(&pdev->dev, mem);
+-- 
+2.17.1
+

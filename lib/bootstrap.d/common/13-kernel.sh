@@ -66,7 +66,7 @@ fi
 
 
 # Setup kernel boot environment; allow fb1 to take over the console
-CMDLINE="rootwait panic=10 consoleblank=0 console=tty1 fbcon=map:10 init=/bin/systemd"
+CMDLINE="rootwait panic=10 consoleblank=0 console=tty1 fbcon=map:10 loglevel=7 init=/bin/systemd"
 
 # Remove IPv6 networking support
 if [ "${ENABLE_IPV6}" != yes ] ; then

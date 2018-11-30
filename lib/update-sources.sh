@@ -20,22 +20,25 @@
 
 update_uboot()
 {
-	local BRANCH_FIXED=$(echo $UBOOT_REPO_BRANCH | sed -e 's/\//-/g')
-        UBOOT_SOURCE_DIR="${UBOOT_BASE_DIR}/${BRANCH_FIXED}"
+#	local BRANCH_FIXED=$(echo $UBOOT_REPO_BRANCH | sed -e 's/\//-/g')
+        UBOOT_SOURCE_DIR="${UBOOT_BASE_DIR}"
 
         if [ -d "${UBOOT_SOURCE_DIR}" ] && [ -d "${UBOOT_SOURCE_DIR}/.git" ] ; then
 		local UBOOT_OLD_URL=$(git -C $UBOOT_SOURCE_DIR config --get remote.origin.url)
 		if [ "${UBOOT_OLD_URL}" != "${UBOOT_REPO_URL}" ] ; then
+			echo "U-Boot repository has changed, clean up working dir ?"
+			pause
 			rm -rf $UBOOT_SOURCE_DIR
 		fi
 	fi
 	if [ -d "${UBOOT_SOURCE_DIR}" ] && [ -d "${UBOOT_SOURCE_DIR}/.git" ] ; then
-		display_alert "Updating U-Boot from" "${UBOOT_REPO_URL} | ${UBOOT_REPO_BRANCH}" "info"
+		display_alert "Updating U-Boot from" "${UBOOT_REPO_NAME} | ${UBOOT_REPO_URL} | ${UBOOT_REPO_BRANCH}" "info"
 
                 # update sources
 		git -C $UBOOT_SOURCE_DIR fetch origin --tags --depth=1
+		[ $? -eq 0 ] || exit $?;
 
-		git -C $UBOOT_SOURCE_DIR reset --hard
+		git -C $UBOOT_SOURCE_DIR reset --hard origin/$UBOOT_REPO_BRANCH
 		git -C $UBOOT_SOURCE_DIR clean -fd
 
                 echo "Checking out branch: ${UBOOT_REPO_BRANCH}"
@@ -49,12 +52,17 @@ update_uboot()
 		[[ -d $UBOOT_SOURCE_DIR ]] && rm -rf $UBOOT_SOURCE_DIR
 		mkdir -p $UBOOT_BASE_DIR
 
-                git clone $UBOOT_REPO_URL -b $UBOOT_REPO_BRANCH --tags --depth=1 $UBOOT_SOURCE_DIR
+                git clone $UBOOT_REPO_URL -b $UBOOT_REPO_BRANCH --depth=1 $UBOOT_SOURCE_DIR
+		[ $? -eq 0 ] || exit $?;
+
+		git -C $UBOOT_SOURCE_DIR fetch origin --tags --depth=1
+		[ $? -eq 0 ] || exit $?;
         fi
 
         if [ -n "${UBOOT_REPO_TAG}" ] ; then
 		display_alert "Checking out u-boot tag" "tags/${UBOOT_REPO_TAG}" "info"
 		git -C $UBOOT_SOURCE_DIR checkout tags/$UBOOT_REPO_TAG
+		[ $? -eq 0 ] || exit $?;
 	fi
 
 	echo "Done."
@@ -157,23 +165,24 @@ patch_uboot()
 
 update_kernel()
 {
-	local BRANCH_FIXED=$(echo $KERNEL_REPO_BRANCH | sed -e 's/\//-/g')
-	KERNEL_SOURCE_DIR="${KERNEL_BASE_DIR}/${BRANCH_FIXED}"
+	KERNEL_SOURCE_DIR="${KERNEL_BASE_DIR}"
+	mkdir -p $KERNEL_BASE_DIR
 
 	if [ -d "${KERNEL_SOURCE_DIR}" ] && [ -d "${KERNEL_SOURCE_DIR}/.git" ] ; then
                 local KERNEL_OLD_URL=$(git -C $KERNEL_SOURCE_DIR config --get remote.origin.url)
                 if [ "${KERNEL_OLD_URL}" != "${KERNEL_REPO_URL}" ] ; then
-			echo "Kernel repository has changed, clean up directory ?"
+			echo "Kernel repository has changed, clean up working dir ?"
 			pause
                         rm -rf $KERNEL_SOURCE_DIR
                 fi
         fi
 
 	if [ -d "${KERNEL_SOURCE_DIR}" ] && [ -d "${KERNEL_SOURCE_DIR}/.git" ] ; then
-		display_alert "Updating kernel from" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_BRANCH}" "info"
+		display_alert "Updating kernel from" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_URL} | ${KERNEL_REPO_BRANCH}" "info"
 
 		# update sources
 		git -C $KERNEL_SOURCE_DIR fetch origin --tags --depth=1
+		[ $? -eq 0 ] || exit $?;
 
 		git -C $KERNEL_SOURCE_DIR reset --hard origin/$KERNEL_REPO_BRANCH
 		git -C $KERNEL_SOURCE_DIR clean -fd
@@ -182,17 +191,21 @@ update_kernel()
                 git -C $KERNEL_SOURCE_DIR checkout -B $KERNEL_REPO_BRANCH origin/$KERNEL_REPO_BRANCH
                 git -C $KERNEL_SOURCE_DIR pull
 	else
-		display_alert "Cloning kernel" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_BRANCH}" "info"
+		display_alert "Cloning kernel from" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_URL} | ${KERNEL_REPO_BRANCH}" "info"
 
 		[[ -d $KERNEL_SOURCE_DIR ]] && rm -rf $KERNEL_SOURCE_DIR
-		mkdir -p $KERNEL_BASE_DIR
 
-		git clone $KERNEL_REPO_URL -b $KERNEL_REPO_BRANCH --depth=1 --tags $KERNEL_SOURCE_DIR
+		git clone $KERNEL_REPO_URL -b $KERNEL_REPO_BRANCH --depth=1 $KERNEL_SOURCE_DIR
+		[ $? -eq 0 ] || exit $?;
+
+		git -C $KERNEL_SOURCE_DIR fetch origin --tags --depth=1
+		[ $? -eq 0 ] || exit $?;
 	fi
 
 	if [ -n "${KERNEL_REPO_TAG}" ] ; then
 		display_alert "Checking out kernel tag" "tags/${KERNEL_REPO_TAG}" "info"
 		git -C $KERNEL_SOURCE_DIR checkout tags/$KERNEL_REPO_TAG
+		[ $? -eq 0 ] || exit $?;
 	fi
 
 	echo "Done."
@@ -253,18 +266,25 @@ update_firmware()
 		mkdir -p $FIRMWARE_BASE_DIR
 
 		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
-			display_alert "Updating Firmware in" "${FIRMWARE_SOURCE_DIR}" "info"
+			display_alert "Updating Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"
 
-                	# update sources
-			git -C $FIRMWARE_SOURCE_DIR fetch --depth=1 origin $FIRMWARE_BRANCH
+			# update sources
+			git -C $FIRMWARE_SOURCE_DIR fetch origin --tags --depth=1
+			[ $? -eq 0 ] || exit $?;
+
 			git -C $FIRMWARE_SOURCE_DIR reset --hard origin/$FIRMWARE_BRANCH
 			git -C $FIRMWARE_SOURCE_DIR clean -fd
-	        else
-			display_alert "Cloning Firmware into" "${FIRMWARE_SOURCE_DIR}" "info"
 
-			rm -rf $FIRMWARE_SOURCE_DIR
+			echo "Checking out branch: ${FIRMWARE_BRANCH}"
+			git -C $FIRMWARE_SOURCE_DIR checkout -B $FIRMWARE_BRANCH origin/$FIRMWARE_BRANCH
+			git -C $FIRMWARE_SOURCE_DIR pull
+	        else
+			display_alert "Cloning Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"
+
+			[[ -d $FIRMWARE_SOURCE_DIR ]] && rm -rf $FIRMWARE_SOURCE_DIR
 
 	                git clone $FIRMWARE_URL -b $FIRMWARE_BRANCH --depth=1 $FIRMWARE_SOURCE_DIR
+			[ $? -eq 0 ] || exit $?;
         	fi
 
 		echo "Done."

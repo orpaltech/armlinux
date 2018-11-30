@@ -6,18 +6,19 @@ SUNXI_DIR="${EXTRADIR}/drivers/sunxi"
 
 MALI_DRV_SRC="${SUNXI_DIR}/sunxi-mali"
 MALI_DRV_URL="https://github.com/mripard/sunxi-mali.git"
-MALI_DRV_BRANCH=master
-MALI_DRV_VER=r6p2
+MALI_DRV_BRANCH="master"
+MALI_DRV_VER="r6p2"
 
 MALI_BLOB_SRC="${SUNXI_DIR}/mali-blobs"
 MALI_BLOB_REPO="https://github.com/orpaltech/mali-blobs.git"
-MALI_BLOB_BRANCH=master
+MALI_BLOB_BRANCH="master"
+
 
 get_mali_source()
 {
 	mkdir -p $SUNXI_DIR
 
-        echo "Updating Mali kernel module sources..."
+        display_alert "Updating Mali driver sources..." "${MALI_DRV_URL} | ${MALI_DRV_BRANCH}" "info"
 
         rm -rf $MALI_DRV_SRC
 
@@ -31,7 +32,7 @@ build_mali_kmod()
 {
         cd $MALI_DRV_SRC
 
-        echo "Building Mali kernel module..."
+        echo "Building Mali kernel driver..."
 
         export CROSS_COMPILE="${CROSS_COMPILE}"
         export KDIR="${KERNEL_SOURCE_DIR}"
@@ -51,7 +52,7 @@ deploy_mali_blob()
 
 	git clone $MALI_BLOB_REPO --depth=1 -b $MALI_BLOB_BRANCH $MALI_BLOB_SRC
 
-	local BLOB_PREFIX=/usr/lib/$LINUX_PLATFORM
+	local BLOB_PREFIX="/usr/lib/${LINUX_PLATFORM}"
 
 	# make sure that gbm library won't be overwritten by update
 	chroot_exec dpkg-divert --divert $BLOB_PREFIX/libEGL.so.orig --rename --add $BLOB_PREFIX/libEGL.so

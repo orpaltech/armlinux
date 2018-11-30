@@ -379,7 +379,7 @@ if [ -d "${CUSTOM_D}" ] ; then
   fi
 fi
 
-# Execute custom scripts inside the chroot
+# Execute custom scripts in chroot
 if [ -n "${CHROOT_SCRIPTS}" ] && [ -d "${CHROOT_SCRIPTS}" ] ; then
   cp -r "${CHROOT_SCRIPTS}" "${R}/chroot_scripts"
   chroot_exec /bin/bash -x <<'EOF'

@@ -1,0 +1,1224 @@
+From b582c40e8e2243fbab16eb91b9abd685698f9860 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Fri, 30 Nov 2018 10:40:07 +0300
+Subject: [PATCH] vna: add ORPALTECH AAPi antenna analyzer driver
+
+---
+ drivers/Kconfig                    |   2 +
+ drivers/Makefile                   |   1 +
+ drivers/vna/Kconfig                |  19 +
+ drivers/vna/Makefile               |   8 +
+ drivers/vna/vna_orpal_aapi_drv.c   | 856 +++++++++++++++++++++++++++++
+ drivers/vna/vna_orpal_aapi_drv.h   |  89 +++
+ drivers/vna/vna_orpal_aapi_sysfs.c | 153 ++++++
+ drivers/vna/vna_orpal_aapi_sysfs.h |  18 +
+ 8 files changed, 1146 insertions(+)
+ create mode 100644 drivers/vna/Kconfig
+ create mode 100644 drivers/vna/Makefile
+ create mode 100644 drivers/vna/vna_orpal_aapi_drv.c
+ create mode 100644 drivers/vna/vna_orpal_aapi_drv.h
+ create mode 100644 drivers/vna/vna_orpal_aapi_sysfs.c
+ create mode 100644 drivers/vna/vna_orpal_aapi_sysfs.h
+
+diff --git a/drivers/Kconfig b/drivers/Kconfig
+index ab4d439..e23f3b5 100644
+--- a/drivers/Kconfig
++++ b/drivers/Kconfig
+@@ -219,4 +219,6 @@ source "drivers/siox/Kconfig"
+ 
+ source "drivers/slimbus/Kconfig"
+ 
++source "drivers/vna/Kconfig"
++
+ endmenu
+diff --git a/drivers/Makefile b/drivers/Makefile
+index 578f469..d08d05e 100644
+--- a/drivers/Makefile
++++ b/drivers/Makefile
+@@ -186,3 +186,4 @@ obj-$(CONFIG_MULTIPLEXER)	+= mux/
+ obj-$(CONFIG_UNISYS_VISORBUS)	+= visorbus/
+ obj-$(CONFIG_SIOX)		+= siox/
+ obj-$(CONFIG_GNSS)		+= gnss/
++obj-y				+= vna/
+diff --git a/drivers/vna/Kconfig b/drivers/vna/Kconfig
+new file mode 100644
+index 0000000..ae92516
+--- /dev/null
++++ b/drivers/vna/Kconfig
+@@ -0,0 +1,19 @@
++#
++# VNA
++#
++
++menu "VNA Subsystem"
++
++config VNA_ORPAL_AAPI
++	tristate "ORPAL AAPi antenna analyzer"
++	depends on ARCH_SUNXI || ARCH_BCM2835
++	depends on COMMON_CLK
++	depends on SND_SOC
++	depends on PWM
++	depends on I2C
++	select SND_ORPAL_AAPI
++	select CLK_ORPAL_AAPI
++	help
++	  This option enables ORPAL AAPi antenna analyzer.
++
++endmenu
+diff --git a/drivers/vna/Makefile b/drivers/vna/Makefile
+new file mode 100644
+index 0000000..fc5dbed
+--- /dev/null
++++ b/drivers/vna/Makefile
+@@ -0,0 +1,8 @@
++# SPDX-License-Identifier: GPL-2.0
++#
++# Makefile for kernel VNA drivers.
++#
++
++vna-orpal-aapi-objs := vna_orpal_aapi_drv.o \
++			vna_orpal_aapi_sysfs.o
++obj-$(CONFIG_VNA_ORPAL_AAPI) += vna-orpal-aapi.o
+diff --git a/drivers/vna/vna_orpal_aapi_drv.c b/drivers/vna/vna_orpal_aapi_drv.c
+new file mode 100644
+index 0000000..e98b5c3
+--- /dev/null
++++ b/drivers/vna/vna_orpal_aapi_drv.c
+@@ -0,0 +1,856 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * The driver for ORPAL AA-Pi antenna analyzer (VNA)
++ *
++ * Copyright 2018 Sergey Suloev <ssuloev@orpaltech.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#define DEBUG
++
++#include <linux/clk.h>
++#include <linux/cdev.h>
++#include <linux/delay.h>
++#include <linux/device.h>
++#include <linux/fs.h>
++#include <linux/gpio/consumer.h>
++#include <linux/interrupt.h>
++#include <linux/irq.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/notifier.h>
++#include <linux/of.h>
++#include <linux/of_device.h>
++#include <linux/of_platform.h>
++#include <linux/platform_device.h>
++#include <linux/pm_runtime.h>
++#include <linux/reboot.h>
++#include <linux/slab.h>
++#include <linux/uaccess.h>
++#include <linux/version.h>
++
++#include "vna_orpal_aapi_drv.h"
++#include "vna_orpal_aapi_sysfs.h"
++
++
++static DEFINE_IDA(orpal_aapi_ida_dev);
++static dev_t orpal_aapi_dev;
++static struct class *orpal_aapi_class;
++
++ATTRIBUTE_GROUPS(orpal_aapi);
++
++
++static int orpal_aapi_set_clock(struct clk *clk, u32 rate)
++{
++	int ret;
++
++	ret = clk_round_rate(clk, rate);
++	if (ret < 0)
++		return ret;
++
++	/* A rounded rate value will be passed */
++	ret = clk_set_rate(clk, ret);
++
++	return ret;
++}
++
++u32 orpal_aapi_get_measure_freq(struct aapi_device *aapi)
++{
++	return clk_get_rate(aapi->clk0);
++}
++
++int orpal_aapi_set_measure_freq(struct aapi_device *aapi,
++				u32 measure_freq)
++{
++        u32 loc_osc_freq;
++        int ret;
++
++	if (IS_ERR_OR_NULL(aapi->clk0))
++		return -ENODEV;
++
++	ret = orpal_aapi_set_clock(aapi->clk0, measure_freq);
++	if (ret)
++		return ret;
++
++	loc_osc_freq = measure_freq + aapi->intermediate_freq;
++	// TODO: verify rates
++
++	ret = orpal_aapi_set_clock(aapi->clk1, loc_osc_freq);
++	if (ret)
++		return ret;
++
++	return 0;
++}
++
++u32 orpal_aapi_get_losc_freq(struct aapi_device *aapi)
++{
++	return clk_get_rate(aapi->clk1);
++}
++
++static void orpal_aapi_disable_clks(struct aapi_device *aapi)
++{
++	if (!IS_ERR_OR_NULL(aapi->clk0))
++		clk_disable_unprepare(aapi->clk0);
++
++	if (!IS_ERR_OR_NULL(aapi->clk1))
++		clk_disable_unprepare(aapi->clk1);
++}
++
++static int orpal_aapi_runtime_resume(struct device *dev)
++{
++	struct aapi_device *aapi = dev_get_drvdata(dev);
++	int ret;
++
++	dev_dbg(dev, "%s: device resume\n",  __func__);
++
++	ret = clk_prepare_enable(aapi->clk0);
++	if (ret) {
++		dev_err(dev, "failed to enable clk0\n");
++		return ret;
++	}
++
++	ret = clk_prepare_enable(aapi->clk1);
++	if (ret) {
++		dev_err(dev, "failed to enable clk1\n");
++		goto err_rel_clk;
++	}
++
++	if (aapi->initial_freq) {
++		ret = orpal_aapi_set_measure_freq(aapi,
++					aapi->initial_freq);
++		if (ret)
++			goto err_rel_clk;
++	}
++
++	return 0;
++
++err_rel_clk:
++	orpal_aapi_disable_clks(aapi);
++
++	return ret;
++}
++
++static int orpal_aapi_runtime_suspend(struct device *dev)
++{
++	struct aapi_device *aapi = dev_get_drvdata(dev);
++
++	dev_dbg(dev, "%s: device suspend\n",  __func__);
++
++	orpal_aapi_disable_clks(aapi);
++
++        return 0;
++}
++
++static int orpal_aapi_runtime_idle(struct device *dev)
++{
++	/* TODO: do not allow suspend currently */
++	return 1;
++}
++
++static void orpal_aapi_do_poweroff(void)
++{
++	struct device_node *np =
++		of_find_compatible_node(NULL, NULL, "orpaltech,aapi-160");
++	struct platform_device *pdev = of_find_device_by_node(np);
++	struct aapi_device *aapi = platform_get_drvdata(pdev);
++
++	BUG_ON(!aapi->shdn_ctrl.gpio);
++
++	/* activate shutdown control line */
++	gpiod_set_value_cansleep(aapi->shdn_ctrl.gpio, 1);
++
++	mdelay(aapi->shdn_ctrl.timeout);
++
++	pr_emerg("Unable to poweroff system\n");
++}
++
++static int orpal_aapi_setup_poweroff(struct aapi_device *aapi)
++{
++	/*
++	 * The pm_power_off function can already be assigned
++	 * by bcm2835 WDT on RaspberryPi platform.
++	 * Let's override it.
++	 */
++	if (pm_power_off)
++		dev_warn(aapi->dev.parent, "%s: pm_power_off already claimed", __func__);
++
++	pm_power_off = orpal_aapi_do_poweroff;
++
++	return 0;
++}
++
++static void orpal_aapi_free_poweroff(struct aapi_device *aapi)
++{
++	if (pm_power_off == orpal_aapi_do_poweroff)
++		pm_power_off = NULL;
++}
++
++static irqreturn_t orpal_aapi_status_isr(int irq, void *dev_id)
++{
++	struct aapi_device *aapi = dev_id;
++	int ret;
++	bool val, changed;
++
++	mutex_lock(&aapi->status_mutex);
++
++	// read status from hardware
++	if (irq == aapi->chrg_pg.irq)
++	{
++		ret = orpal_aapi_get_charger_pg(aapi, &val);
++		if (ret < 0) {
++			dev_err(aapi->dev.parent, "error reading charger PG line\n");
++			changed = false;
++		} else {
++			changed = ( val != aapi->status.charger_pg );
++			aapi->status.charger_pg = val;
++//			dev_dbg(aapi->dev.parent, "%s: new charger PG value: %d\n", __func__, val);
++		}
++	}
++
++	else if (irq == aapi->chrg_s1.irq)
++	{
++		ret = orpal_aapi_get_charger_s1(aapi, &val);
++		if (ret < 0) {
++			dev_err(aapi->dev.parent, "error reading charger STAT1 line\n");
++			changed = false;
++                } else {
++			changed = ( val != aapi->status.charger_s1 );
++			aapi->status.charger_s1 = val;
++//			dev_dbg(aapi->dev.parent, "%s: new charger STAT1 value: %d\n", __func__, val);
++		}
++	}
++
++	else if (irq == aapi->chrg_s2.irq)
++	{
++		ret = orpal_aapi_get_charger_s2(aapi, &val);
++		if (ret < 0) {
++			dev_err(aapi->dev.parent, "error reading charger STAT2 line\n");
++			changed = false;
++		} else {
++			changed = ( val != aapi->status.charger_s2 );
++			aapi->status.charger_s2 = val;
++//			dev_dbg(aapi->dev.parent, "%s: new charger STAT2 value: %d\n", __func__, val);
++		}
++	}
++
++	else if (irq == aapi->low_bat.irq)
++	{
++		ret = orpal_aapi_get_low_battery(aapi, &val);
++		if (ret < 0) {
++			dev_err(aapi->dev.parent, "error reading low battery line\n");
++			changed = false;
++		} else {
++			changed = ( val != aapi->status.low_battery );
++			aapi->status.low_battery = val;
++//			dev_dbg(aapi->dev.parent, "%s: new low battery status: %d\n", __func__, val);
++		}
++	}
++
++	mutex_unlock(&aapi->status_mutex);
++
++	/*When data arrives, then, the following statement must be executed to
++	signal asynchronous readers.*/
++	if (aapi->async_queue && changed)
++		kill_fasync(&aapi->async_queue, SIGIO, POLL_IN);
++
++	return IRQ_HANDLED;
++}
++
++int orpal_aapi_get_charger_pg(struct aapi_device *aapi, bool *val)
++{
++	int ret;
++
++	ret = gpiod_get_value(aapi->chrg_pg.gpio);
++	if (ret < 0)
++		return ret;
++
++	// hardware reports 0 in case if power is good
++	// invert the value
++	*val = ( ret == 0 );
++
++	return 0;
++}
++
++int orpal_aapi_get_charger_s1(struct aapi_device *aapi, bool *val)
++{
++	int ret;
++
++	ret = gpiod_get_value(aapi->chrg_s1.gpio);
++	if (ret < 0)
++		return ret;
++
++	*val = ( ret > 0 );
++	return 0;
++}
++
++int orpal_aapi_get_charger_s2(struct aapi_device *aapi, bool *val)
++{
++	int ret;
++
++	ret = gpiod_get_value(aapi->chrg_s2.gpio);
++	if (ret < 0)
++		return ret;
++
++	*val = ( ret > 0 );
++	return 0;
++}
++
++int orpal_aapi_get_low_battery(struct aapi_device *aapi, bool *val)
++{
++	int ret;
++
++	ret = gpiod_get_value(aapi->low_bat.gpio);
++	if (ret < 0)
++		return ret;
++
++	// hardware reports 0 in case if battery goes low
++	// invert the value
++	*val = ( ret == 0 );
++	return 0;
++}
++
++static int orpal_aapi_read_status(struct aapi_device *aapi)
++{
++	int ret;
++
++	dev_dbg(aapi->dev.parent, "%s: reading device status\n", __func__);
++	mutex_lock(&aapi->status_mutex);
++
++	ret = orpal_aapi_get_charger_pg(aapi, &aapi->status.charger_pg);
++	if (ret < 0)
++		goto err_exit;
++
++	ret = orpal_aapi_get_charger_s1(aapi, &aapi->status.charger_s1);
++	if (ret < 0)
++		goto err_exit;
++
++	ret = orpal_aapi_get_charger_s2(aapi, &aapi->status.charger_s2);
++	if (ret < 0)
++		goto err_exit;
++
++	ret = orpal_aapi_get_low_battery(aapi, &aapi->status.low_battery);
++	if (ret < 0)
++		goto err_exit;
++
++	mutex_unlock(&aapi->status_mutex);
++	return 0;
++
++err_exit:
++	mutex_unlock(&aapi->status_mutex);
++	return ret;
++}
++
++static struct gpio_desc *orpal_aapi_get_gpiod(struct aapi_device *aapi,
++					      const char *gpio_name,
++					      enum gpiod_flags flags)
++{
++	struct device *dev = aapi->dev.parent;
++	struct gpio_desc *gpiod;
++
++	gpiod = gpiod_get(dev, gpio_name, flags);
++	if (gpiod == ERR_PTR(-ENOENT))
++		dev_dbg(dev, "no entry for gpio '%s'\n", gpio_name);
++
++	else if (gpiod == ERR_PTR(-EBUSY))
++		dev_dbg(dev, "gpio '%s' is busy\n", gpio_name);
++
++	if (IS_ERR(gpiod))
++		dev_err(dev, "gpio '%s' setup error\n", gpio_name);
++
++	return gpiod;
++}
++
++static int orpal_aapi_init_status_line(struct aapi_device *aapi,
++				       struct aapi_status_line *line)
++{
++	struct device *dev = aapi->dev.parent;
++	int ret;
++
++	line->gpio = orpal_aapi_get_gpiod(aapi, line->name, GPIOD_IN);
++	if (IS_ERR(line->gpio))
++		return PTR_ERR(line->gpio);
++
++
++	ret = gpiod_to_irq(line->gpio);
++	if (ret < 0) {
++		dev_err(dev, "can't get irq for line '%s'", line->name);
++		goto err_gpio;
++	}
++	line->irq = ret;
++
++	ret = request_irq(line->irq, orpal_aapi_status_isr,
++			  IRQF_TRIGGER_FALLING|IRQF_TRIGGER_RISING,
++			  dev_name(&aapi->dev),
++			  aapi);
++	if (ret < 0) {
++		line->irq = 0;
++		dev_err(dev, "failed to request irq = %d", line->irq);
++		goto err_gpio;
++	}
++
++	dev_dbg(dev, "%s: status line '%s' ready, num = %d, irq = %d\n",
++		__func__, line->name, desc_to_gpio(line->gpio), line->irq);
++
++	return 0;
++
++err_gpio:
++	gpiod_put(line->gpio);
++	line->gpio = NULL;
++
++	return 0;
++}
++
++static void orpal_aapi_free_status_line(struct aapi_device *aapi,
++					struct aapi_status_line *line)
++{
++	if (!IS_ERR_OR_NULL(line->gpio)) {
++		gpiod_put(line->gpio);
++		line->gpio = NULL;
++	}
++	if (line->irq) {
++		free_irq(line->irq, aapi);
++		line->irq = 0;
++	}
++}
++
++static ssize_t orpal_aapi_fread(struct file *filp, char __user *buf,
++				size_t size, loff_t *f_pos)
++{
++	struct aapi_device *aapi = filp->private_data;
++	unsigned int copied = 0;
++	size_t dev_size = sizeof(aapi->status);
++	int ret;
++
++	if (*f_pos >= dev_size)
++		goto out;
++
++	ret = orpal_aapi_read_status(aapi);
++	if (ret < 0)
++		return ret;
++
++	copied = min(size, dev_size);
++	copy_to_user(buf, &aapi->status, copied);
++
++out:
++	dev_dbg(aapi->dev.parent, "%s: reading %d bytes, %d read\n",
++		__func__, size, copied);
++	return copied;
++}
++
++static ssize_t orpal_aapi_fwrite(struct file *filp,
++				 const char __user *buf,
++				 size_t size,
++				 loff_t *f_pos)
++{
++	struct aapi_device *aapi = filp->private_data;
++
++	dev_dbg(aapi->dev.parent,
++		"%s: writing %d bytes, no actual write performed\n",
++		__func__);
++	return size;
++}
++
++static int orpal_aapi_fopen(struct inode *inode, struct file *filp)
++{
++	struct aapi_device *aapi;
++
++	aapi = container_of(inode->i_cdev, struct aapi_device, cdev);
++
++	if (!aapi) {
++		dev_err(aapi->dev.parent,
++			"device: minor %d unknown\n", iminor(inode));
++		return -ENODEV;
++	}
++
++	filp->private_data = aapi;
++
++	// device can't be open for write
++	if ( (filp->f_flags & O_ACCMODE) == O_WRONLY) {
++		dev_dbg(aapi->dev.parent,
++			"%s: device can't be open for write\n", __func__);
++		return -EACCES;
++	}
++
++	dev_dbg(aapi->dev.parent, "%s: open\n", __func__);
++	return 0;
++}
++
++static loff_t orpal_aapi_fllseek(struct file *filp, loff_t offset, int whence)
++{
++	struct aapi_device *aapi = filp->private_data;
++	loff_t dev_size = sizeof(aapi->status);
++
++	return no_seek_end_llseek_size(filp, offset, whence, dev_size);
++}
++
++static unsigned int orpal_aapi_fpoll(struct file *filp,
++				     struct poll_table_struct *wait)
++{
++	struct aapi_device *aapi = filp->private_data;
++
++	dev_dbg(aapi->dev.parent, "%s: poll\n", __func__);
++	return 0;
++}
++
++static int orpal_aapi_ffasync(int fd, struct file *filp, int mode)
++{
++	struct aapi_device *aapi = filp->private_data;
++
++	return fasync_helper(fd, filp, mode, &aapi->async_queue);
++}
++
++static int orpal_aapi_frelease(struct inode *inode, struct file *filp)
++{
++	struct aapi_device *aapi = filp->private_data;
++	filp->private_data = NULL;
++
++	/* remove this filp from the asynchronously notified filp's */
++	orpal_aapi_ffasync(-1, filp, 0);
++
++	dev_dbg(aapi->dev.parent, "%s: release\n", __func__);
++	return 0;
++}
++
++static const struct file_operations orpal_aapi_fops = {
++	.owner	 = THIS_MODULE,
++	.open	 = orpal_aapi_fopen,
++	.release = orpal_aapi_frelease,
++	.read	 = orpal_aapi_fread,
++	.write	 = orpal_aapi_fwrite,
++	.llseek	 = orpal_aapi_fllseek,
++	.poll	 = orpal_aapi_fpoll,
++	.fasync	 = orpal_aapi_ffasync,
++};
++
++static void orpal_aapi_free_gpio(struct aapi_device *aapi)
++{
++	if (!IS_ERR_OR_NULL(aapi->shdn_ctrl.gpio)) {
++		gpiod_put(aapi->shdn_ctrl.gpio);
++		aapi->shdn_ctrl.gpio = NULL;
++	}
++
++	orpal_aapi_free_status_line(aapi, &aapi->chrg_pg);
++	orpal_aapi_free_status_line(aapi, &aapi->chrg_s1);
++	orpal_aapi_free_status_line(aapi, &aapi->chrg_s2);
++	orpal_aapi_free_status_line(aapi, &aapi->low_bat);
++}
++
++static int orpal_aapi_setup_gpio(struct aapi_device *aapi)
++{
++	struct device *dev = aapi->dev.parent;
++	int ret;
++
++	/* shutdown control setup */
++	aapi->shdn_ctrl.gpio =
++		orpal_aapi_get_gpiod(aapi, "shdn-ctrl", GPIOD_OUT_LOW);
++	if (IS_ERR(aapi->shdn_ctrl.gpio))
++		return PTR_ERR(aapi->shdn_ctrl.gpio);
++
++	aapi->shdn_ctrl.timeout = DEFAULT_SHDN_TIMEOUT_MS;
++	device_property_read_u32(dev, "shdn-timeout-ms",
++				&aapi->shdn_ctrl.timeout);
++
++
++	/* set status line names */
++	strcpy(aapi->chrg_pg.name, "chrg-pg");
++	strcpy(aapi->chrg_s1.name, "chrg-stat1");
++	strcpy(aapi->chrg_s2.name, "chrg-stat2");
++	strcpy(aapi->low_bat.name, "low-battery");
++
++
++	/* initialize status mutex */
++	mutex_init(&aapi->status_mutex);
++
++	/* charger indicators */
++	ret = orpal_aapi_init_status_line(aapi, &aapi->chrg_s1);
++	if (ret)
++		goto error_exit;
++
++	ret = orpal_aapi_init_status_line(aapi, &aapi->chrg_s2);
++	if (ret)
++		goto error_exit;
++
++	ret = orpal_aapi_init_status_line(aapi, &aapi->chrg_pg);
++	if (ret)
++		goto error_exit;
++
++	/* low battery indicator */
++	ret = orpal_aapi_init_status_line(aapi, &aapi->low_bat);
++	if (ret)
++		goto error_exit;
++
++	return 0;
++
++error_exit:
++	orpal_aapi_free_gpio(aapi);
++
++	return ret;
++}
++
++static int orpal_aapi_read_dt(struct aapi_device *aapi)
++{
++	struct device *dev = aapi->dev.parent;
++	int ret;
++
++	aapi->clk0 = devm_clk_get(dev, "clk0");
++	if (IS_ERR(aapi->clk0)) {
++		ret = PTR_ERR(aapi->clk0);
++		if (ret != -EPROBE_DEFER)
++			dev_err(dev, "unable to acquire CLK0 clock\n");
++		else
++			dev_err(dev, "access to CLK0 output deferred\n");
++		return ret;
++        }
++
++	aapi->clk1 = devm_clk_get(dev, "clk1");
++	if (IS_ERR(aapi->clk1)) {
++		ret = PTR_ERR(aapi->clk1);
++		if (ret != -EPROBE_DEFER)
++			dev_err(dev, "unable to acquire CLK1 clock\n");
++		else
++			dev_err(dev, "access to CLK1 output deferred\n");
++		return ret;
++	}
++
++	ret = device_property_read_u32(dev, "intermediate-freq",
++				       &aapi->intermediate_freq);
++	if (ret < 0) {
++		dev_err(dev, "intermediate frequency not specified\n");
++                return ret;
++        }
++
++	ret = device_property_read_u32(dev, "initial-freq",
++				&aapi->initial_freq);
++	if (ret < 0)
++		dev_warn(dev, "initial frequency not specified\n");
++
++	return 0;
++}
++
++static void orpal_aapi_dev_release(struct device *dev)
++{
++	struct aapi_device *aapi = to_aapi_device(dev);
++
++	ida_simple_remove(&orpal_aapi_ida_dev, aapi->id);
++}
++
++static struct device_type orpal_aapi_devtype = {
++	.name	 = "aapi_device",
++	.release = orpal_aapi_dev_release,
++};
++
++static struct aapi_device *orpal_aapi_dev_create(struct platform_device *pdev)
++{
++	struct aapi_device *aapi;
++	int id;
++	int ret;
++
++	id = ida_simple_get(&orpal_aapi_ida_dev, 0, 0, GFP_KERNEL);
++	if (id < 0) {
++		dev_err(&pdev->dev, "unable to allocate id\n");
++		return ERR_PTR(id);
++	}
++
++	aapi = devm_kzalloc(&pdev->dev, sizeof(*aapi), GFP_KERNEL);
++	if (!aapi) {
++		dev_err(&pdev->dev, "unable to allocate memory\n");
++		ret = -ENOMEM;
++		goto err_delete_ida;
++	}
++	platform_set_drvdata(pdev, aapi);
++
++	dev_set_name(&aapi->dev, DEV_NAME "%d", id);
++	aapi->id = id;
++	aapi->dev.devt = MKDEV(MAJOR(orpal_aapi_dev), id);
++	aapi->dev.parent = &pdev->dev;
++	aapi->dev.class = orpal_aapi_class;
++	aapi->dev.type = &orpal_aapi_devtype;
++	aapi->dev.groups = orpal_aapi_groups;
++
++	ret = device_register(&aapi->dev);
++	if (ret < 0) {
++		dev_err(&pdev->dev, "failed to register device\n");
++		put_device(&aapi->dev);
++		goto err_delete_ida;
++	}
++
++	cdev_init(&aapi->cdev, &orpal_aapi_fops);
++	aapi->cdev.owner = THIS_MODULE;
++	ret = cdev_add(&aapi->cdev, aapi->dev.devt, 1);
++	if (ret < 0) {
++		dev_err(&pdev->dev, "cdev add failed\n");
++		goto err_unreg_dev;
++	}
++
++	dev_dbg(&pdev->dev,
++		"%s: char device created: major(%d), minor(%d)",
++		__func__,
++		MAJOR(aapi->dev.devt),
++		MINOR(aapi->dev.devt));
++
++	return aapi;
++
++err_unreg_dev:
++	device_unregister(&aapi->dev);
++err_delete_ida:
++	ida_simple_remove(&orpal_aapi_ida_dev, id);
++
++	return ERR_PTR(ret);
++}
++
++static void orpal_aapi_free_dev(struct aapi_device *aapi)
++{
++	cdev_del(&aapi->cdev);
++
++	dev_dbg(aapi->dev.parent,
++		"%s: char device deleted: major(%d), minor(%d)",
++		__func__,
++		MAJOR(aapi->dev.devt),
++		MINOR(aapi->dev.devt));
++
++	device_unregister(&aapi->dev);
++}
++
++static int orpal_aapi_probe(struct platform_device *pdev)
++{
++	struct aapi_device *aapi;
++	int ret;
++
++	aapi = orpal_aapi_dev_create(pdev);
++	if (IS_ERR(aapi)) {
++		ret = PTR_ERR(aapi);
++		if (ret != -EPROBE_DEFER)
++			dev_err(&pdev->dev, "device create failed: %d\n", ret);
++		return ret;
++	}
++
++	ret = orpal_aapi_read_dt(aapi);
++	if (ret)
++		goto err_free_dev;
++
++	ret = orpal_aapi_setup_gpio(aapi);
++	if (ret)
++		goto err_free_dev;
++
++	ret = orpal_aapi_setup_poweroff(aapi);
++	if (ret)
++		goto err_free_gpio;
++
++	/*
++	 * This wake-up/shutdown pattern is to be able to have the
++	 * device woken up, even if runtime_pm is disabled
++	 */
++	ret = orpal_aapi_runtime_resume(&pdev->dev);
++	if (ret < 0) {
++		dev_err(&pdev->dev, "couldn't resume the device\n");
++		goto err_free_pwroff;
++	}
++
++	pm_runtime_set_active(&pdev->dev);
++	pm_runtime_enable(&pdev->dev);
++
++	return 0;
++
++err_free_pwroff:
++	orpal_aapi_free_poweroff(aapi);
++err_free_gpio:
++	orpal_aapi_free_gpio(aapi);
++err_free_dev:
++	orpal_aapi_free_dev(aapi);
++
++	return ret;
++}
++
++static int orpal_aapi_remove(struct platform_device *pdev)
++{
++	struct aapi_device *aapi = platform_get_drvdata(pdev);
++
++	pm_runtime_force_suspend(&pdev->dev);
++
++	orpal_aapi_free_gpio(aapi);
++	orpal_aapi_free_poweroff(aapi);
++	orpal_aapi_free_dev(aapi);
++
++	return 0;
++}
++
++static const struct of_device_id orpal_aapi_match[] = {
++	{ .compatible = "orpaltech,aapi-160", },
++	{ /*sentinel*/ }
++};
++MODULE_DEVICE_TABLE(of, orpal_aapi_match);
++
++/*
++ * Declare device runtime PM callbacks.
++ */
++static const struct dev_pm_ops orpal_aapi_pm_ops = {
++	.runtime_resume	 = orpal_aapi_runtime_resume,
++	.runtime_suspend = orpal_aapi_runtime_suspend,
++	.runtime_idle	 = orpal_aapi_runtime_idle,
++};
++
++static struct platform_driver orpal_aapi_driver = {
++	.probe	= orpal_aapi_probe,
++	.remove	= orpal_aapi_remove,
++	.driver	= {
++		.name		= DEV_NAME,
++		.owner		= THIS_MODULE,
++		.of_match_table	= orpal_aapi_match,
++		.pm		= &orpal_aapi_pm_ops,
++        },
++};
++
++static int __init orpal_aapi_init(void)
++{
++	int ret;
++
++	ret = alloc_chrdev_region(&orpal_aapi_dev, 0,
++				  MINORMASK, DEV_NAME);
++	if (ret < 0) {
++		pr_err("Unable to alloc chrdev region\n");
++		return ret;
++	}
++
++        orpal_aapi_class = class_create(THIS_MODULE, CLASS_NAME);
++        if (IS_ERR(orpal_aapi_class)) {
++		pr_err("Unable to create class\n");
++                ret = PTR_ERR(orpal_aapi_class);
++		goto err_class;
++        }
++
++	ret = platform_driver_register(&orpal_aapi_driver);
++	if (ret) {
++		pr_err("Unable to register platform driver\n");
++		goto err_reg;
++	}
++
++	return 0;
++
++err_reg:
++        class_destroy(orpal_aapi_class);
++err_class:
++	unregister_chrdev(MAJOR(orpal_aapi_dev), DEV_NAME);
++
++	return ret;
++}
++module_init(orpal_aapi_init);
++
++
++static void __exit orpal_aapi_exit(void)
++{
++	platform_driver_unregister(&orpal_aapi_driver);
++
++	class_destroy(orpal_aapi_class);
++
++	unregister_chrdev(MAJOR(orpal_aapi_dev), DEV_NAME);
++}
++module_exit(orpal_aapi_exit);
++
++
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com");
++MODULE_DESCRIPTION("ORPALTECH AAPi antenna analyzer driver (VNA)");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/vna/vna_orpal_aapi_drv.h b/drivers/vna/vna_orpal_aapi_drv.h
+new file mode 100644
+index 0000000..85d5785
+--- /dev/null
++++ b/drivers/vna/vna_orpal_aapi_drv.h
+@@ -0,0 +1,89 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * The driver for ORPAL AA-Pi antenna analyzer (VNA)
++ *
++ * Copyright 2018 Sergey Suloev <ssuloev@orpaltech.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#ifndef ORPAL_AAPI_DRV_H
++#define ORPAL_AAPI_DRV_H
++
++#define CLASS_NAME	"vna"
++#define DEV_NAME	"aapi"
++
++#define DEFAULT_SHDN_TIMEOUT_MS	3000
++
++
++struct aapi_status_line {
++	struct gpio_desc *gpio;
++	unsigned int	irq;
++	char		name[32];
++};
++
++struct aapi_shutdown_ctrl {
++	struct gpio_desc *gpio;
++	u32		timeout;
++};
++
++struct aapi_device_status {
++	bool	low_battery;
++	bool	charger_pg;
++	bool	charger_s1;
++	bool	charger_s2;
++};
++
++struct aapi_device {
++	struct device	dev;
++	unsigned int	id;
++
++	struct cdev	cdev;
++
++	/* synthesizer clock outputs */
++	struct clk	*clk0;
++	struct clk	*clk1;
++
++	/* crystal frequency (fixed in radio board) */
++	u32		xtal_freq;
++
++	/* initial measurement frequency */
++	u32		initial_freq;
++
++	/* intermediate frequency */
++	u32		intermediate_freq;
++
++	/* shutdown control */
++	struct aapi_shutdown_ctrl	shdn_ctrl;
++
++	/* status lines: charger, battery level */
++	struct aapi_status_line		chrg_pg, chrg_s1, chrg_s2;
++	struct aapi_status_line		low_bat;
++
++	/* queue for asynchronous readers */
++	struct fasync_struct		*async_queue;
++
++	/* device status, can be obtained via chardev read operation */
++	struct aapi_device_status	status;
++	struct mutex			status_mutex;
++};
++
++int orpal_aapi_set_measure_freq(struct aapi_device *aapi,
++				u32 measure_freq);
++u32 orpal_aapi_get_measure_freq(struct aapi_device *aapi);
++u32 orpal_aapi_get_losc_freq(struct aapi_device *aapi);
++
++/* device status accessors */
++int orpal_aapi_get_charger_pg(struct aapi_device *aapi, bool *val);
++int orpal_aapi_get_charger_s1(struct aapi_device *aapi, bool *val);
++int orpal_aapi_get_charger_s2(struct aapi_device *aapi, bool *val);
++int orpal_aapi_get_low_battery(struct aapi_device *aapi, bool *val);
++
++
++#define to_aapi_device(device)	\
++	container_of(device, struct aapi_device, dev)
++
++#endif /* ORPAL_AAPI_DRV_H */
+diff --git a/drivers/vna/vna_orpal_aapi_sysfs.c b/drivers/vna/vna_orpal_aapi_sysfs.c
+new file mode 100644
+index 0000000..6577551
+--- /dev/null
++++ b/drivers/vna/vna_orpal_aapi_sysfs.c
+@@ -0,0 +1,153 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * The driver for ORPAL AA-Pi antenna analyzer (VNA)
++ *
++ * Copyright 2018 Sergey Suloev <ssuloev@orpaltech.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#include <linux/clk.h>
++#include <linux/cdev.h>
++#include <linux/device.h>
++#include <linux/err.h>
++#include <linux/fs.h>
++#include <linux/gpio/consumer.h>
++#include <linux/kernel.h>
++#include <linux/kfifo.h>
++#include <linux/list.h>
++#include <linux/types.h>
++
++#include "vna_orpal_aapi_drv.h"
++#include "vna_orpal_aapi_sysfs.h"
++
++
++static ssize_t measure_freq_show(struct device *dev,
++				 struct device_attribute *attr,
++				 char *buf)
++{
++	struct aapi_device *aapi = to_aapi_device(dev);
++	u32 rate = orpal_aapi_get_measure_freq(aapi);
++
++	return sprintf(buf, "%d\n", rate);
++}
++
++static ssize_t measure_freq_store(struct device *dev,
++				  struct device_attribute *attr,
++				  const char *buf, size_t count)
++{
++	struct aapi_device *aapi = to_aapi_device(dev);
++	u32 measure_freq;
++	int ret;
++
++	ret = kstrtou32(buf, 10, &measure_freq);
++	if (ret < 0)
++		return ret;
++
++	ret = orpal_aapi_set_measure_freq(aapi, measure_freq);
++	if (ret)
++		return ret;
++
++        return count;
++}
++
++static ssize_t local_osc_freq_show(struct device *dev,
++				   struct device_attribute *attr,
++				   char *buf)
++{
++	struct aapi_device *aapi = to_aapi_device(dev);
++	u32 rate = orpal_aapi_get_losc_freq(aapi);
++
++	return sprintf(buf, "%d\n", rate);
++}
++
++static ssize_t intermediate_freq_show(struct device *dev,
++				      struct device_attribute *attr,
++				      char *buf)
++{
++        struct aapi_device *aapi = to_aapi_device(dev);
++
++        return sprintf(buf, "%d\n", aapi->intermediate_freq);
++}
++
++static ssize_t charger_power_good_show(struct device *dev,
++					struct device_attribute *attr,
++					char *buf)
++{
++	struct aapi_device *aapi = to_aapi_device(dev);
++	int ret;
++	bool val;
++
++	ret = orpal_aapi_get_charger_pg(aapi, &val);
++	if (ret < 0)
++		return ret;
++
++	return sprintf(buf, "%d\n", val);
++}
++
++static ssize_t charger_stat1_show(struct device *dev,
++				  struct device_attribute *attr,
++				  char *buf)
++{
++	struct aapi_device *aapi = to_aapi_device(dev);
++	int ret;
++	bool val;
++
++	ret = orpal_aapi_get_charger_s1(aapi, &val);
++	if (ret < 0)
++		return ret;
++
++	return sprintf(buf, "%d\n", val);
++}
++
++static ssize_t charger_stat2_show(struct device *dev,
++				  struct device_attribute *attr,
++				  char *buf)
++{
++	struct aapi_device *aapi = to_aapi_device(dev);
++	int ret;
++	bool val;
++
++	ret = orpal_aapi_get_charger_s2(aapi, &val);
++	if (ret < 0)
++		return ret;
++
++	return sprintf(buf, "%d\n", val);
++}
++
++static ssize_t low_battery_show(struct device *dev,
++				struct device_attribute *attr,
++				char *buf)
++{
++	struct aapi_device *aapi = to_aapi_device(dev);
++	int ret;
++	bool val;
++
++	ret = orpal_aapi_get_low_battery(aapi, &val);
++	if (ret < 0)
++		return ret;
++
++	return sprintf(buf, "%d\n", val);
++}
++
++static DEVICE_ATTR_RW(measure_freq);
++static DEVICE_ATTR_RO(local_osc_freq);
++static DEVICE_ATTR_RO(intermediate_freq);
++static DEVICE_ATTR_RO(charger_power_good);
++static DEVICE_ATTR_RO(charger_stat1);
++static DEVICE_ATTR_RO(charger_stat2);
++static DEVICE_ATTR_RO(low_battery);
++
++struct attribute *orpal_aapi_attrs[] = {
++	&dev_attr_measure_freq.attr,
++	&dev_attr_local_osc_freq.attr,
++	&dev_attr_intermediate_freq.attr,
++	&dev_attr_charger_power_good.attr,
++	&dev_attr_charger_stat1.attr,
++	&dev_attr_charger_stat2.attr,
++	&dev_attr_low_battery.attr,
++	NULL,
++};
+diff --git a/drivers/vna/vna_orpal_aapi_sysfs.h b/drivers/vna/vna_orpal_aapi_sysfs.h
+new file mode 100644
+index 0000000..c140e7e
+--- /dev/null
++++ b/drivers/vna/vna_orpal_aapi_sysfs.h
+@@ -0,0 +1,18 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * The driver for ORPAL AA-Pi antenna analyzer (VNA)
++ *
++ * Copyright 2018 Sergey Suloev <ssuloev@orpaltech.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#ifndef ORPAL_AAPI_SYSFS_H
++#define ORPAL_AAPI_SYSFS_H
++
++extern struct attribute *orpal_aapi_attrs[];
++
++#endif /* ORPAL_AAPI_SYSFS_H */
+-- 
+2.17.1
+

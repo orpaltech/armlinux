@@ -23,7 +23,7 @@ IMAGE_SCRIPT="${LIBDIR}/sdcard-${SOC_FAMILY}.sh"
 if [ -f "${IMAGE_SCRIPT}" ] ; then
 . $IMAGE_SCRIPT
 else
-  echo "error: no image creation script found for ${SOC_FAMILY}!"
+  echo "error: image creation script not found for ${SOC_FAMILY}!"
   exit 1
 fi
 

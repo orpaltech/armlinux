@@ -4,24 +4,22 @@
 
 #MESA_REPO_URL="https://github.com/anholt/mesa.git"
 MESA_REPO_URL="https://gitlab.freedesktop.org/mesa/mesa.git"
-MESA_BRANCH="master"
-# MESA_RELEASE="18.2.0"
+MESA_BRANCH="18.3"
 # MESA_TAG="mesa-${MESA_RELEASE}"
-
-MESA_FORCE_UPDATE="no"
-MESA_FORCE_REBUILD="yes"
 
 MESA_SRC_DIR=$EXTRADIR/mesa-anholt
 MESA_OUT_DIR=$MESA_SRC_DIR/build/$LINUX_PLATFORM
 
 MESA_PREFIX="/usr"
 
+MESA_FORCE_UPDATE="no"
+MESA_FORCE_REBUILD="yes"
 
 # -----------------------------------------------------------------------------
 
 mesa_update()
 {
-	echo "Prepare MESA sources..."
+	display_alert "Prepare MESA sources..." "${MESA_REPO_URL}" "info"
 
 	if [ "${MESA_FORCE_UPDATE}" = yes ] ; then
 		echo "Force MESA update"
@@ -55,6 +53,7 @@ mesa_update()
 		echo "Checking out tag: tags/${MESA_TAG}"
 		git -C $MESA_SRC_DIR checkout tags/$MESA_TAG
 
+		MESA_RELEASE=$(head -n 1 ${MESA_SRC_DIR}/VERSION)
 		MESA_DEB_VER="${MESA_RELEASE}-tag"
 	else
 		MESA_RELEASE=$(head -n 1 ${MESA_SRC_DIR}/VERSION)
@@ -66,7 +65,7 @@ mesa_update()
 	MESA_DEB_PKG="mesa-${MESA_DEB_PKG_VER}"
 	MESA_DEB_DIR="${DEBS_DIR}/${MESA_DEB_PKG}-deb"
 
-	echo "Sources ready."
+	display_alert "Sources ready" "release ${MESA_RELEASE}" "info"
 }
 
 mesa_make()
@@ -108,8 +107,8 @@ mesa_make()
 			--enable-shared=yes \
 			CC="${DEV_GCC}" \
 			CXX="${DEV_CXX}" \
-			CFLAGS="--sysroot=${SYSROOT_DIR}" \
-			CXXFLAGS="--sysroot=${SYSROOT_DIR}"
+			CFLAGS="--sysroot=${SYSROOT_DIR} -DNULL=0" \
+			CXXFLAGS="--sysroot=${SYSROOT_DIR} -DNULL=0"
 		[ $? -eq 0 ] || exit $?;
 
 		echo "Done."
@@ -142,7 +141,7 @@ Version: $MESA_DEB_PKG_VER
 Maintainer: $MAINTAINER_NAME <$MAINTAINER_EMAIL>
 Architecture: all
 Priority: optional
-Description: This package provides Mesa 3D libraries
+Description: This package provides Mesa 3D libraries for RaspberryPi
 EOF
 
 	mkdir -p ${MESA_DEB_DIR}${MESA_PREFIX}

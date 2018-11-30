@@ -74,7 +74,7 @@ pause()
 }
 
 # ----------------------------------------------------------------------
-function count_files()
+count_files()
 {
   local FILE_PATH=$1
   local FILE_COUNT=$(ls $FILE_PATH 2> /dev/null | wc -l)

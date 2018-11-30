@@ -18,7 +18,7 @@ rtl8189_get_src()
 {
 	mkdir -p $REALTEK_DIR
 
-        echo "Prepare rtl8189 sources..."
+        display_alert "Prepare rtl8189 sources..." "${RTL8189_URL} | ${RTL8189_BRANCH}" "info"
 
         rm -rf $RTL8189_DIR
         # clone sources
@@ -29,7 +29,7 @@ rtl8189_get_src()
 
 rtl8189_make()
 {
-	echo "Building rtl8189 kernel module..."
+	echo "Building rtl8189 kernel driver..."
 
         cd $RTL8189_DIR
 

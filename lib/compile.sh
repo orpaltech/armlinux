@@ -71,7 +71,7 @@ compile_kernel()
 		make mrproper
 	fi
 
-	local CONFIG_BASE_DIR="${BASEDIR}/config/kernel"
+	local CONFIG_BASE_DIR="${BASEDIR}/config/kernel/${CONFIG}"
 	local CONFIG_DIR="${CONFIG_BASE_DIR}/${KERNEL_REPO_NAME}"
 	local USER_CONFIG="${CONFIG_DIR}/${KERNEL_RELEASE}/${KERNEL_BUILD_USER_CONFIG}"
 	if [ ! -f $USER_CONFIG  ] ; then
@@ -118,6 +118,9 @@ compile_firmware()
 		cp ./build/${SOC_PLAT}/debug/bl31.bin $UBOOT_SOURCE_DIR/
 		SUNXI_ATF_USED="yes"
     	  	;;
+	    bcm283*)
+		echo "*** RaspberryPi firmware prebuilt ***"
+		;;
 	esac
 
 	echo "Done."
