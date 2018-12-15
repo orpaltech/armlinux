@@ -1,0 +1,812 @@
+From 54cd912bf34637f656830098bd550c1a4293d59a Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sun, 2 Sep 2018 00:33:39 +0300
+Subject: [PATCH] pwm: sun4i: Add support for A31, A64 and H6 SoCs
+
+---
+ .../devicetree/bindings/pwm/pwm-sun4i.txt     |   6 +
+ arch/arm/boot/dts/sun6i-a31.dtsi              |  28 +
+ drivers/pwm/pwm-sun4i.c                       | 501 ++++++++++++------
+ 3 files changed, 380 insertions(+), 155 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/pwm/pwm-sun4i.txt b/Documentation/devicetree/bindings/pwm/pwm-sun4i.txt
+index 2a1affb..2760805 100644
+--- a/Documentation/devicetree/bindings/pwm/pwm-sun4i.txt
++++ b/Documentation/devicetree/bindings/pwm/pwm-sun4i.txt
+@@ -1,19 +1,25 @@
+ Allwinner sun4i and sun7i SoC PWM controller
++============================================
+ 
+ Required properties:
+   - compatible: should be one of:
+     - "allwinner,sun4i-a10-pwm"
+     - "allwinner,sun5i-a10s-pwm"
+     - "allwinner,sun5i-a13-pwm"
++    - "allwinner,sun6i-a31-pwm"
+     - "allwinner,sun7i-a20-pwm"
+     - "allwinner,sun8i-h3-pwm"
+     - "allwinner,sun50i-a64-pwm", "allwinner,sun5i-a13-pwm"
+     - "allwinner,sun50i-h5-pwm", "allwinner,sun5i-a13-pwm"
++
+   - reg: physical base address and length of the controller's registers
+   - #pwm-cells: should be 3. See pwm.txt in this directory for a description of
+     the cells format.
+   - clocks: From common clock binding, handle to the parent clock.
+ 
++Optional properties:
++  - resets: shall be the reset control phandle for the PWM block, if required.
++
+ Example:
+ 
+ 	pwm: pwm@1c20e00 {
+diff --git a/arch/arm/boot/dts/sun6i-a31.dtsi b/arch/arm/boot/dts/sun6i-a31.dtsi
+index debc0bf..8c5bf2e 100644
+--- a/arch/arm/boot/dts/sun6i-a31.dtsi
++++ b/arch/arm/boot/dts/sun6i-a31.dtsi
+@@ -715,6 +715,26 @@
+ 				bias-pull-up;
+ 			};
+ 
++			pwm0_pins: pwm@0 {
++				pins = "PH13";
++				function = "pwm0";
++			};
++
++			pwm1_pins: pwm@1 {
++				pins = "PH9", "PH10";
++				function = "pwm1";
++			};
++
++			pwm2_pins: pwm@2 {
++				pins = "PH11", "PH12";
++				function = "pwm2";
++			};
++
++			pwm3_pins: pwm@3 {
++				pins = "PA19", "PA20";
++				function = "pwm3";
++			};
++
+ 			spdif_pins_a: spdif@0 {
+ 				pins = "PH28";
+ 				function = "spdif";
+@@ -788,6 +808,14 @@
+ 			status = "disabled";
+ 		};
+ 
++		pwm: pwm@01c21400 {
++			compatible = "allwinner,sun6i-a31-pwm";
++			reg = <0x01c21400 0x40>;
++			clocks = <&osc24M>;
++			#pwm-cells = <3>;
++			status = "disabled";
++		};
++
+ 		rtp: rtp@1c25000 {
+ 			compatible = "allwinner,sun6i-a31-ts";
+ 			reg = <0x01c25000 0x100>;
+diff --git a/drivers/pwm/pwm-sun4i.c b/drivers/pwm/pwm-sun4i.c
+index 470d4f7..f34756d 100644
+--- a/drivers/pwm/pwm-sun4i.c
++++ b/drivers/pwm/pwm-sun4i.c
+@@ -6,11 +6,13 @@
+  * Licensed under GPLv2.
+  */
+ 
++#define DEBUG
++
+ #include <linux/bitops.h>
+ #include <linux/clk.h>
+ #include <linux/delay.h>
+ #include <linux/err.h>
+-#include <linux/io.h>
++#include <linux/regmap.h>
+ #include <linux/jiffies.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+@@ -21,38 +23,65 @@
+ #include <linux/spinlock.h>
+ #include <linux/time.h>
+ 
+-#define PWM_CTRL_REG		0x0
++#define SUN4I_PWM_CTRL		0x0
++
++#define SUN4I_PWM_PRD_BASE	0x4
++#define SUN4I_PWM_PRD_OFFSET	0x4
++#define SUN4I_PWM_PRD(ch)	(SUN4I_PWM_PRD_BASE + SUN4I_PWM_PRD_OFFSET * (ch))
++
++#define SUN6I_PWM_CTRL_BASE	0x0
++#define SUN6I_PWM_PRD_BASE	0x4
++#define SUN6I_PWM_CH_OFFSET	0x10
++#define SUN6I_PWM_CTRL(ch)	(SUN6I_PWM_CTRL_BASE + SUN6I_PWM_CH_OFFSET * (ch))
++#define SUN6I_PWM_PRD(ch)	(SUN6I_PWM_PRD_BASE + SUN6I_PWM_CH_OFFSET * (ch))
+ 
+-#define PWM_CH_PRD_BASE		0x4
+-#define PWM_CH_PRD_OFFSET	0x4
+-#define PWM_CH_PRD(ch)		(PWM_CH_PRD_BASE + PWM_CH_PRD_OFFSET * (ch))
+ 
+-#define PWMCH_OFFSET		15
++//#define PWMCH_OFFSET		15
+ #define PWM_PRESCAL_MASK	GENMASK(3, 0)
+-#define PWM_PRESCAL_OFF		0
++/*#define PWM_PRESCAL_OFF		0
+ #define PWM_EN			BIT(4)
+ #define PWM_ACT_STATE		BIT(5)
+ #define PWM_CLK_GATING		BIT(6)
+ #define PWM_MODE		BIT(7)
+ #define PWM_PULSE		BIT(8)
+ #define PWM_BYPASS		BIT(9)
++*/
+ 
+-#define PWM_RDY_BASE		28
+-#define PWM_RDY_OFFSET		1
+-#define PWM_RDY(ch)		BIT(PWM_RDY_BASE + PWM_RDY_OFFSET * (ch))
++//#define PWM_RDY_BASE		28
++//#define PWM_RDY_OFFSET		1
++//#define PWM_RDY(ch)		BIT(PWM_RDY_BASE + PWM_RDY_OFFSET * (ch))
+ 
+-#define PWM_PRD(prd)		(((prd) - 1) << 16)
++//#define PWM_PRD(prd)		(((prd) - 1) << 16)
+ #define PWM_PRD_MASK		GENMASK(15, 0)
+ 
+-#define PWM_DTY_MASK		GENMASK(15, 0)
++//#define PWM_DTY_MASK		GENMASK(15, 0)
++
++//#define PWM_REG_PRD(reg)	((((reg) >> 16) & PWM_PRD_MASK) + 1)
++//#define PWM_REG_DTY(reg)	((reg) & PWM_DTY_MASK)
++
++#define SUN6I_PWM_CHANNELS	4
++#define PWM_MAX_CHANNELS	SUN6I_PWM_CHANNELS
++
+ 
+-#define PWM_REG_PRD(reg)	((((reg) >> 16) & PWM_PRD_MASK) + 1)
+-#define PWM_REG_DTY(reg)	((reg) & PWM_DTY_MASK)
+-#define PWM_REG_PRESCAL(reg, chan)	(((reg) >> ((chan) * PWMCH_OFFSET)) & PWM_PRESCAL_MASK)
++/* regmap fields */
++enum {
++	/* Used bit fields in control register */
++	FIELD_PRESCAL = 0,
++	FIELD_ENABLE,
++	FIELD_POLARITY,
++	FIELD_CLK_GATING,
++	FIELD_BYPASS,
++	FIELD_READY,
+ 
+-#define BIT_CH(bit, chan)	((bit) << ((chan) * PWMCH_OFFSET))
++	/* Bits fields in period register */
++	FIELD_PRD_ACT_CYCLES,
++	FIELD_PRD_CYCLES,
+ 
+-static const u32 prescaler_table[] = {
++	/* Keep last */
++	REGMAP_NUM_FIELDS,
++};
++
++static const u32 sun4i_prescaler_table[] = {
+ 	120,
+ 	180,
+ 	240,
+@@ -68,22 +97,46 @@ static const u32 prescaler_table[] = {
+ 	72000,
+ 	0,
+ 	0,
+-	0, /* Actually 1 but tested separately */
++	1,
++};
++
++static const u32 sun6i_prescaler_table[] = {
++	1,
++	2,
++	4,
++	8,
++	16,
++	32,
++	64,
++	0,
++	0,
++	0,
++	0,
++	0,
++	0,
++	0,
++	0,
++	0,
+ };
+ 
+ struct sun4i_pwm_data {
+ 	bool has_prescaler_bypass;
+-	unsigned int npwm;
++	u32 num_pwm;
++	const struct reg_field (*fields)[PWM_MAX_CHANNELS][REGMAP_NUM_FIELDS];
++	const u32 *prescaler_table;
+ };
+ 
+ struct sun4i_pwm_chip {
+-	struct pwm_chip chip;
+-	struct clk *clk;
+-	void __iomem *base;
+-	spinlock_t ctrl_lock;
++	struct pwm_chip	chip;
++	struct clk	*clk;
++
++	struct regmap	*regmap;
++	struct regmap_field *fields[PWM_MAX_CHANNELS][REGMAP_NUM_FIELDS];
++
++	spinlock_t	ctrl_lock;
+ 	const struct sun4i_pwm_data *data;
+-	unsigned long next_period[2];
+-	bool needs_delay[2];
++	unsigned long	next_period[PWM_MAX_CHANNELS];
++	bool		needs_delay[PWM_MAX_CHANNELS];
+ };
+ 
+ static inline struct sun4i_pwm_chip *to_sun4i_pwm_chip(struct pwm_chip *chip)
+@@ -91,73 +144,93 @@ static inline struct sun4i_pwm_chip *to_sun4i_pwm_chip(struct pwm_chip *chip)
+ 	return container_of(chip, struct sun4i_pwm_chip, chip);
+ }
+ 
+-static inline u32 sun4i_pwm_readl(struct sun4i_pwm_chip *chip,
+-				  unsigned long offset)
++static inline u32 sun4i_pwm_read(struct sun4i_pwm_chip *sun4i_pwm,
++				 u32 chan, u32 num)
+ {
+-	return readl(chip->base + offset);
++	struct regmap_field *field;
++	u32 channels = sun4i_pwm->data->num_pwm;
++	u32 val;
++
++	if (chan >= channels || num >= REGMAP_NUM_FIELDS)
++		return 0;
++
++	field = sun4i_pwm->fields[chan][num];
++	return !regmap_field_read(field, &val) ? val : 0;
+ }
+ 
+-static inline void sun4i_pwm_writel(struct sun4i_pwm_chip *chip,
+-				    u32 val, unsigned long offset)
++static inline void sun4i_pwm_write(struct sun4i_pwm_chip *sun4i_pwm,
++				   u32 chan, u32 num, u32 val)
+ {
+-	writel(val, chip->base + offset);
++	struct regmap_field *field;
++	u32 channels = sun4i_pwm->data->num_pwm;
++
++	if (chan >= channels || num >= REGMAP_NUM_FIELDS)
++		return;
++
++	dev_dbg(sun4i_pwm->chip.dev,
++		"write regmap field: chan = %d, field = %d, val = 0x%08x\n",
++		chan, num, val);
++
++	field = sun4i_pwm->fields[chan][num];
++	regmap_field_write(field, val);
+ }
+ 
+-static void sun4i_pwm_get_state(struct pwm_chip *chip,
+-				struct pwm_device *pwm,
++static void sun4i_pwm_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
+ 				struct pwm_state *state)
+ {
+ 	struct sun4i_pwm_chip *sun4i_pwm = to_sun4i_pwm_chip(chip);
++	const u32 *prescaler_table = sun4i_pwm->data->prescaler_table;
++	u32 chan = pwm->hwpwm;
++	u32 prescaler, pval;
+ 	u64 clk_rate, tmp;
+ 	u32 val;
+-	unsigned int prescaler;
+ 
+ 	clk_rate = clk_get_rate(sun4i_pwm->clk);
+ 
+-	val = sun4i_pwm_readl(sun4i_pwm, PWM_CTRL_REG);
+-
+-	if ((PWM_REG_PRESCAL(val, pwm->hwpwm) == PWM_PRESCAL_MASK) &&
+-	    sun4i_pwm->data->has_prescaler_bypass)
+-		prescaler = 1;
+-	else
+-		prescaler = prescaler_table[PWM_REG_PRESCAL(val, pwm->hwpwm)];
++	if (sun4i_pwm->data->has_prescaler_bypass &&
++	    sun4i_pwm_read(sun4i_pwm, chan, FIELD_BYPASS))
++		pval = 1;
++	else {
++		prescaler = sun4i_pwm_read(sun4i_pwm, chan, FIELD_PRESCAL);
++		pval = prescaler_table[prescaler];
++	}
+ 
+-	if (prescaler == 0)
++	if (pval == 0)
+ 		return;
+ 
+-	if (val & BIT_CH(PWM_ACT_STATE, pwm->hwpwm))
+-		state->polarity = PWM_POLARITY_NORMAL;
+-	else
+-		state->polarity = PWM_POLARITY_INVERSED;
+-
+-	if ((val & BIT_CH(PWM_CLK_GATING | PWM_EN, pwm->hwpwm)) ==
+-	    BIT_CH(PWM_CLK_GATING | PWM_EN, pwm->hwpwm))
+-		state->enabled = true;
+-	else
+-		state->enabled = false;
++	val = sun4i_pwm_read(sun4i_pwm, chan, FIELD_POLARITY);
++	state->polarity = val ? PWM_POLARITY_NORMAL : PWM_POLARITY_INVERSED;
+ 
+-	val = sun4i_pwm_readl(sun4i_pwm, PWM_CH_PRD(pwm->hwpwm));
++	state->enabled =
++		sun4i_pwm_read(sun4i_pwm, chan, FIELD_ENABLE) &&
++		sun4i_pwm_read(sun4i_pwm, chan, FIELD_CLK_GATING);
+ 
+-	tmp = prescaler * NSEC_PER_SEC * PWM_REG_DTY(val);
++	val = sun4i_pwm_read(sun4i_pwm, chan, FIELD_PRD_ACT_CYCLES);
++	tmp = pval * NSEC_PER_SEC * val;
+ 	state->duty_cycle = DIV_ROUND_CLOSEST_ULL(tmp, clk_rate);
+ 
+-	tmp = prescaler * NSEC_PER_SEC * PWM_REG_PRD(val);
++	val = sun4i_pwm_read(sun4i_pwm, chan, FIELD_PRD_CYCLES);
++	tmp = pval * NSEC_PER_SEC * (val + 1);
+ 	state->period = DIV_ROUND_CLOSEST_ULL(tmp, clk_rate);
+ }
+ 
+ static int sun4i_pwm_calculate(struct sun4i_pwm_chip *sun4i_pwm,
+ 			       struct pwm_state *state,
+-			       u32 *dty, u32 *prd, unsigned int *prsclr)
++			       u32 *dty, u32 *prd,
++			       bool *prsclr_bypass, u32 *prsclr)
+ {
++	const u32 *prescaler_table = sun4i_pwm->data->prescaler_table;
++	u32 pval, prescaler = 0;
++	bool prescaler_bypass = 0;
+ 	u64 clk_rate, div = 0;
+-	unsigned int pval, prescaler = 0;
+ 
+ 	clk_rate = clk_get_rate(sun4i_pwm->clk);
+ 
++	/* First, test without any prescaler when available */
+ 	if (sun4i_pwm->data->has_prescaler_bypass) {
+-		/* First, test without any prescaler when available */
+-		prescaler = PWM_PRESCAL_MASK;
++		prescaler_bypass = 1;
+ 		pval = 1;
++
+ 		/*
+ 		 * When not using any prescaler, the clock period in nanoseconds
+ 		 * is not an integer so round it half up instead of
+@@ -166,15 +239,15 @@ static int sun4i_pwm_calculate(struct sun4i_pwm_chip *sun4i_pwm,
+ 		div = clk_rate * state->period + NSEC_PER_SEC / 2;
+ 		do_div(div, NSEC_PER_SEC);
+ 		if (div - 1 > PWM_PRD_MASK)
+-			prescaler = 0;
++			prescaler_bypass = 0;
+ 	}
+ 
+-	if (prescaler == 0) {
++	if (!prescaler_bypass) {
+ 		/* Go up from the first divider */
+ 		for (prescaler = 0; prescaler < PWM_PRESCAL_MASK; prescaler++) {
+-			if (!prescaler_table[prescaler])
+-				continue;
+ 			pval = prescaler_table[prescaler];
++			if (!pval)
++				continue;
+ 			div = clk_rate;
+ 			do_div(div, pval);
+ 			div = div * state->period;
+@@ -182,23 +255,38 @@ static int sun4i_pwm_calculate(struct sun4i_pwm_chip *sun4i_pwm,
+ 			if (div - 1 <= PWM_PRD_MASK)
+ 				break;
+ 		}
+-
+-		if (div - 1 > PWM_PRD_MASK)
++		if (div - 1 > PWM_PRD_MASK) {
++			dev_dbg(sun4i_pwm->chip.dev, "calculate: clk_rate = %llu\n",
++				clk_rate);
++			dev_dbg(sun4i_pwm->chip.dev, "calculate: period(ns) = %d, prd = %llu\n",
++				state->period, div);
++			dev_dbg(sun4i_pwm->chip.dev, "calculate: prescaler = %d, pval = %d\n",
++				prescaler, pval);
+ 			return -EINVAL;
++		}
+ 	}
+ 
+ 	*prd = div;
+ 	div *= state->duty_cycle;
+ 	do_div(div, state->period);
+ 	*dty = div;
++	*prsclr_bypass = prescaler_bypass;
+ 	*prsclr = prescaler;
+ 
+-	div = (u64)pval * NSEC_PER_SEC * *prd;
++	div = (u64)pval * NSEC_PER_SEC * (*prd);
+ 	state->period = DIV_ROUND_CLOSEST_ULL(div, clk_rate);
+ 
+-	div = (u64)pval * NSEC_PER_SEC * *dty;
++	div = (u64)pval * NSEC_PER_SEC * (*dty);
+ 	state->duty_cycle = DIV_ROUND_CLOSEST_ULL(div, clk_rate);
+ 
++	dev_dbg(sun4i_pwm->chip.dev, "calculate: clk_rate = %llu\n",
++		clk_rate);
++	dev_dbg(sun4i_pwm->chip.dev, "calculate: period(ns)=%d, duty_cycle(ns) = %d\n",
++		state->period, state->duty_cycle);
++	dev_dbg(sun4i_pwm->chip.dev, "calculate: prd = %d, duty=%d\n",
++		*prd, *dty);
++	dev_dbg(sun4i_pwm->chip.dev, "calculate: bypass = %d, prescaler = %d, pval = %d\n",
++		*prsclr_bypass, *prsclr, pval);
+ 	return 0;
+ }
+ 
+@@ -206,15 +294,17 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
+ 			   struct pwm_state *state)
+ {
+ 	struct sun4i_pwm_chip *sun4i_pwm = to_sun4i_pwm_chip(chip);
+-	struct pwm_state cstate;
+-	u32 ctrl;
+-	int ret;
+-	unsigned int delay_us;
++	struct pwm_state old_state;
++	u32 chan = pwm->hwpwm;
++	u32 prescaler, delay_us;
+ 	unsigned long now;
++	u32 period, duty;
++	bool bypass;
++	int ret;
+ 
+-	pwm_get_state(pwm, &cstate);
++	pwm_get_state(pwm, &old_state);
+ 
+-	if (!cstate.enabled) {
++	if (!old_state.enabled) {
+ 		ret = clk_prepare_enable(sun4i_pwm->clk);
+ 		if (ret) {
+ 			dev_err(chip->dev, "failed to enable PWM clock\n");
+@@ -223,120 +313,183 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
+ 	}
+ 
+ 	spin_lock(&sun4i_pwm->ctrl_lock);
+-	ctrl = sun4i_pwm_readl(sun4i_pwm, PWM_CTRL_REG);
+ 
+-	if ((cstate.period != state->period) ||
+-	    (cstate.duty_cycle != state->duty_cycle)) {
+-		u32 period, duty, val;
+-		unsigned int prescaler;
++	if ((old_state.period != state->period) ||
++	    (old_state.duty_cycle != state->duty_cycle)) {
+ 
+-		ret = sun4i_pwm_calculate(sun4i_pwm, state,
+-					  &duty, &period, &prescaler);
++		ret = sun4i_pwm_calculate(sun4i_pwm, state, &duty, &period,
++					  &bypass, &prescaler);
+ 		if (ret) {
+-			dev_err(chip->dev, "period exceeds the maximum value\n");
++			dev_err(chip->dev, "Period exceeds the maximum value\n");
+ 			spin_unlock(&sun4i_pwm->ctrl_lock);
+-			if (!cstate.enabled)
++			if (!old_state.enabled)
+ 				clk_disable_unprepare(sun4i_pwm->clk);
+ 			return ret;
+ 		}
+ 
+-		if (PWM_REG_PRESCAL(ctrl, pwm->hwpwm) != prescaler) {
+-			/* Prescaler changed, the clock has to be gated */
+-			ctrl &= ~BIT_CH(PWM_CLK_GATING, pwm->hwpwm);
+-			sun4i_pwm_writel(sun4i_pwm, ctrl, PWM_CTRL_REG);
++		if (sun4i_pwm->data->has_prescaler_bypass)
++			sun4i_pwm_write(sun4i_pwm, chan, FIELD_BYPASS, bypass);
+ 
+-			ctrl &= ~BIT_CH(PWM_PRESCAL_MASK, pwm->hwpwm);
+-			ctrl |= BIT_CH(prescaler, pwm->hwpwm);
+-		}
++		sun4i_pwm_write(sun4i_pwm, chan, FIELD_PRESCAL, prescaler);
+ 
+-		val = (duty & PWM_DTY_MASK) | PWM_PRD(period);
+-		sun4i_pwm_writel(sun4i_pwm, val, PWM_CH_PRD(pwm->hwpwm));
+-		sun4i_pwm->next_period[pwm->hwpwm] = jiffies +
+-			usecs_to_jiffies(cstate.period / 1000 + 1);
+-		sun4i_pwm->needs_delay[pwm->hwpwm] = true;
+-	}
++		sun4i_pwm_write(sun4i_pwm, chan, FIELD_PRD_CYCLES, period);
++		sun4i_pwm_write(sun4i_pwm, chan, FIELD_PRD_ACT_CYCLES, duty);
+ 
+-	if (state->polarity != PWM_POLARITY_NORMAL)
+-		ctrl &= ~BIT_CH(PWM_ACT_STATE, pwm->hwpwm);
+-	else
+-		ctrl |= BIT_CH(PWM_ACT_STATE, pwm->hwpwm);
+-
+-	ctrl |= BIT_CH(PWM_CLK_GATING, pwm->hwpwm);
+-	if (state->enabled) {
+-		ctrl |= BIT_CH(PWM_EN, pwm->hwpwm);
+-	} else if (!sun4i_pwm->needs_delay[pwm->hwpwm]) {
+-		ctrl &= ~BIT_CH(PWM_EN, pwm->hwpwm);
+-		ctrl &= ~BIT_CH(PWM_CLK_GATING, pwm->hwpwm);
++		sun4i_pwm->next_period[chan] = jiffies +
++				usecs_to_jiffies(old_state.period / 1000 + 1);
++		sun4i_pwm->needs_delay[chan] = 1;
+ 	}
+ 
+-	sun4i_pwm_writel(sun4i_pwm, ctrl, PWM_CTRL_REG);
++	sun4i_pwm_write(sun4i_pwm, chan, FIELD_POLARITY,
++			state->polarity == PWM_POLARITY_NORMAL);
+ 
+-	spin_unlock(&sun4i_pwm->ctrl_lock);
+-
+-	if (state->enabled)
+-		return 0;
++	if (state->enabled) {
++		sun4i_pwm_write(sun4i_pwm, chan, FIELD_CLK_GATING, 1);
++		sun4i_pwm_write(sun4i_pwm, chan, FIELD_ENABLE, 1);
++
++	} else {
++		if (sun4i_pwm->needs_delay[chan]) {
++			/* We need a full period to elapse before disabling the channel. */
++			now = jiffies;
++			if (sun4i_pwm->needs_delay[chan] &&
++			    time_before(now, sun4i_pwm->next_period[chan])) {
++				delay_us = jiffies_to_usecs(sun4i_pwm->next_period[chan] -
++							   now);
++				if ((delay_us / 500) > MAX_UDELAY_MS)
++					msleep(delay_us / 1000 + 1);
++				else
++					usleep_range(delay_us, delay_us * 2);
++			}
++			sun4i_pwm->needs_delay[chan] = 0;
++		}
++		sun4i_pwm_write(sun4i_pwm, chan, FIELD_ENABLE, 0);
++		sun4i_pwm_write(sun4i_pwm, chan, FIELD_CLK_GATING, 0);
+ 
+-	if (!sun4i_pwm->needs_delay[pwm->hwpwm]) {
+ 		clk_disable_unprepare(sun4i_pwm->clk);
+-		return 0;
+ 	}
+ 
+-	/* We need a full period to elapse before disabling the channel. */
+-	now = jiffies;
+-	if (sun4i_pwm->needs_delay[pwm->hwpwm] &&
+-	    time_before(now, sun4i_pwm->next_period[pwm->hwpwm])) {
+-		delay_us = jiffies_to_usecs(sun4i_pwm->next_period[pwm->hwpwm] -
+-					   now);
+-		if ((delay_us / 500) > MAX_UDELAY_MS)
+-			msleep(delay_us / 1000 + 1);
+-		else
+-			usleep_range(delay_us, delay_us * 2);
+-	}
+-	sun4i_pwm->needs_delay[pwm->hwpwm] = false;
+-
+-	spin_lock(&sun4i_pwm->ctrl_lock);
+-	ctrl = sun4i_pwm_readl(sun4i_pwm, PWM_CTRL_REG);
+-	ctrl &= ~BIT_CH(PWM_CLK_GATING, pwm->hwpwm);
+-	ctrl &= ~BIT_CH(PWM_EN, pwm->hwpwm);
+-	sun4i_pwm_writel(sun4i_pwm, ctrl, PWM_CTRL_REG);
+ 	spin_unlock(&sun4i_pwm->ctrl_lock);
+ 
+-	clk_disable_unprepare(sun4i_pwm->clk);
+-
+ 	return 0;
+ }
+ 
++static const struct regmap_config sun4i_pwm_regmap_config = {
++	.reg_bits = 32,
++	.val_bits = 32,
++	.reg_stride = 4,
++};
++
++static const struct reg_field
++	sun4i_pwm_reg_fields[PWM_MAX_CHANNELS][REGMAP_NUM_FIELDS] = {
++	{
++		[FIELD_PRESCAL]		= REG_FIELD(SUN4I_PWM_CTRL, 0, 3),
++		[FIELD_ENABLE]		= REG_FIELD(SUN4I_PWM_CTRL, 4, 4),
++		[FIELD_POLARITY]	= REG_FIELD(SUN4I_PWM_CTRL, 5, 5),
++		[FIELD_CLK_GATING]	= REG_FIELD(SUN4I_PWM_CTRL, 6, 6),
++		[FIELD_BYPASS]		= REG_FIELD(SUN4I_PWM_CTRL, 9, 9),
++		[FIELD_READY]		= REG_FIELD(SUN4I_PWM_CTRL, 28, 28),
++		[FIELD_PRD_ACT_CYCLES]	= REG_FIELD(SUN4I_PWM_PRD(0), 0, 15),
++		[FIELD_PRD_CYCLES]	= REG_FIELD(SUN4I_PWM_PRD(0), 16, 31),
++	},
++	{
++		[FIELD_PRESCAL]		= REG_FIELD(SUN4I_PWM_CTRL, 15, 18),
++		[FIELD_ENABLE]		= REG_FIELD(SUN4I_PWM_CTRL, 19, 19),
++		[FIELD_POLARITY]	= REG_FIELD(SUN4I_PWM_CTRL, 20, 20),
++		[FIELD_CLK_GATING]	= REG_FIELD(SUN4I_PWM_CTRL, 21, 21),
++		[FIELD_BYPASS]		= REG_FIELD(SUN4I_PWM_CTRL, 24, 24),
++		[FIELD_READY]		= REG_FIELD(SUN4I_PWM_CTRL, 29, 29),
++		[FIELD_PRD_ACT_CYCLES]	= REG_FIELD(SUN4I_PWM_PRD(1), 0, 15),
++		[FIELD_PRD_CYCLES]	= REG_FIELD(SUN4I_PWM_PRD(1), 16, 31),
++	},
++};
++
++static const struct reg_field
++	sun6i_pwm_reg_fields[PWM_MAX_CHANNELS][REGMAP_NUM_FIELDS] = {
++	{
++		[FIELD_PRESCAL]         = REG_FIELD(SUN6I_PWM_CTRL(0), 0, 3),
++		[FIELD_ENABLE]          = REG_FIELD(SUN6I_PWM_CTRL(0), 4, 4),
++		[FIELD_POLARITY]        = REG_FIELD(SUN6I_PWM_CTRL(0), 5, 5),
++		[FIELD_CLK_GATING]      = REG_FIELD(SUN6I_PWM_CTRL(0), 6, 6),
++		[FIELD_READY]           = REG_FIELD(SUN6I_PWM_CTRL(0), 28, 28),
++		[FIELD_PRD_ACT_CYCLES]  = REG_FIELD(SUN6I_PWM_PRD(0), 0, 15),
++		[FIELD_PRD_CYCLES]      = REG_FIELD(SUN6I_PWM_PRD(0), 16, 31),
++	},
++	{
++		[FIELD_PRESCAL]		= REG_FIELD(SUN6I_PWM_CTRL(1), 0, 3),
++		[FIELD_ENABLE]		= REG_FIELD(SUN6I_PWM_CTRL(1), 4, 4),
++		[FIELD_POLARITY]	= REG_FIELD(SUN6I_PWM_CTRL(1), 5, 5),
++		[FIELD_CLK_GATING]	= REG_FIELD(SUN6I_PWM_CTRL(1), 6, 6),
++		[FIELD_READY]		= REG_FIELD(SUN6I_PWM_CTRL(1), 28, 28),
++		[FIELD_PRD_ACT_CYCLES]	= REG_FIELD(SUN6I_PWM_PRD(1), 0, 15),
++		[FIELD_PRD_CYCLES]	= REG_FIELD(SUN6I_PWM_PRD(1), 16, 31),
++	},
++	{
++		[FIELD_PRESCAL]		= REG_FIELD(SUN6I_PWM_CTRL(2), 0, 3),
++		[FIELD_ENABLE]		= REG_FIELD(SUN6I_PWM_CTRL(2), 4, 4),
++		[FIELD_POLARITY]	= REG_FIELD(SUN6I_PWM_CTRL(2), 5, 5),
++		[FIELD_CLK_GATING]	= REG_FIELD(SUN6I_PWM_CTRL(2), 6, 6),
++		[FIELD_READY]		= REG_FIELD(SUN6I_PWM_CTRL(2), 28, 28),
++		[FIELD_PRD_ACT_CYCLES]	= REG_FIELD(SUN6I_PWM_PRD(2), 0, 15),
++		[FIELD_PRD_CYCLES]	= REG_FIELD(SUN6I_PWM_PRD(2), 16, 31),
++	},
++	{
++		[FIELD_PRESCAL]		= REG_FIELD(SUN6I_PWM_CTRL(3), 0, 3),
++		[FIELD_ENABLE]		= REG_FIELD(SUN6I_PWM_CTRL(3), 4, 4),
++		[FIELD_POLARITY]	= REG_FIELD(SUN6I_PWM_CTRL(3), 5, 5),
++		[FIELD_CLK_GATING]	= REG_FIELD(SUN6I_PWM_CTRL(3), 6, 6),
++		[FIELD_READY]		= REG_FIELD(SUN6I_PWM_CTRL(3), 28, 28),
++		[FIELD_PRD_ACT_CYCLES]	= REG_FIELD(SUN6I_PWM_PRD(3), 0, 15),
++		[FIELD_PRD_CYCLES]	= REG_FIELD(SUN6I_PWM_PRD(3), 16, 31),
++	},
++};
++
+ static const struct pwm_ops sun4i_pwm_ops = {
+-	.apply = sun4i_pwm_apply,
+-	.get_state = sun4i_pwm_get_state,
+-	.owner = THIS_MODULE,
++	.apply		= sun4i_pwm_apply,
++	.get_state	= sun4i_pwm_get_state,
++	.owner		= THIS_MODULE,
++};
++
++static const struct sun4i_pwm_data sun4i_pwm_dual_no_bypass = {
++	.has_prescaler_bypass	= false,
++	.num_pwm		= 2,
++	.prescaler_table	= sun4i_prescaler_table,
++	.fields			= &sun4i_pwm_reg_fields,
+ };
+ 
+-static const struct sun4i_pwm_data sun4i_pwm_dual_nobypass = {
+-	.has_prescaler_bypass = false,
+-	.npwm = 2,
++static const struct sun4i_pwm_data sun4i_pwm_single_bypass = {
++	.has_prescaler_bypass	= true,
++	.num_pwm		= 1,
++	.prescaler_table	= sun4i_prescaler_table,
++	.fields			= &sun4i_pwm_reg_fields,
+ };
+ 
+ static const struct sun4i_pwm_data sun4i_pwm_dual_bypass = {
+-	.has_prescaler_bypass = true,
+-	.npwm = 2,
++	.has_prescaler_bypass	= true,
++	.num_pwm		= 2,
++	.prescaler_table	= sun4i_prescaler_table,
++	.fields			= &sun4i_pwm_reg_fields,
+ };
+ 
+-static const struct sun4i_pwm_data sun4i_pwm_single_bypass = {
+-	.has_prescaler_bypass = true,
+-	.npwm = 1,
++static const struct sun4i_pwm_data sun6i_pwm_quad_no_bypass = {
++	.has_prescaler_bypass	= false,
++	.num_pwm		= 4,
++	.prescaler_table	= sun6i_prescaler_table,
++	.fields			= &sun6i_pwm_reg_fields
+ };
+ 
+ static const struct of_device_id sun4i_pwm_dt_ids[] = {
+ 	{
+ 		.compatible = "allwinner,sun4i-a10-pwm",
+-		.data = &sun4i_pwm_dual_nobypass,
++		.data = &sun4i_pwm_dual_no_bypass,
+ 	}, {
+ 		.compatible = "allwinner,sun5i-a10s-pwm",
+ 		.data = &sun4i_pwm_dual_bypass,
+ 	}, {
+ 		.compatible = "allwinner,sun5i-a13-pwm",
+ 		.data = &sun4i_pwm_single_bypass,
++	}, {
++		.compatible = "allwinner,sun6i-a31-pwm",
++		.data = &sun6i_pwm_quad_no_bypass,
+ 	}, {
+ 		.compatible = "allwinner,sun7i-a20-pwm",
+ 		.data = &sun4i_pwm_dual_bypass,
+@@ -344,46 +497,84 @@ static const struct of_device_id sun4i_pwm_dt_ids[] = {
+ 		.compatible = "allwinner,sun8i-h3-pwm",
+ 		.data = &sun4i_pwm_single_bypass,
+ 	}, {
++		.compatible = "allwinner,sun50i-a64-pwm",
++		.data = &sun4i_pwm_single_bypass,
++        }, {
+ 		/* sentinel */
+ 	},
+ };
+ MODULE_DEVICE_TABLE(of, sun4i_pwm_dt_ids);
+ 
++static int sun4i_alloc_regmap_fields(struct device *dev,
++				     struct sun4i_pwm_chip *pwm, int chan)
++{
++	int i, err;
++
++	if (chan < 0 || chan >= pwm->data->num_pwm)
++		return -EINVAL;
++	for (i = 0; i < REGMAP_NUM_FIELDS; i++) {
++		pwm->fields[chan][i] =
++			devm_regmap_field_alloc(dev, pwm->regmap,
++						(*pwm->data->fields)[chan][i]);
++		if (IS_ERR(pwm->fields[chan][i])) {
++			dev_err(dev, "regmap field allocation failed\n");
++			err = PTR_ERR(pwm->fields[chan][i]);
++			pwm->fields[chan][i] = NULL;
++			return err;
++		}
++	}
++
++	return 0;
++}
++
+ static int sun4i_pwm_probe(struct platform_device *pdev)
+ {
++	struct device *dev = &pdev->dev;
+ 	struct sun4i_pwm_chip *pwm;
+ 	struct resource *res;
+-	int ret;
++	void __iomem *base;
++	int i, ret;
+ 
+-	pwm = devm_kzalloc(&pdev->dev, sizeof(*pwm), GFP_KERNEL);
++	pwm = devm_kzalloc(dev, sizeof(*pwm), GFP_KERNEL);
+ 	if (!pwm)
+ 		return -ENOMEM;
+ 
+-	pwm->data = of_device_get_match_data(&pdev->dev);
++	pwm->data = of_device_get_match_data(dev);
+ 	if (!pwm->data)
+ 		return -ENODEV;
+ 
+ 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+-	pwm->base = devm_ioremap_resource(&pdev->dev, res);
+-	if (IS_ERR(pwm->base))
+-		return PTR_ERR(pwm->base);
++	base = devm_ioremap_resource(dev, res);
++	if (IS_ERR(base))
++		return PTR_ERR(base);
++
++	pwm->regmap = devm_regmap_init_mmio(dev, base,
++				&sun4i_pwm_regmap_config);
++	if (IS_ERR(pwm->regmap))
++		return PTR_ERR(pwm->regmap);
+ 
+-	pwm->clk = devm_clk_get(&pdev->dev, NULL);
++	pwm->clk = devm_clk_get(dev, NULL);
+ 	if (IS_ERR(pwm->clk))
+ 		return PTR_ERR(pwm->clk);
+ 
+-	pwm->chip.dev = &pdev->dev;
++	pwm->chip.dev = dev;
+ 	pwm->chip.ops = &sun4i_pwm_ops;
+ 	pwm->chip.base = -1;
+-	pwm->chip.npwm = pwm->data->npwm;
++	pwm->chip.npwm = pwm->data->num_pwm;
+ 	pwm->chip.of_xlate = of_pwm_xlate_with_flags;
+ 	pwm->chip.of_pwm_n_cells = 3;
+ 
++	for (i = 0; i < pwm->data->num_pwm; i++) {
++		ret = sun4i_alloc_regmap_fields(dev, pwm, i);
++		if (ret)
++			return ret;
++        }
++
+ 	spin_lock_init(&pwm->ctrl_lock);
+ 
+ 	ret = pwmchip_add(&pwm->chip);
+ 	if (ret < 0) {
+-		dev_err(&pdev->dev, "failed to add PWM chip: %d\n", ret);
++		dev_err(dev, "failed to add PWM chip: %d\n", ret);
+ 		return ret;
+ 	}
+ 
+-- 
+2.17.1
+

@@ -1,44 +1,42 @@
-From 1ab2e05bba29d80895698fc51212b25992cebac3 Mon Sep 17 00:00:00 2001
+From 6943609e02411129b424508a73a6f3eb7fd0ba23 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Wed, 12 Dec 2018 15:31:27 +0300
+Date: Sat, 8 Dec 2018 09:36:24 +0300
 Subject: [PATCH] bcm2835: add DT-overlays
 
 ---
  arch/arm/boot/dts/Makefile                    |   2 +
- arch/arm/boot/dts/overlays/Makefile           |  27 ++++
+ arch/arm/boot/dts/overlays/Makefile           |  26 ++++
  .../boot/dts/overlays/README.bcm2835-overlays |   1 +
  .../boot/dts/overlays/bcm2835-aapi-clk.dts    |  48 +++++++
- .../boot/dts/overlays/bcm2835-aapi-lcd.dts    |  69 ++++++++++
- .../boot/dts/overlays/bcm2835-aapi-sound.dts  |  47 +++++++
- .../boot/dts/overlays/bcm2835-aapi-vna.dts    |  33 +++++
- arch/arm/boot/dts/overlays/bcm2835-aapi.dts   |  94 ++++++++++++++
+ .../boot/dts/overlays/bcm2835-aapi-lcd.dts    |  61 +++++++++
+ .../boot/dts/overlays/bcm2835-aapi-sound.dts  |  42 ++++++
+ .../boot/dts/overlays/bcm2835-aapi-vna.dts    |  35 +++++
+ arch/arm/boot/dts/overlays/bcm2835-aapi.dts   |  93 ++++++++++++++
  arch/arm/boot/dts/overlays/bcm2835-aapi2.dts  | 121 ++++++++++++++++++
  .../dts/overlays/bcm2835-audioinjector-pi.dts |  41 ++++++
  .../dts/overlays/bcm2835-ertft0356-drm.dts    | 110 ++++++++++++++++
  .../boot/dts/overlays/bcm2835-fixup.scr-cmd   |  82 ++++++++++++
- .../boot/dts/overlays/bcm2835-gpio-reset.dts  |  19 +++
  .../boot/dts/overlays/bcm2835-nrf24-spi.dts   |  83 ++++++++++++
  arch/arm/boot/dts/overlays/bcm2835-spidev.dts |  68 ++++++++++
  .../dts/overlays/bcm2835-waveshare35-drm.dts  |  71 ++++++++++
  .../overlays/bcm2835-waveshare35-fbtft.dts    |  89 +++++++++++++
- arch/arm64/boot/dts/broadcom/Makefile         |   2 +
- .../arm64/boot/dts/broadcom/overlays/Makefile |  27 ++++
+ arch/arm64/boot/dts/broadcom/Makefile         |   1 +
+ .../arm64/boot/dts/broadcom/overlays/Makefile |  26 ++++
  .../broadcom/overlays/README.bcm2835-overlays |   1 +
  .../broadcom/overlays/bcm2835-aapi-clk.dts    |  48 +++++++
- .../broadcom/overlays/bcm2835-aapi-lcd.dts    |  69 ++++++++++
- .../broadcom/overlays/bcm2835-aapi-sound.dts  |  47 +++++++
- .../broadcom/overlays/bcm2835-aapi-vna.dts    |  33 +++++
- .../dts/broadcom/overlays/bcm2835-aapi.dts    |  94 ++++++++++++++
+ .../broadcom/overlays/bcm2835-aapi-lcd.dts    |  61 +++++++++
+ .../broadcom/overlays/bcm2835-aapi-sound.dts  |  42 ++++++
+ .../broadcom/overlays/bcm2835-aapi-vna.dts    |  35 +++++
+ .../dts/broadcom/overlays/bcm2835-aapi.dts    |  93 ++++++++++++++
  .../dts/broadcom/overlays/bcm2835-aapi2.dts   | 121 ++++++++++++++++++
  .../overlays/bcm2835-audioinjector-pi.dts     |  41 ++++++
  .../overlays/bcm2835-ertft0356-drm.dts        | 110 ++++++++++++++++
  .../broadcom/overlays/bcm2835-fixup.scr-cmd   |  82 ++++++++++++
- .../broadcom/overlays/bcm2835-gpio-reset.dts  |  19 +++
  .../broadcom/overlays/bcm2835-nrf24-spi.dts   |  83 ++++++++++++
  .../dts/broadcom/overlays/bcm2835-spidev.dts  |  68 ++++++++++
  .../overlays/bcm2835-waveshare35-drm.dts      |  71 ++++++++++
  .../overlays/bcm2835-waveshare35-fbtft.dts    |  89 +++++++++++++
- 34 files changed, 2010 insertions(+)
+ 32 files changed, 1945 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.bcm2835-overlays
  create mode 100644 arch/arm/boot/dts/overlays/bcm2835-aapi-clk.dts
@@ -50,7 +48,6 @@ Subject: [PATCH] bcm2835: add DT-overlays
  create mode 100644 arch/arm/boot/dts/overlays/bcm2835-audioinjector-pi.dts
  create mode 100644 arch/arm/boot/dts/overlays/bcm2835-ertft0356-drm.dts
  create mode 100644 arch/arm/boot/dts/overlays/bcm2835-fixup.scr-cmd
- create mode 100644 arch/arm/boot/dts/overlays/bcm2835-gpio-reset.dts
  create mode 100644 arch/arm/boot/dts/overlays/bcm2835-nrf24-spi.dts
  create mode 100644 arch/arm/boot/dts/overlays/bcm2835-spidev.dts
  create mode 100644 arch/arm/boot/dts/overlays/bcm2835-waveshare35-drm.dts
@@ -66,34 +63,32 @@ Subject: [PATCH] bcm2835: add DT-overlays
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dts
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dts
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
- create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dts
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dts
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-spidev.dts
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dts
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-fbtft.dts
 
 diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
-index b5bd3de..98d005e 100644
+index b0e966d..9788867 100644
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -1207,3 +1207,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+@@ -1221,3 +1221,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
  	aspeed-bmc-opp-zaius.dtb \
  	aspeed-bmc-portwell-neptune.dtb \
  	aspeed-bmc-quanta-q71l.dtb
 +
-+subdir-y	:= overlays
++subdir-y	+= overlays
 diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
 new file mode 100644
-index 0000000..1f24ae5
+index 0000000..d4d55d4
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/Makefile
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,26 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
 +dtbo-$(CONFIG_ARCH_BCM2835) += \
 +	bcm2835-spidev.dtbo \
-+	bcm2835-gpio-reset.dtbo \
 +	bcm2835-nrf24-spi.dtbo \
 +	bcm2835-waveshare35-drm.dtbo \
 +	bcm2835-waveshare35-fbtft.dtbo \
@@ -178,10 +173,10 @@ index 0000000..ed855ea
 +};
 diff --git a/arch/arm/boot/dts/overlays/bcm2835-aapi-lcd.dts b/arch/arm/boot/dts/overlays/bcm2835-aapi-lcd.dts
 new file mode 100644
-index 0000000..6f01739
+index 0000000..c89163e
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/bcm2835-aapi-lcd.dts
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,61 @@
 +#include <dt-bindings/gpio/gpio.h>
 +#include <dt-bindings/pinctrl/bcm2835.h>
 +
@@ -210,8 +205,7 @@ index 0000000..6f01739
 +				label = "lcd0";
 +				reg = <0>;
 +
-+				resets = <&rst_gpio 24 GPIO_ACTIVE_LOW 20>;
-+				reset-names = "reset";
++				reset-gpios = <&gpio 24 GPIO_ACTIVE_LOW>;
 +				backlight = <&pwm_bl>;
 +
 +				port {
@@ -243,20 +237,13 @@ index 0000000..6f01739
 +			status = "okay";
 +		};
 +	};
-+
-+	fragment@3 {
-+		target = <&hdmi>;
-+		__overlay__ {
-+			status = "disabled";
-+		};
-+	};
 +};
 diff --git a/arch/arm/boot/dts/overlays/bcm2835-aapi-sound.dts b/arch/arm/boot/dts/overlays/bcm2835-aapi-sound.dts
 new file mode 100644
-index 0000000..ff7b783
+index 0000000..054b3d5
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/bcm2835-aapi-sound.dts
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,42 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -266,8 +253,8 @@ index 0000000..ff7b783
 +	fragment@0 {
 +		target-path = "/soc/";
 +		__overlay__ {
-+			aapi-sound {
-+				compatible = "orpaltech,aapi-wm8731-sound";
++			aapi_sound {
++				compatible = "orpaltech,aapi-wm8731-soundcard";
 +				orpal,i2s-controller = <&i2s>;
 +				orpal,audio-codec = <&aapi_codec>;
 +				status = "okay";
@@ -294,11 +281,6 @@ index 0000000..ff7b783
 +				#sound-dai-cells = <0>;
 +				compatible = "wlf,wm8731";
 +				reg = <0x1a>;
-+
-+				/*---------------REMOVE THIS----------------------------*/
-+				clocks = <&aapi_clk 0>;
-+				clock-names = "dummy-clk";
-+				/*------------------------------------------------------*/
 +				status = "okay";
 +			};
 +		};
@@ -306,10 +288,10 @@ index 0000000..ff7b783
 +};
 diff --git a/arch/arm/boot/dts/overlays/bcm2835-aapi-vna.dts b/arch/arm/boot/dts/overlays/bcm2835-aapi-vna.dts
 new file mode 100644
-index 0000000..bee6657
+index 0000000..3692b61
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/bcm2835-aapi-vna.dts
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,35 @@
 +#include <dt-bindings/gpio/gpio.h>
 +#include <dt-bindings/pinctrl/bcm2835.h>
 +#include <dt-bindings/interrupt-controller/irq.h>
@@ -323,7 +305,7 @@ index 0000000..bee6657
 +	fragment@0 {
 +		target-path = "/soc/";
 +		__overlay__ {
-+			aapi-vna {
++			aapi_vna {
 +				compatible = "orpaltech,aapi-160";
 +				clocks = <&aapi_clk 0>,
 +					 <&aapi_clk 1>;
@@ -339,16 +321,18 @@ index 0000000..bee6657
 +				chrg-pg-gpios = <&gpio 4 0>;
 +				chrg-stat1-gpios = <&gpio 6 0>;
 +				chrg-stat2-gpios = <&gpio 5 0>;
++
++				status = "okay";
 +			};
 +		};
 +	};
 +};
 diff --git a/arch/arm/boot/dts/overlays/bcm2835-aapi.dts b/arch/arm/boot/dts/overlays/bcm2835-aapi.dts
 new file mode 100644
-index 0000000..f3a29ff
+index 0000000..d6ce59f
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/bcm2835-aapi.dts
-@@ -0,0 +1,94 @@
+@@ -0,0 +1,93 @@
 +#include <dt-bindings/gpio/gpio.h>
 +#include <dt-bindings/pinctrl/bcm2835.h>
 +
@@ -361,8 +345,7 @@ index 0000000..f3a29ff
 +	fragment@0 {
 +		target-path = "/soc/";
 +		__overlay__ {
-+
-+			aapi-vna {
++			aapi_vna {
 +				compatible = "orpaltech,aapi-160";
 +				clocks = <&aapi_clk 0>,
 +					 <&aapi_clk 1>;
@@ -380,8 +363,8 @@ index 0000000..f3a29ff
 +				chrg-stat2-gpios = <&gpio 5 0>;
 +			};
 +
-+			aapi-sound {
-+				compatible = "orpaltech,aapi-wm8731-sound";
++			aapi_sound {
++				compatible = "orpaltech,aapi-wm8731-soundcard";
 +				orpal,i2s-controller = <&i2s>;
 +				orpal,audio-codec = <&aapi_codec>;
 +			};
@@ -445,7 +428,7 @@ index 0000000..f3a29ff
 +};
 diff --git a/arch/arm/boot/dts/overlays/bcm2835-aapi2.dts b/arch/arm/boot/dts/overlays/bcm2835-aapi2.dts
 new file mode 100644
-index 0000000..ba1580f
+index 0000000..daaca83
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/bcm2835-aapi2.dts
 @@ -0,0 +1,121 @@
@@ -461,7 +444,7 @@ index 0000000..ba1580f
 +	fragment@0 {
 +		target-path = "/soc/";
 +		__overlay__ {
-+			aapi-vna {
++			aapi_vna {
 +				compatible = "orpaltech,aapi-160";
 +				clocks = <&aapi_clk 0>,
 +					 <&aapi_clk 1>;
@@ -481,10 +464,10 @@ index 0000000..ba1580f
 +				status = "okay";
 +			};
 +
-+			aapi-sound {
-+				compatible = "orpaltech,aapi-wm8731-sound";
-+				orpal,i2s-controller = <&i2s>;
-+				orpal,audio-codec = <&aapi_codec>;
++			aapi_sound {
++				compatible = "orpaltech,aapi-sound";
++				cpu-node = <&i2s>;
++				codec-node = <&aapi_codec>;
 +				status = "okay";
 +			};
 +
@@ -821,31 +804,6 @@ index 0000000..76328f9
 +	fi
 +	env delete tmp_spi_path
 +fi
-diff --git a/arch/arm/boot/dts/overlays/bcm2835-gpio-reset.dts b/arch/arm/boot/dts/overlays/bcm2835-gpio-reset.dts
-new file mode 100644
-index 0000000..e52719b
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/bcm2835-gpio-reset.dts
-@@ -0,0 +1,19 @@
-+#include <dt-bindings/gpio/gpio.h>
-+
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "brcm,bcm2837","brcm,bcm2835";
-+
-+	fragment@0 {
-+		target-path = "/soc/";
-+		__overlay__ {
-+			rst_gpio: gpio-reset-controller@0 {
-+				compatible = "orpaltech,gpio-reset-controller";
-+				gpio-controller = <&gpio>;
-+				#reset-cells = <3>;
-+			};
-+		};
-+	};
-+};
 diff --git a/arch/arm/boot/dts/overlays/bcm2835-nrf24-spi.dts b/arch/arm/boot/dts/overlays/bcm2835-nrf24-spi.dts
 new file mode 100644
 index 0000000..2d9ece7
@@ -1182,27 +1140,25 @@ index 0000000..eba0984
 +	};
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/Makefile b/arch/arm64/boot/dts/broadcom/Makefile
-index 1193a9e..6d2eae1 100644
+index 667ca98..f103270 100644
 --- a/arch/arm64/boot/dts/broadcom/Makefile
 +++ b/arch/arm64/boot/dts/broadcom/Makefile
-@@ -4,3 +4,5 @@ dtb-$(CONFIG_ARCH_BCM2835) += bcm2837-rpi-3-b.dtb \
+@@ -5,3 +5,4 @@ dtb-$(CONFIG_ARCH_BCM2835) += bcm2837-rpi-3-b.dtb \
  
  subdir-y	+= northstar2
  subdir-y	+= stingray
-+
 +subdir-y	+= overlays
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/Makefile b/arch/arm64/boot/dts/broadcom/overlays/Makefile
 new file mode 100644
-index 0000000..1f24ae5
+index 0000000..d4d55d4
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/Makefile
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,26 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
 +dtbo-$(CONFIG_ARCH_BCM2835) += \
 +	bcm2835-spidev.dtbo \
-+	bcm2835-gpio-reset.dtbo \
 +	bcm2835-nrf24-spi.dtbo \
 +	bcm2835-waveshare35-drm.dtbo \
 +	bcm2835-waveshare35-fbtft.dtbo \
@@ -1287,10 +1243,10 @@ index 0000000..ed855ea
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi-lcd.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi-lcd.dts
 new file mode 100644
-index 0000000..6f01739
+index 0000000..c89163e
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi-lcd.dts
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,61 @@
 +#include <dt-bindings/gpio/gpio.h>
 +#include <dt-bindings/pinctrl/bcm2835.h>
 +
@@ -1319,8 +1275,7 @@ index 0000000..6f01739
 +				label = "lcd0";
 +				reg = <0>;
 +
-+				resets = <&rst_gpio 24 GPIO_ACTIVE_LOW 20>;
-+				reset-names = "reset";
++				reset-gpios = <&gpio 24 GPIO_ACTIVE_LOW>;
 +				backlight = <&pwm_bl>;
 +
 +				port {
@@ -1352,20 +1307,13 @@ index 0000000..6f01739
 +			status = "okay";
 +		};
 +	};
-+
-+	fragment@3 {
-+		target = <&hdmi>;
-+		__overlay__ {
-+			status = "disabled";
-+		};
-+	};
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi-sound.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi-sound.dts
 new file mode 100644
-index 0000000..ff7b783
+index 0000000..054b3d5
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi-sound.dts
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,42 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -1375,8 +1323,8 @@ index 0000000..ff7b783
 +	fragment@0 {
 +		target-path = "/soc/";
 +		__overlay__ {
-+			aapi-sound {
-+				compatible = "orpaltech,aapi-wm8731-sound";
++			aapi_sound {
++				compatible = "orpaltech,aapi-wm8731-soundcard";
 +				orpal,i2s-controller = <&i2s>;
 +				orpal,audio-codec = <&aapi_codec>;
 +				status = "okay";
@@ -1403,11 +1351,6 @@ index 0000000..ff7b783
 +				#sound-dai-cells = <0>;
 +				compatible = "wlf,wm8731";
 +				reg = <0x1a>;
-+
-+				/*---------------REMOVE THIS----------------------------*/
-+				clocks = <&aapi_clk 0>;
-+				clock-names = "dummy-clk";
-+				/*------------------------------------------------------*/
 +				status = "okay";
 +			};
 +		};
@@ -1415,10 +1358,10 @@ index 0000000..ff7b783
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi-vna.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi-vna.dts
 new file mode 100644
-index 0000000..bee6657
+index 0000000..3692b61
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi-vna.dts
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,35 @@
 +#include <dt-bindings/gpio/gpio.h>
 +#include <dt-bindings/pinctrl/bcm2835.h>
 +#include <dt-bindings/interrupt-controller/irq.h>
@@ -1432,7 +1375,7 @@ index 0000000..bee6657
 +	fragment@0 {
 +		target-path = "/soc/";
 +		__overlay__ {
-+			aapi-vna {
++			aapi_vna {
 +				compatible = "orpaltech,aapi-160";
 +				clocks = <&aapi_clk 0>,
 +					 <&aapi_clk 1>;
@@ -1448,16 +1391,18 @@ index 0000000..bee6657
 +				chrg-pg-gpios = <&gpio 4 0>;
 +				chrg-stat1-gpios = <&gpio 6 0>;
 +				chrg-stat2-gpios = <&gpio 5 0>;
++
++				status = "okay";
 +			};
 +		};
 +	};
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi.dts
 new file mode 100644
-index 0000000..f3a29ff
+index 0000000..d6ce59f
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi.dts
-@@ -0,0 +1,94 @@
+@@ -0,0 +1,93 @@
 +#include <dt-bindings/gpio/gpio.h>
 +#include <dt-bindings/pinctrl/bcm2835.h>
 +
@@ -1470,8 +1415,7 @@ index 0000000..f3a29ff
 +	fragment@0 {
 +		target-path = "/soc/";
 +		__overlay__ {
-+
-+			aapi-vna {
++			aapi_vna {
 +				compatible = "orpaltech,aapi-160";
 +				clocks = <&aapi_clk 0>,
 +					 <&aapi_clk 1>;
@@ -1489,8 +1433,8 @@ index 0000000..f3a29ff
 +				chrg-stat2-gpios = <&gpio 5 0>;
 +			};
 +
-+			aapi-sound {
-+				compatible = "orpaltech,aapi-wm8731-sound";
++			aapi_sound {
++				compatible = "orpaltech,aapi-wm8731-soundcard";
 +				orpal,i2s-controller = <&i2s>;
 +				orpal,audio-codec = <&aapi_codec>;
 +			};
@@ -1554,7 +1498,7 @@ index 0000000..f3a29ff
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi2.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi2.dts
 new file mode 100644
-index 0000000..ba1580f
+index 0000000..daaca83
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-aapi2.dts
 @@ -0,0 +1,121 @@
@@ -1570,7 +1514,7 @@ index 0000000..ba1580f
 +	fragment@0 {
 +		target-path = "/soc/";
 +		__overlay__ {
-+			aapi-vna {
++			aapi_vna {
 +				compatible = "orpaltech,aapi-160";
 +				clocks = <&aapi_clk 0>,
 +					 <&aapi_clk 1>;
@@ -1590,10 +1534,10 @@ index 0000000..ba1580f
 +				status = "okay";
 +			};
 +
-+			aapi-sound {
-+				compatible = "orpaltech,aapi-wm8731-sound";
-+				orpal,i2s-controller = <&i2s>;
-+				orpal,audio-codec = <&aapi_codec>;
++			aapi_sound {
++				compatible = "orpaltech,aapi-sound";
++				cpu-node = <&i2s>;
++				codec-node = <&aapi_codec>;
 +				status = "okay";
 +			};
 +
@@ -1930,31 +1874,6 @@ index 0000000..76328f9
 +	fi
 +	env delete tmp_spi_path
 +fi
-diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dts
-new file mode 100644
-index 0000000..e52719b
---- /dev/null
-+++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dts
-@@ -0,0 +1,19 @@
-+#include <dt-bindings/gpio/gpio.h>
-+
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "brcm,bcm2837","brcm,bcm2835";
-+
-+	fragment@0 {
-+		target-path = "/soc/";
-+		__overlay__ {
-+			rst_gpio: gpio-reset-controller@0 {
-+				compatible = "orpaltech,gpio-reset-controller";
-+				gpio-controller = <&gpio>;
-+				#reset-cells = <3>;
-+			};
-+		};
-+	};
-+};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dts
 new file mode 100644
 index 0000000..2d9ece7

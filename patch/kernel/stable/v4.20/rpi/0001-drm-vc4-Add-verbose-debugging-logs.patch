@@ -1,14 +1,14 @@
-From 7cc72b8a67876423e3c930cbd15ec66c56c0afbd Mon Sep 17 00:00:00 2001
+From 7435cfbae1d45893e102f0334ec4a336f08da4aa Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 15 Dec 2018 00:04:49 +0300
+Date: Mon, 19 Nov 2018 01:19:18 +0300
 Subject: [PATCH] drm/vc4: Add verbose debugging logs
 
 ---
- drivers/gpu/drm/vc4/vc4_dsi.c | 53 ++++++++++++++++++++++++++++++++---
- 1 file changed, 49 insertions(+), 4 deletions(-)
+ drivers/gpu/drm/vc4/vc4_dsi.c | 40 ++++++++++++++++++++++++++++++++++-
+ 1 file changed, 39 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/gpu/drm/vc4/vc4_dsi.c b/drivers/gpu/drm/vc4/vc4_dsi.c
-index 0c607eb..7d13736 100644
+index 0c607eb..11aecc2 100644
 --- a/drivers/gpu/drm/vc4/vc4_dsi.c
 +++ b/drivers/gpu/drm/vc4/vc4_dsi.c
 @@ -29,6 +29,9 @@
@@ -152,27 +152,7 @@ index 0c607eb..7d13736 100644
  		dsi->bridge = devm_drm_panel_bridge_add(dev, panel,
  							DRM_MODE_CONNECTOR_DSI);
  		if (IS_ERR(dsi->bridge))
-@@ -1646,9 +1680,16 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
- 	if (dsi->port == 1)
- 		vc4->dsi1 = dsi;
- 
--	drm_encoder_init(drm, dsi->encoder, &vc4_dsi_encoder_funcs,
--			 DRM_MODE_ENCODER_DSI, NULL);
--	drm_encoder_helper_add(dsi->encoder, &vc4_dsi_encoder_helper_funcs);
-+
-+	drm_encoder_helper_add(dsi->encoder,
-+			      &vc4_dsi_encoder_helper_funcs);
-+	ret = drm_encoder_init(drm, dsi->encoder,
-+			       &vc4_dsi_encoder_funcs,
-+			       DRM_MODE_ENCODER_DSI, NULL);
-+	if (ret) {
-+		dev_err(dev, "couldn't initialise the DSI encoder: %d\n", ret);
-+		return ret;
-+	}
- 
- 	ret = drm_bridge_attach(dsi->encoder, dsi->bridge, NULL);
- 	if (ret) {
-@@ -1664,6 +1705,8 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+@@ -1664,6 +1698,8 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
  
  	pm_runtime_enable(dev);
  
@@ -181,7 +161,7 @@ index 0c607eb..7d13736 100644
  	return 0;
  }
  
-@@ -1714,6 +1757,8 @@ static int vc4_dsi_dev_probe(struct platform_device *pdev)
+@@ -1714,6 +1750,8 @@ static int vc4_dsi_dev_probe(struct platform_device *pdev)
  	dsi->dsi_host.dev = dev;
  	mipi_dsi_host_register(&dsi->dsi_host);
  

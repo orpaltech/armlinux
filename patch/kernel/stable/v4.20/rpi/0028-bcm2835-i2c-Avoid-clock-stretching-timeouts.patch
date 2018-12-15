@@ -1,0 +1,29 @@
+From e070581da64eaff6c7cbedaf925066fd63004dc5 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Wed, 5 Dec 2018 00:09:26 +0300
+Subject: [PATCH] bcm2835: i2c: Avoid clock stretching timeouts
+
+---
+ drivers/i2c/busses/i2c-bcm2835.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/i2c/busses/i2c-bcm2835.c b/drivers/i2c/busses/i2c-bcm2835.c
+index 44deae7..f614022 100644
+--- a/drivers/i2c/busses/i2c-bcm2835.c
++++ b/drivers/i2c/busses/i2c-bcm2835.c
+@@ -386,6 +386,12 @@ static int bcm2835_i2c_probe(struct platform_device *pdev)
+ 	adap->dev.of_node = pdev->dev.of_node;
+ 	adap->quirks = &bcm2835_i2c_quirks;
+ 
++	/*
++	 * Disable the hardware clock stretching timeout.  SMBUS
++	 * specifies a limit for how long the device can stretch the
++	 * clock, but core I2C doesn't.
++	 */
++	bcm2835_i2c_writel(i2c_dev, BCM2835_I2C_CLKT, 0);
+ 	bcm2835_i2c_writel(i2c_dev, BCM2835_I2C_C, 0);
+ 
+ 	ret = i2c_add_adapter(adap);
+-- 
+2.17.1
+

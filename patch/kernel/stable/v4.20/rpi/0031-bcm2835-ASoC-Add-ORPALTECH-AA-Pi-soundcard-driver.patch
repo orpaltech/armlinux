@@ -1,13 +1,13 @@
-From d1f2fe4e5a1399a912bf29f036b2a43f18263306 Mon Sep 17 00:00:00 2001
+From 9b9bde20b6c231ce5ecdfee7d1eb580cc924c4c4 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Tue, 11 Dec 2018 23:09:31 +0300
+Date: Sat, 8 Dec 2018 01:51:49 +0300
 Subject: [PATCH] bcm2835: ASoC: Add ORPALTECH AA-Pi soundcard driver
 
 ---
  sound/soc/bcm/Kconfig                |   7 ++
  sound/soc/bcm/Makefile               |   3 +
- sound/soc/bcm/orpal-aapi-soundcard.c | 180 +++++++++++++++++++++++++++
- 3 files changed, 190 insertions(+)
+ sound/soc/bcm/orpal-aapi-soundcard.c | 181 +++++++++++++++++++++++++++
+ 3 files changed, 191 insertions(+)
  create mode 100644 sound/soc/bcm/orpal-aapi-soundcard.c
 
 diff --git a/sound/soc/bcm/Kconfig b/sound/soc/bcm/Kconfig
@@ -41,10 +41,10 @@ index fc739d0..75fff41 100644
 +obj-$(CONFIG_SND_ORPAL_AAPI) += snd-soc-orpal-aapi.o
 diff --git a/sound/soc/bcm/orpal-aapi-soundcard.c b/sound/soc/bcm/orpal-aapi-soundcard.c
 new file mode 100644
-index 0000000..51fddfb
+index 0000000..49a1cab
 --- /dev/null
 +++ b/sound/soc/bcm/orpal-aapi-soundcard.c
-@@ -0,0 +1,180 @@
+@@ -0,0 +1,181 @@
 +/*
 + * ASoC Driver for ORPALTECH AA-Pi Soundcard (capture only).
 + *
@@ -205,7 +205,7 @@ index 0000000..51fddfb
 +}
 +
 +static const struct of_device_id orpal_aapi_soundcard_of_match[] = {
-+	{ .compatible = "orpaltech,aapi-wm8731-sound" },
++	{ .compatible = "orpaltech,aapi-wm8731-soundcard", },
 +	{},
 +};
 +
@@ -219,6 +219,7 @@ index 0000000..51fddfb
 +		.of_match_table	= orpal_aapi_soundcard_of_match,
 +	},
 +};
++
 +module_platform_driver(orpal_aapi_soundcard_driver);
 +
 +MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");

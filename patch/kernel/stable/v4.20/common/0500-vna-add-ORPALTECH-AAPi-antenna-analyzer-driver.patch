@@ -1,24 +1,24 @@
-From 936bdbc44d79e385a83c4218dcb900ce7191fa5c Mon Sep 17 00:00:00 2001
+From 85b072ca54573122d6648e196cce51815bc7b258 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Tue, 11 Dec 2018 20:51:42 +0300
+Date: Sat, 8 Dec 2018 10:41:04 +0300
 Subject: [PATCH] vna: add ORPALTECH AAPi antenna analyzer driver
 
 ---
- drivers/Kconfig                |   2 +
- drivers/Makefile               |   1 +
- drivers/vna/Kconfig            |  19 +
- drivers/vna/Makefile           |   8 +
- drivers/vna/orpal_aapi_drv.c   | 846 +++++++++++++++++++++++++++++++++
- drivers/vna/orpal_aapi_drv.h   |  89 ++++
- drivers/vna/orpal_aapi_sysfs.c | 153 ++++++
- drivers/vna/orpal_aapi_sysfs.h |  18 +
- 8 files changed, 1136 insertions(+)
+ drivers/Kconfig                    |   2 +
+ drivers/Makefile                   |   1 +
+ drivers/vna/Kconfig                |  19 +
+ drivers/vna/Makefile               |   8 +
+ drivers/vna/vna_orpal_aapi_drv.c   | 849 +++++++++++++++++++++++++++++
+ drivers/vna/vna_orpal_aapi_drv.h   |  89 +++
+ drivers/vna/vna_orpal_aapi_sysfs.c | 153 ++++++
+ drivers/vna/vna_orpal_aapi_sysfs.h |  18 +
+ 8 files changed, 1139 insertions(+)
  create mode 100644 drivers/vna/Kconfig
  create mode 100644 drivers/vna/Makefile
- create mode 100644 drivers/vna/orpal_aapi_drv.c
- create mode 100644 drivers/vna/orpal_aapi_drv.h
- create mode 100644 drivers/vna/orpal_aapi_sysfs.c
- create mode 100644 drivers/vna/orpal_aapi_sysfs.h
+ create mode 100644 drivers/vna/vna_orpal_aapi_drv.c
+ create mode 100644 drivers/vna/vna_orpal_aapi_drv.h
+ create mode 100644 drivers/vna/vna_orpal_aapi_sysfs.c
+ create mode 100644 drivers/vna/vna_orpal_aapi_sysfs.h
 
 diff --git a/drivers/Kconfig b/drivers/Kconfig
 index ab4d439..e23f3b5 100644
@@ -67,7 +67,7 @@ index 0000000..ae92516
 +endmenu
 diff --git a/drivers/vna/Makefile b/drivers/vna/Makefile
 new file mode 100644
-index 0000000..e47ea92
+index 0000000..fc5dbed
 --- /dev/null
 +++ b/drivers/vna/Makefile
 @@ -0,0 +1,8 @@
@@ -76,18 +76,18 @@ index 0000000..e47ea92
 +# Makefile for kernel VNA drivers.
 +#
 +
-+vna-orpal-aapi-objs := orpal_aapi_drv.o \
-+			orpal_aapi_sysfs.o
++vna-orpal-aapi-objs := vna_orpal_aapi_drv.o \
++			vna_orpal_aapi_sysfs.o
 +obj-$(CONFIG_VNA_ORPAL_AAPI) += vna-orpal-aapi.o
-diff --git a/drivers/vna/orpal_aapi_drv.c b/drivers/vna/orpal_aapi_drv.c
+diff --git a/drivers/vna/vna_orpal_aapi_drv.c b/drivers/vna/vna_orpal_aapi_drv.c
 new file mode 100644
-index 0000000..ca21e3e
+index 0000000..27b0c52
 --- /dev/null
-+++ b/drivers/vna/orpal_aapi_drv.c
-@@ -0,0 +1,846 @@
++++ b/drivers/vna/vna_orpal_aapi_drv.c
+@@ -0,0 +1,849 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
-+ * The driver for ORPAL AA-Pi antenna analyzer
++ * The driver for ORPAL AA-Pi antenna analyzer (VNA)
 + *
 + * Copyright 2018 Sergey Suloev <ssuloev@orpaltech.com>
 + *
@@ -120,15 +120,15 @@ index 0000000..ca21e3e
 +#include <linux/uaccess.h>
 +#include <linux/version.h>
 +
-+#include "orpal_aapi_drv.h"
-+#include "orpal_aapi_sysfs.h"
++#include "vna_orpal_aapi_drv.h"
++#include "vna_orpal_aapi_sysfs.h"
 +
 +
-+static DEFINE_IDA(aapi_ida_dev);
-+static dev_t aapi_dev;
-+static struct class *aapi_class;
++static DEFINE_IDA(orpal_aapi_ida_dev);
++static dev_t orpal_aapi_dev;
++static struct class *orpal_aapi_class;
 +
-+ATTRIBUTE_GROUPS(aapi);
++ATTRIBUTE_GROUPS(orpal_aapi);
 +
 +
 +static int orpal_aapi_set_clock(struct clk *clk, u32 rate)
@@ -230,6 +230,12 @@ index 0000000..ca21e3e
 +	orpal_aapi_disable_clks(aapi);
 +
 +        return 0;
++}
++
++static int orpal_aapi_runtime_idle(struct device *dev)
++{
++	/* TODO: do not allow suspend currently */
++	return 1;
 +}
 +
 +static void orpal_aapi_do_poweroff(void)
@@ -451,23 +457,22 @@ index 0000000..ca21e3e
 +
 +	ret = gpiod_to_irq(line->gpio);
 +	if (ret < 0) {
-+		dev_err(dev, "can't get irq for line '%s'\n", line->name);
++		dev_err(dev, "can't get irq for line '%s'", line->name);
 +		goto err_gpio;
 +	}
 +	line->irq = ret;
 +
 +	ret = request_irq(line->irq, orpal_aapi_status_isr,
-+			  IRQF_TRIGGER_FALLING |
-+			  IRQF_TRIGGER_RISING,
-+			  dev_name(&aapi->dev), aapi);
-+	if (ret) {
-+		dev_err(dev, "failed to request irq=%d, ret=%d\n",
-+			line->irq, ret);
++			  IRQF_TRIGGER_FALLING|IRQF_TRIGGER_RISING,
++			  dev_name(&aapi->dev),
++			  aapi);
++	if (ret < 0) {
 +		line->irq = 0;
++		dev_err(dev, "failed to request irq = %d", line->irq);
 +		goto err_gpio;
 +	}
 +
-+	dev_dbg(dev, "%s: status line '%s' ready, num=%d, irq=%d\n",
++	dev_dbg(dev, "%s: status line '%s' ready, num = %d, irq = %d\n",
 +		__func__, line->name, desc_to_gpio(line->gpio), line->irq);
 +
 +	return 0;
@@ -710,7 +715,7 @@ index 0000000..ca21e3e
 +{
 +	struct aapi_device *aapi = to_aapi_device(dev);
 +
-+	ida_simple_remove(&aapi_ida_dev, aapi->id);
++	ida_simple_remove(&orpal_aapi_ida_dev, aapi->id);
 +}
 +
 +static struct device_type orpal_aapi_devtype = {
@@ -724,7 +729,7 @@ index 0000000..ca21e3e
 +	int id;
 +	int ret;
 +
-+	id = ida_simple_get(&aapi_ida_dev, 0, 0, GFP_KERNEL);
++	id = ida_simple_get(&orpal_aapi_ida_dev, 0, 0, GFP_KERNEL);
 +	if (id < 0) {
 +		dev_err(&pdev->dev, "unable to allocate id\n");
 +		return ERR_PTR(id);
@@ -740,11 +745,11 @@ index 0000000..ca21e3e
 +
 +	dev_set_name(&aapi->dev, DEV_NAME "%d", id);
 +	aapi->id = id;
-+	aapi->dev.devt = MKDEV(MAJOR(aapi_dev), id);
++	aapi->dev.devt = MKDEV(MAJOR(orpal_aapi_dev), id);
 +	aapi->dev.parent = &pdev->dev;
-+	aapi->dev.class = aapi_class;
++	aapi->dev.class = orpal_aapi_class;
 +	aapi->dev.type = &orpal_aapi_devtype;
-+	aapi->dev.groups = aapi_groups;
++	aapi->dev.groups = orpal_aapi_groups;
 +
 +	ret = device_register(&aapi->dev);
 +	if (ret < 0) {
@@ -772,7 +777,7 @@ index 0000000..ca21e3e
 +err_unreg_dev:
 +	device_unregister(&aapi->dev);
 +err_delete_ida:
-+	ida_simple_remove(&aapi_ida_dev, id);
++	ida_simple_remove(&orpal_aapi_ida_dev, id);
 +
 +	return ERR_PTR(ret);
 +}
@@ -822,13 +827,11 @@ index 0000000..ca21e3e
 +	ret = orpal_aapi_runtime_resume(&pdev->dev);
 +	if (ret < 0) {
 +		dev_err(&pdev->dev, "couldn't resume the device\n");
-+		pm_runtime_put(&pdev->dev);
 +		goto err_free_pwroff;
 +	}
 +
 +	pm_runtime_set_active(&pdev->dev);
 +	pm_runtime_enable(&pdev->dev);
-+	pm_runtime_get_noresume(&pdev->dev);
 +
 +	return 0;
 +
@@ -846,8 +849,7 @@ index 0000000..ca21e3e
 +{
 +	struct aapi_device *aapi = platform_get_drvdata(pdev);
 +
-+	pm_runtime_put_sync_suspend(&pdev->dev);
-+	pm_runtime_disable(&pdev->dev);
++	pm_runtime_force_suspend(&pdev->dev);
 +
 +	orpal_aapi_free_gpio(aapi);
 +	orpal_aapi_free_poweroff(aapi);
@@ -868,16 +870,17 @@ index 0000000..ca21e3e
 +static const struct dev_pm_ops orpal_aapi_pm_ops = {
 +	.runtime_resume	 = orpal_aapi_runtime_resume,
 +	.runtime_suspend = orpal_aapi_runtime_suspend,
++	.runtime_idle	 = orpal_aapi_runtime_idle,
 +};
 +
 +static struct platform_driver orpal_aapi_driver = {
 +	.probe	= orpal_aapi_probe,
 +	.remove	= orpal_aapi_remove,
 +	.driver	= {
-+		.name = DEV_NAME,
-+		.owner = THIS_MODULE,
++		.name		= DEV_NAME,
++		.owner		= THIS_MODULE,
 +		.of_match_table	= orpal_aapi_match,
-+		.pm = &orpal_aapi_pm_ops,
++		.pm		= &orpal_aapi_pm_ops,
 +        },
 +};
 +
@@ -885,17 +888,17 @@ index 0000000..ca21e3e
 +{
 +	int ret;
 +
-+	ret = alloc_chrdev_region(&aapi_dev, 0,
++	ret = alloc_chrdev_region(&orpal_aapi_dev, 0,
 +				  MINORMASK, DEV_NAME);
 +	if (ret < 0) {
 +		pr_err("Unable to alloc chrdev region\n");
 +		return ret;
 +	}
 +
-+        aapi_class = class_create(THIS_MODULE, CLASS_NAME);
-+        if (IS_ERR(aapi_class)) {
++        orpal_aapi_class = class_create(THIS_MODULE, CLASS_NAME);
++        if (IS_ERR(orpal_aapi_class)) {
 +		pr_err("Unable to create class\n");
-+                ret = PTR_ERR(aapi_class);
++                ret = PTR_ERR(orpal_aapi_class);
 +		goto err_class;
 +        }
 +
@@ -908,9 +911,9 @@ index 0000000..ca21e3e
 +	return 0;
 +
 +err_reg:
-+        class_destroy(aapi_class);
++        class_destroy(orpal_aapi_class);
 +err_class:
-+	unregister_chrdev(MAJOR(aapi_dev), DEV_NAME);
++	unregister_chrdev(MAJOR(orpal_aapi_dev), DEV_NAME);
 +
 +	return ret;
 +}
@@ -921,21 +924,21 @@ index 0000000..ca21e3e
 +{
 +	platform_driver_unregister(&orpal_aapi_driver);
 +
-+	class_destroy(aapi_class);
++	class_destroy(orpal_aapi_class);
 +
-+	unregister_chrdev(MAJOR(aapi_dev), DEV_NAME);
++	unregister_chrdev(MAJOR(orpal_aapi_dev), DEV_NAME);
 +}
 +module_exit(orpal_aapi_exit);
 +
 +
-+MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
-+MODULE_DESCRIPTION("ORPALTECH AAPi antenna analyzer driver");
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com");
++MODULE_DESCRIPTION("ORPALTECH AAPi antenna analyzer driver (VNA)");
 +MODULE_LICENSE("GPL v2");
-diff --git a/drivers/vna/orpal_aapi_drv.h b/drivers/vna/orpal_aapi_drv.h
+diff --git a/drivers/vna/vna_orpal_aapi_drv.h b/drivers/vna/vna_orpal_aapi_drv.h
 new file mode 100644
 index 0000000..85d5785
 --- /dev/null
-+++ b/drivers/vna/orpal_aapi_drv.h
++++ b/drivers/vna/vna_orpal_aapi_drv.h
 @@ -0,0 +1,89 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -1026,11 +1029,11 @@ index 0000000..85d5785
 +	container_of(device, struct aapi_device, dev)
 +
 +#endif /* ORPAL_AAPI_DRV_H */
-diff --git a/drivers/vna/orpal_aapi_sysfs.c b/drivers/vna/orpal_aapi_sysfs.c
+diff --git a/drivers/vna/vna_orpal_aapi_sysfs.c b/drivers/vna/vna_orpal_aapi_sysfs.c
 new file mode 100644
-index 0000000..f00b05e
+index 0000000..6577551
 --- /dev/null
-+++ b/drivers/vna/orpal_aapi_sysfs.c
++++ b/drivers/vna/vna_orpal_aapi_sysfs.c
 @@ -0,0 +1,153 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -1055,8 +1058,8 @@ index 0000000..f00b05e
 +#include <linux/list.h>
 +#include <linux/types.h>
 +
-+#include "orpal_aapi_drv.h"
-+#include "orpal_aapi_sysfs.h"
++#include "vna_orpal_aapi_drv.h"
++#include "vna_orpal_aapi_sysfs.h"
 +
 +
 +static ssize_t measure_freq_show(struct device *dev,
@@ -1175,7 +1178,7 @@ index 0000000..f00b05e
 +static DEVICE_ATTR_RO(charger_stat2);
 +static DEVICE_ATTR_RO(low_battery);
 +
-+struct attribute *aapi_attrs[] = {
++struct attribute *orpal_aapi_attrs[] = {
 +	&dev_attr_measure_freq.attr,
 +	&dev_attr_local_osc_freq.attr,
 +	&dev_attr_intermediate_freq.attr,
@@ -1185,11 +1188,11 @@ index 0000000..f00b05e
 +	&dev_attr_low_battery.attr,
 +	NULL,
 +};
-diff --git a/drivers/vna/orpal_aapi_sysfs.h b/drivers/vna/orpal_aapi_sysfs.h
+diff --git a/drivers/vna/vna_orpal_aapi_sysfs.h b/drivers/vna/vna_orpal_aapi_sysfs.h
 new file mode 100644
-index 0000000..1f42e52
+index 0000000..c140e7e
 --- /dev/null
-+++ b/drivers/vna/orpal_aapi_sysfs.h
++++ b/drivers/vna/vna_orpal_aapi_sysfs.h
 @@ -0,0 +1,18 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
@@ -1206,7 +1209,7 @@ index 0000000..1f42e52
 +#ifndef ORPAL_AAPI_SYSFS_H
 +#define ORPAL_AAPI_SYSFS_H
 +
-+extern struct attribute *aapi_attrs[];
++extern struct attribute *orpal_aapi_attrs[];
 +
 +#endif /* ORPAL_AAPI_SYSFS_H */
 -- 
