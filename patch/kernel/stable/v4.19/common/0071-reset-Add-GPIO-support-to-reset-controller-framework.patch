@@ -1,82 +1,15 @@
-From c9d3d116698306446f7594c3d8108f49beefeab5 Mon Sep 17 00:00:00 2001
+From bab1e888a52501ec992c9e6d214b9aa4d557fce3 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Wed, 12 Dec 2018 11:49:06 +0300
+Date: Fri, 21 Dec 2018 16:05:58 +0300
 Subject: [PATCH] reset: Add GPIO support to reset controller framework
 
 ---
- drivers/gpio/gpiolib-of.c        |  26 ++++
- drivers/gpio/gpiolib.c           |  13 ++
- drivers/reset/Kconfig            |   7 +
- drivers/reset/Makefile           |   1 +
- drivers/reset/core.c             |  20 ++-
- drivers/reset/reset-gpio.c       | 244 +++++++++++++++++++++++++++++++
- include/linux/gpio/driver.h      |   2 +
- include/linux/of_gpio.h          |   6 +
- include/linux/reset-controller.h |   2 +
- 9 files changed, 318 insertions(+), 3 deletions(-)
+ drivers/reset/Kconfig      |   7 ++
+ drivers/reset/Makefile     |   1 +
+ drivers/reset/reset-gpio.c | 235 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 243 insertions(+)
  create mode 100644 drivers/reset/reset-gpio.c
 
-diff --git a/drivers/gpio/gpiolib-of.c b/drivers/gpio/gpiolib-of.c
-index d4e7a09..1be5397 100644
---- a/drivers/gpio/gpiolib-of.c
-+++ b/drivers/gpio/gpiolib-of.c
-@@ -618,6 +618,32 @@ static int of_gpiochip_add_pin_range(struct gpio_chip *chip)
- static int of_gpiochip_add_pin_range(struct gpio_chip *chip) { return 0; }
- #endif
- 
-+struct gpio_desc *of_gpiochip_gpiod_get(struct gpio_chip *chip,
-+                                        const struct of_phandle_args *gpiospec,
-+					const char *con_id,
-+                                        enum gpiod_flags flags)
-+{
-+	struct gpio_desc *desc = NULL;
-+	enum of_gpio_flags of_flags;
-+	int ret;
-+
-+	desc  = of_xlate_and_get_gpiod_flags(chip, gpiospec, &of_flags);
-+	if (IS_ERR(desc))
-+		return desc;
-+
-+	// acquire gpio
-+	ret = gpiod_request(desc, con_id);
-+	if (ret)
-+		return ERR_PTR(ret);
-+
-+	ret = gpiod_configure_flags(desc, con_id, of_flags, flags);
-+	if (ret)
-+		return ERR_PTR(ret);
-+
-+	return desc;
-+}
-+EXPORT_SYMBOL(of_gpiochip_gpiod_get);
-+
- int of_gpiochip_add(struct gpio_chip *chip)
- {
- 	int status;
-diff --git a/drivers/gpio/gpiolib.c b/drivers/gpio/gpiolib.c
-index a8e01d9..cd0e644 100644
---- a/drivers/gpio/gpiolib.c
-+++ b/drivers/gpio/gpiolib.c
-@@ -1611,6 +1611,19 @@ static struct gpio_chip *find_chip_by_name(const char *name)
- 	return gpiochip_find((void *)name, gpiochip_match_name);
- }
- 
-+static int gpiochip_match_node(struct gpio_chip *chip, void *data)
-+{
-+	struct device_node *chip_np = data;
-+
-+	return chip->gpiodev->dev.of_node == chip_np;
-+}
-+
-+struct gpio_chip *gpiochip_find_by_node(struct device_node *chip_np)
-+{
-+	return gpiochip_find(chip_np, gpiochip_match_node);
-+}
-+EXPORT_SYMBOL_GPL(gpiochip_find_by_node);
-+
- #ifdef CONFIG_GPIOLIB_IRQCHIP
- 
- /*
 diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
 index 13d28fd..d155227 100644
 --- a/drivers/reset/Kconfig
@@ -107,61 +40,12 @@ index 4243c38..6c8f843 100644
  obj-$(CONFIG_RESET_SIMPLE) += reset-simple.o
  obj-$(CONFIG_RESET_STM32MP157) += reset-stm32mp1.o
  obj-$(CONFIG_RESET_SUNXI) += reset-sunxi.o
-diff --git a/drivers/reset/core.c b/drivers/reset/core.c
-index 225e34c..7790343 100644
---- a/drivers/reset/core.c
-+++ b/drivers/reset/core.c
-@@ -411,6 +411,7 @@ static struct reset_control *__reset_control_get_internal(
- 				unsigned int index, bool shared)
- {
- 	struct reset_control *rstc;
-+	int ret;
- 
- 	lockdep_assert_held(&reset_list_mutex);
- 
-@@ -428,13 +429,22 @@ static struct reset_control *__reset_control_get_internal(
- 	if (!rstc)
- 		return ERR_PTR(-ENOMEM);
- 
-+	rstc->rcdev = rcdev;
-+	rstc->id = index;
-+	rstc->shared = shared;
-+
-+	if (rcdev->ops->create) {
-+		ret = rcdev->ops->create(rcdev, rstc->id);
-+		if (ret) {
-+			kfree(rstc);
-+			return ERR_PTR(ret);
-+		}
-+	}
-+
- 	try_module_get(rcdev->owner);
- 
--	rstc->rcdev = rcdev;
- 	list_add(&rstc->list, &rcdev->reset_control_head);
--	rstc->id = index;
- 	kref_init(&rstc->refcnt);
--	rstc->shared = shared;
- 
- 	return rstc;
- }
-@@ -443,6 +453,10 @@ static void __reset_control_release(struct kref *kref)
- {
- 	struct reset_control *rstc = container_of(kref, struct reset_control,
- 						  refcnt);
-+	struct reset_controller_dev *rcdev = rstc->rcdev;
-+
-+	if (rcdev->ops->release)
-+		rcdev->ops->release(rcdev, rstc->id);
- 
- 	lockdep_assert_held(&reset_list_mutex);
- 
 diff --git a/drivers/reset/reset-gpio.c b/drivers/reset/reset-gpio.c
 new file mode 100644
-index 0000000..771eefd
+index 0000000..cec692e
 --- /dev/null
 +++ b/drivers/reset/reset-gpio.c
-@@ -0,0 +1,244 @@
+@@ -0,0 +1,235 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * GPIO Reset controller driver.
@@ -175,15 +59,12 @@ index 0000000..771eefd
 + */
 +
 +#define DEBUG
++
 +#include <linux/delay.h>
 +#include <linux/device.h>
 +#include <linux/err.h>
 +#include <linux/gpio.h>
 +#include <linux/gpio/consumer.h>
-+#include <linux/gpio/driver.h>
-+#include <linux/gpio/machine.h>
-+#include <linux/idr.h>
-+#include <linux/list.h>
 +#include <linux/module.h>
 +#include <linux/mutex.h>
 +#include <linux/of.h>
@@ -194,45 +75,50 @@ index 0000000..771eefd
 +#include <linux/slab.h>
 +
 +
++struct gpio_reset_data;
++
++struct gpio_reset_line {
++	struct gpio_reset_data *data;
++	const char *name;
++	struct gpio_desc *gpiod;
++	u32 duration_ms;
++	/* You can restrict maximum number of resets
++	   for shared controls */
++	u32 max_resets;
++	unsigned int reset_count;
++	struct mutex reset_lock;
++};
++
 +struct gpio_reset_data {
 +	struct reset_controller_dev rcdev;
 +	struct device *dev;
-+	struct gpio_chip *chip;
-+	struct idr idr;
++	int num_lines;
++	struct gpio_reset_line lines[];
 +};
 +
-+struct gpio_reset_control {
-+	struct gpio_desc *gpiod;
-+	unsigned long duration_ms;
-+};
++#define to_gpio_reset_data(x) \
++	container_of((x), struct gpio_reset_data, rcdev)
 +
-+#define to_gpio_reset_data(p)	\
-+	container_of((p), struct gpio_reset_data, rcdev)
 +
-+enum reset_level {
-+	RST_DEASSERT = 0,
-+	RST_ASSERT = 1,
-+};
-+
-+static void gpio_reset_control_set(struct gpio_reset_control *ctrl,
-+				   enum reset_level val)
++static void gpio_reset_line_set(struct gpio_reset_line *line, int asserted)
 +{
-+	gpiod_set_value_cansleep(ctrl->gpiod, val);
++	gpiod_set_value_cansleep(line->gpiod, asserted);
 +}
 +
 +static int gpio_reset_control_assert(struct reset_controller_dev *rcdev,
 +				     unsigned long id)
 +{
 +	struct gpio_reset_data *data = to_gpio_reset_data(rcdev);
-+	struct gpio_reset_control *control;
++	struct gpio_reset_line *line;
 +
-+	control = idr_find(&data->idr, id);
-+	if (!control) {
-+		dev_err(data->dev, "unable to find reset control %d\n", id);
++	if (id >= data->num_lines) {
++		dev_err(data->dev, "illegal reset control id: %d\n", id);
 +		return -EINVAL;
 +	}
 +
-+	gpio_reset_control_set(control, RST_ASSERT);
++	line = &data->lines[id];
++
++	gpio_reset_line_set(line, 1);
 +
 +	return 0;
 +}
@@ -241,17 +127,31 @@ index 0000000..771eefd
 +				    unsigned long id)
 +{
 +	struct gpio_reset_data *data = to_gpio_reset_data(rcdev);
-+	struct gpio_reset_control *control;
++	struct gpio_reset_line *line;
 +
-+	control = idr_find(&data->idr, id);
-+	if (!control) {
-+		dev_err(data->dev, "unable to find reset control %d\n", id);
-+		return;
++	if (id >= data->num_lines) {
++		dev_err(data->dev, "illegal reset control id: %d\n", id);
++		return -EINVAL;
 +	}
 +
-+	gpio_reset_control_set(control, RST_ASSERT);
-+	msleep(control->duration_ms);
-+	gpio_reset_control_set(control, RST_DEASSERT);
++	line = &data->lines[id];
++
++	if (line->max_resets) {
++		mutex_lock(&line->reset_lock);
++
++		if (line->reset_count >= line->max_resets) {
++			dev_warn(data->dev, "max resets exceeded\n");
++			mutex_unlock(&line->reset_lock);
++			return -EINVAL;
++		}
++
++		line->reset_count++;
++		mutex_unlock(&line->reset_lock);
++	}
++
++	gpio_reset_line_set(line, 1);
++	msleep(line->duration_ms);
++	gpio_reset_line_set(line, 0);
 +
 +	return 0;
 +}
@@ -260,114 +160,89 @@ index 0000000..771eefd
 +				       unsigned long id)
 +{
 +	struct gpio_reset_data *data = to_gpio_reset_data(rcdev);
-+	struct gpio_reset_control *control;
++	struct gpio_reset_line *line;
 +
-+	control = idr_find(&data->idr, id);
-+	if (!control) {
-+		dev_err(data->dev, "unable to find reset control %d\n", id);
++	if (id >= data->num_lines) {
++		dev_err(data->dev, "illegal reset control id: %d\n", id);
 +		return -EINVAL;
 +	}
 +
-+	gpio_reset_control_set(control, RST_DEASSERT);
++	line = &data->lines[id];
++
++	gpio_reset_line_set(line, 0);
 +
 +	return 0;
-+}
-+
-+static void gpio_reset_control_release(struct reset_controller_dev *rcdev,
-+				       unsigned long id)
-+{
-+	struct gpio_reset_data *data = to_gpio_reset_data(rcdev);
-+	struct gpio_reset_control *control;
-+
-+	control = idr_remove(&data->idr, id);
-+	if (!control) {
-+		dev_err(data->dev, "unable to find reset control %d\n", id);
-+		return;
-+	}
-+
-+	gpiod_put(control->gpiod);
 +}
 +
 +static struct reset_control_ops gpio_reset_ops = {
 +	.reset = gpio_reset_control_reset,
 +	.assert = gpio_reset_control_assert,
 +	.deassert = gpio_reset_control_deassert,
-+	.release = gpio_reset_control_release,
 +};
 +
-+static int gpio_reset_of_xlate(struct reset_controller_dev *rcdev,
-+				const struct of_phandle_args *rst_spec)
++static int gpio_reset_init_line(struct device_node *np,
++				struct gpio_reset_line *line)
 +{
-+	struct gpio_reset_data *data = to_gpio_reset_data(rcdev);
-+	struct gpio_chip *chip = data->chip;
-+	struct gpio_reset_control *control;
-+	struct gpio_desc *desc;
-+	struct of_phandle_args args;
-+	int ret, i;
++	int ret;
++	struct device *dev = line->data->dev;
 +
-+	if (WARN_ON(rst_spec->args_count != rcdev->of_reset_n_cells))
-+		return -EINVAL;
++	line->name = np->name;
 +
-+	args.np	= chip->of_node;
-+	args.args_count	= chip->of_gpio_n_cells;
++	line->duration_ms = 1;
++	of_property_read_u32(np, "duration-ms", &line->duration_ms);
++	of_property_read_u32(np, "max-resets", &line->max_resets);
 +
-+	for (i = 0; i < args.args_count; i++)
-+		args.args[i] = rst_spec->args[i];
++	line->gpiod = devm_gpiod_get_from_of_node(dev, np, "gpios", 0,
++					GPIOD_OUT_LOW, np->name);
++	if (IS_ERR(line->gpiod)) {
++		dev_err(dev, "unable to get gpio spec for '%s'", np->name);
++		return PTR_ERR(line->gpiod);
++	}
 +
-+	desc = of_gpiochip_gpiod_get(chip, &args, dev_name(data->dev),
-+				GPIOD_OUT_LOW);
-+	if (IS_ERR(desc))
-+		return PTR_ERR(desc);
++	mutex_init(&line->reset_lock);
 +
-+	control = devm_kzalloc(data->dev, sizeof(*control), GFP_KERNEL);
-+	if (!control)
-+		return -ENOMEM;
-+
-+	control->gpiod	     = desc;
-+	control->duration_ms = min(1, rst_spec->args[i]);
-+
-+	return idr_alloc(&data->idr, control, 0, 0, GFP_KERNEL);
++	return 0;
 +}
 +
 +static int gpio_reset_probe(struct platform_device *pdev)
 +{
 +	struct gpio_reset_data *data;
-+	struct device_node *chip_np;
-+	struct gpio_chip *chip;
-+	int ret;
++	struct device_node *np = pdev->dev.of_node, *child;
++	struct gpio_reset_line *line;
++	int num_lines, ret;
 +
-+	if (!pdev->dev.of_node)
++	if (!np)
 +		return -ENODEV;
 +
-+	chip_np = of_parse_phandle(pdev->dev.of_node,
-+				   "gpio-controller", 0);
-+	if (!chip_np) {
-+		dev_err(&pdev->dev, "couldn't get gpio controller phandle\n");
-+		return -ENOENT;
-+	}
-+
-+	chip = gpiochip_find_by_node(chip_np);
-+	of_node_put(chip_np);
-+	if (!chip) {
-+		dev_err(&pdev->dev, "couldn't find gpio controller\n");
++	num_lines = of_get_available_child_count(np);
++	if (!num_lines)
 +		return -ENODEV;
-+	}
 +
-+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
++	data = devm_kzalloc(&pdev->dev, sizeof(*data) +
++					sizeof(*line) * num_lines,
++			    GFP_KERNEL);
 +	if (!data)
 +		return -ENOMEM;
 +
 +	data->rcdev.owner = THIS_MODULE;
++	data->rcdev.nr_resets = num_lines;
++	data->rcdev.of_node = np;
 +	data->rcdev.ops = &gpio_reset_ops;
-+	data->rcdev.of_node = pdev->dev.of_node;
-+	/* one more argument for duration in ms */
-+	data->rcdev.of_reset_n_cells = chip->of_gpio_n_cells + 1;
-+	data->rcdev.of_xlate = gpio_reset_of_xlate;
++	data->rcdev.of_reset_n_cells = 1;
 +	data->dev = &pdev->dev;
-+	data->chip = chip;
-+	idr_init(&data->idr);
++	data->num_lines = num_lines;
 +
 +	platform_set_drvdata(pdev, data);
++
++	/* parse our reset lines */
++	line = data->lines;
++	for_each_available_child_of_node(np, child) {
++		line->data = data;
++		ret = gpio_reset_init_line(child, line);
++		if (ret)
++			return ret;
++		line++;
++	}
 +
 +	ret = reset_controller_register(&data->rcdev);
 +        if (ret) {
@@ -384,11 +259,11 @@ index 0000000..771eefd
 +
 +	reset_controller_unregister(&data->rcdev);
 +
-+	idr_destroy(&data->idr);
++	return 0;
 +}
 +
 +static const struct of_device_id gpio_reset_dt_match[] = {
-+	{ .compatible = "orpaltech,gpio-reset-controller" },
++	{ .compatible = "linux,gpio-reset-controller" },
 +	{ },
 +};
 +MODULE_DEVICE_TABLE(of, gpio_reset_dt_match);
@@ -406,56 +281,6 @@ index 0000000..771eefd
 +MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
 +MODULE_DESCRIPTION("GPIO Reset controller driver");
 +MODULE_LICENSE("GPL v2");
-diff --git a/include/linux/gpio/driver.h b/include/linux/gpio/driver.h
-index a4d5eb3..463ed12 100644
---- a/include/linux/gpio/driver.h
-+++ b/include/linux/gpio/driver.h
-@@ -398,6 +398,8 @@ extern void devm_gpiochip_remove(struct device *dev, struct gpio_chip *chip);
- extern struct gpio_chip *gpiochip_find(void *data,
- 			      int (*match)(struct gpio_chip *chip, void *data));
- 
-+extern struct gpio_chip *gpiochip_find_by_node(struct device_node *chip_np);
-+
- /* lock/unlock as IRQ */
- int gpiochip_lock_as_irq(struct gpio_chip *chip, unsigned int offset);
- void gpiochip_unlock_as_irq(struct gpio_chip *chip, unsigned int offset);
-diff --git a/include/linux/of_gpio.h b/include/linux/of_gpio.h
-index 163b79e..84c5375 100644
---- a/include/linux/of_gpio.h
-+++ b/include/linux/of_gpio.h
-@@ -17,6 +17,7 @@
- #include <linux/of.h>
- 
- struct device_node;
-+struct gpio_desc;
- 
- /*
-  * This is Linux-specific flags. By default controllers' and Linux' mapping
-@@ -63,6 +64,11 @@ extern int of_gpio_simple_xlate(struct gpio_chip *gc,
- 				const struct of_phandle_args *gpiospec,
- 				u32 *flags);
- 
-+struct gpio_desc *of_gpiochip_gpiod_get(struct gpio_chip *chip,
-+					const struct of_phandle_args *gpiospec,
-+					const char *con_id,
-+					enum gpiod_flags flags);
-+
- #else /* CONFIG_OF_GPIO */
- 
- /* Drivers may not strictly depend on the GPIO support, so let them link. */
-diff --git a/include/linux/reset-controller.h b/include/linux/reset-controller.h
-index 9326d67..592e491 100644
---- a/include/linux/reset-controller.h
-+++ b/include/linux/reset-controller.h
-@@ -20,6 +20,8 @@ struct reset_control_ops {
- 	int (*assert)(struct reset_controller_dev *rcdev, unsigned long id);
- 	int (*deassert)(struct reset_controller_dev *rcdev, unsigned long id);
- 	int (*status)(struct reset_controller_dev *rcdev, unsigned long id);
-+	int (*create)(struct reset_controller_dev *rcdev, unsigned long id);
-+	void (*release)(struct reset_controller_dev *rcdev, unsigned long id);
- };
- 
- struct module;
 -- 
 2.17.1
 

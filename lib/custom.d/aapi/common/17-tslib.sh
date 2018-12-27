@@ -78,12 +78,10 @@ tslib_build()
 
 tslib_deploy()
 {
-
 	echo "Deploying TSLIB..."
 
 	rsync -az ${TSLIB_OUT_DIR}/dist${TSLIB_PREFIX}/	${SYSROOT_DIR}${TSLIB_PREFIX}
-	${LIBDIR}/make-relativelinks.sh	${SYSROOT_DIR}${TSLIB_PREFIX}/lib
-
+	${LIBDIR}/make-relativelinks.sh $SYSROOT_DIR
 	rsync -az ${TSLIB_OUT_DIR}/dist${TSLIB_PREFIX}/	${R}${TSLIB_PREFIX}
 
 	echo "Done."

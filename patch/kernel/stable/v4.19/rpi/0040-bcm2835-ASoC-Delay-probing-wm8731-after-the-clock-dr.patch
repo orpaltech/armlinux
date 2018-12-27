@@ -1,6 +1,6 @@
-From 8803cb6553f59a889ecbddc32bd32585bb2eee30 Mon Sep 17 00:00:00 2001
+From 67ab759dfabf719c07e978e2b62b2728f3590d18 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 8 Dec 2018 11:00:05 +0300
+Date: Sat, 22 Dec 2018 14:16:26 +0300
 Subject: [PATCH] bcm2835: ASoC: Delay probing wm8731 after the clock driver
 
 ---

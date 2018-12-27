@@ -1,6 +1,6 @@
-From 936bdbc44d79e385a83c4218dcb900ce7191fa5c Mon Sep 17 00:00:00 2001
+From 999c6450c8c3da208d8b47688f6509acf39bd912 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Tue, 11 Dec 2018 20:51:42 +0300
+Date: Tue, 25 Dec 2018 21:45:01 +0300
 Subject: [PATCH] vna: add ORPALTECH AAPi antenna analyzer driver
 
 ---
@@ -8,11 +8,11 @@ Subject: [PATCH] vna: add ORPALTECH AAPi antenna analyzer driver
  drivers/Makefile               |   1 +
  drivers/vna/Kconfig            |  19 +
  drivers/vna/Makefile           |   8 +
- drivers/vna/orpal_aapi_drv.c   | 846 +++++++++++++++++++++++++++++++++
+ drivers/vna/orpal_aapi_drv.c   | 852 +++++++++++++++++++++++++++++++++
  drivers/vna/orpal_aapi_drv.h   |  89 ++++
  drivers/vna/orpal_aapi_sysfs.c | 153 ++++++
  drivers/vna/orpal_aapi_sysfs.h |  18 +
- 8 files changed, 1136 insertions(+)
+ 8 files changed, 1142 insertions(+)
  create mode 100644 drivers/vna/Kconfig
  create mode 100644 drivers/vna/Makefile
  create mode 100644 drivers/vna/orpal_aapi_drv.c
@@ -81,10 +81,10 @@ index 0000000..e47ea92
 +obj-$(CONFIG_VNA_ORPAL_AAPI) += vna-orpal-aapi.o
 diff --git a/drivers/vna/orpal_aapi_drv.c b/drivers/vna/orpal_aapi_drv.c
 new file mode 100644
-index 0000000..ca21e3e
+index 0000000..ff8f6d8
 --- /dev/null
 +++ b/drivers/vna/orpal_aapi_drv.c
-@@ -0,0 +1,846 @@
+@@ -0,0 +1,852 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * The driver for ORPAL AA-Pi antenna analyzer
@@ -180,11 +180,8 @@ index 0000000..ca21e3e
 +
 +static void orpal_aapi_disable_clks(struct aapi_device *aapi)
 +{
-+	if (!IS_ERR_OR_NULL(aapi->clk0))
-+		clk_disable_unprepare(aapi->clk0);
-+
-+	if (!IS_ERR_OR_NULL(aapi->clk1))
-+		clk_disable_unprepare(aapi->clk1);
++	clk_disable_unprepare(aapi->clk0);
++	clk_disable_unprepare(aapi->clk1);
 +}
 +
 +static int orpal_aapi_runtime_resume(struct device *dev)
@@ -207,8 +204,7 @@ index 0000000..ca21e3e
 +	}
 +
 +	if (aapi->initial_freq) {
-+		ret = orpal_aapi_set_measure_freq(aapi,
-+					aapi->initial_freq);
++		ret = orpal_aapi_set_measure_freq(aapi, aapi->initial_freq);
 +		if (ret)
 +			goto err_rel_clk;
 +	}
@@ -392,29 +388,36 @@ index 0000000..ca21e3e
 +	int ret;
 +
 +	dev_dbg(aapi->dev.parent, "%s: reading device status\n", __func__);
++
 +	mutex_lock(&aapi->status_mutex);
 +
-+	ret = orpal_aapi_get_charger_pg(aapi, &aapi->status.charger_pg);
++	ret = orpal_aapi_get_charger_pg(aapi,
++					&aapi->status.charger_pg);
 +	if (ret < 0)
 +		goto err_exit;
 +
-+	ret = orpal_aapi_get_charger_s1(aapi, &aapi->status.charger_s1);
++	ret = orpal_aapi_get_charger_s1(aapi,
++					&aapi->status.charger_s1);
 +	if (ret < 0)
 +		goto err_exit;
 +
-+	ret = orpal_aapi_get_charger_s2(aapi, &aapi->status.charger_s2);
++	ret = orpal_aapi_get_charger_s2(aapi,
++					&aapi->status.charger_s2);
 +	if (ret < 0)
 +		goto err_exit;
 +
-+	ret = orpal_aapi_get_low_battery(aapi, &aapi->status.low_battery);
++	ret = orpal_aapi_get_low_battery(aapi,
++					&aapi->status.low_battery);
 +	if (ret < 0)
 +		goto err_exit;
 +
 +	mutex_unlock(&aapi->status_mutex);
++
 +	return 0;
 +
 +err_exit:
 +	mutex_unlock(&aapi->status_mutex);
++
 +	return ret;
 +}
 +
@@ -457,12 +460,10 @@ index 0000000..ca21e3e
 +	line->irq = ret;
 +
 +	ret = request_irq(line->irq, orpal_aapi_status_isr,
-+			  IRQF_TRIGGER_FALLING |
-+			  IRQF_TRIGGER_RISING,
++			  IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
 +			  dev_name(&aapi->dev), aapi);
 +	if (ret) {
-+		dev_err(dev, "failed to request irq=%d, ret=%d\n",
-+			line->irq, ret);
++		dev_err(dev, "failed to request irq %d: %d\n", line->irq, ret);
 +		line->irq = 0;
 +		goto err_gpio;
 +	}
@@ -513,6 +514,7 @@ index 0000000..ca21e3e
 +out:
 +	dev_dbg(aapi->dev.parent, "%s: reading %d bytes, %d read\n",
 +		__func__, size, copied);
++
 +	return copied;
 +}
 +
@@ -526,6 +528,7 @@ index 0000000..ca21e3e
 +	dev_dbg(aapi->dev.parent,
 +		"%s: writing %d bytes, no actual write performed\n",
 +		__func__);
++
 +	return size;
 +}
 +
@@ -551,6 +554,7 @@ index 0000000..ca21e3e
 +	}
 +
 +	dev_dbg(aapi->dev.parent, "%s: open\n", __func__);
++
 +	return 0;
 +}
 +
@@ -568,6 +572,7 @@ index 0000000..ca21e3e
 +	struct aapi_device *aapi = filp->private_data;
 +
 +	dev_dbg(aapi->dev.parent, "%s: poll\n", __func__);
++
 +	return 0;
 +}
 +
@@ -587,6 +592,7 @@ index 0000000..ca21e3e
 +	orpal_aapi_ffasync(-1, filp, 0);
 +
 +	dev_dbg(aapi->dev.parent, "%s: release\n", __func__);
++
 +	return 0;
 +}
 +
@@ -621,19 +627,19 @@ index 0000000..ca21e3e
 +
 +	/* shutdown control setup */
 +	aapi->shdn_ctrl.gpio =
-+		orpal_aapi_get_gpiod(aapi, "shdn-ctrl", GPIOD_OUT_LOW);
++		orpal_aapi_get_gpiod(aapi, "shutdown-ctrl", GPIOD_OUT_LOW);
 +	if (IS_ERR(aapi->shdn_ctrl.gpio))
 +		return PTR_ERR(aapi->shdn_ctrl.gpio);
 +
 +	aapi->shdn_ctrl.timeout = DEFAULT_SHDN_TIMEOUT_MS;
-+	device_property_read_u32(dev, "shdn-timeout-ms",
++	device_property_read_u32(dev, "shutdown-timeout-ms",
 +				&aapi->shdn_ctrl.timeout);
 +
 +
 +	/* set status line names */
-+	strcpy(aapi->chrg_pg.name, "chrg-pg");
-+	strcpy(aapi->chrg_s1.name, "chrg-stat1");
-+	strcpy(aapi->chrg_s2.name, "chrg-stat2");
++	strcpy(aapi->chrg_pg.name, "charger-pg");
++	strcpy(aapi->chrg_s1.name, "charger-stat1");
++	strcpy(aapi->chrg_s2.name, "charger-stat2");
 +	strcpy(aapi->low_bat.name, "low-battery");
 +
 +
@@ -674,20 +680,20 @@ index 0000000..ca21e3e
 +	aapi->clk0 = devm_clk_get(dev, "clk0");
 +	if (IS_ERR(aapi->clk0)) {
 +		ret = PTR_ERR(aapi->clk0);
-+		if (ret != -EPROBE_DEFER)
-+			dev_err(dev, "unable to acquire CLK0 clock\n");
-+		else
++		if (ret == -EPROBE_DEFER)
 +			dev_err(dev, "access to CLK0 output deferred\n");
++		else
++			dev_err(dev, "unable to acquire CLK0 clock\n");
 +		return ret;
 +        }
 +
 +	aapi->clk1 = devm_clk_get(dev, "clk1");
 +	if (IS_ERR(aapi->clk1)) {
 +		ret = PTR_ERR(aapi->clk1);
-+		if (ret != -EPROBE_DEFER)
-+			dev_err(dev, "unable to acquire CLK1 clock\n");
-+		else
++		if (ret == -EPROBE_DEFER)
 +			dev_err(dev, "access to CLK1 output deferred\n");
++		else
++			dev_err(dev, "unable to acquire CLK1 clock\n");
 +		return ret;
 +	}
 +
@@ -699,7 +705,7 @@ index 0000000..ca21e3e
 +        }
 +
 +	ret = device_property_read_u32(dev, "initial-freq",
-+				&aapi->initial_freq);
++					&aapi->initial_freq);
 +	if (ret < 0)
 +		dev_warn(dev, "initial frequency not specified\n");
 +
@@ -929,7 +935,7 @@ index 0000000..ca21e3e
 +
 +
 +MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
-+MODULE_DESCRIPTION("ORPALTECH AAPi antenna analyzer driver");
++MODULE_DESCRIPTION("ORPAL AA-Pi antenna analyzer driver");
 +MODULE_LICENSE("GPL v2");
 diff --git a/drivers/vna/orpal_aapi_drv.h b/drivers/vna/orpal_aapi_drv.h
 new file mode 100644

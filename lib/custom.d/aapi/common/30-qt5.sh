@@ -9,7 +9,7 @@ QT5_UPDATE_SOURCES=${QT5_UPDATE_SOURCES:="no"}
 QT5_FORCE_REBUILD=${QT5_FORCE_REBUILD:="yes"}
 
 QT5_GIT_ROOT="git://code.qt.io/qt"
-QT5_RELEASE="5.12"
+QT5_RELEASE="5.11"
 QT5_BRANCH="${QT5_RELEASE}"
 QT5_TAG=""
 QT5_MODULES=("qtxmlpatterns" "qtimageformats" "qtgraphicaleffects" "qtsvg" "qtscript" "qtdeclarative" "qtquickcontrols" "qtquickcontrols2" "qtcharts" "qtvirtualkeyboard")
@@ -31,7 +31,7 @@ QT5_EXT_PREFIX=${QT5_DEVCFG_DIR}/qt5pi
 QT5_QMAKE=${QT5_HOST_PREFIX}/bin/qmake
 
 [[ -z "${QT5_TAG}" ]] && QT5_DEB_VER="${QT5_RELEASE}" || QT5_DEB_VER="${QT5_RELEASE}-tag-${QT5_TAG}"
-QT5_DEB_PKG_VER="${QT5_DEB_VER}-${QT5_DEVICE_CONFIG}-${VERSION}"
+QT5_DEB_PKG_VER="${QT5_DEB_VER}-${QT5_DEVICE_CONFIG}-${CONFIG}-${VERSION}"
 QT5_DEB_PKG="qt-${QT5_DEB_PKG_VER}"
 QT5_DEB_DIR="${DEBS_DIR}/${QT5_DEB_PKG}-deb"
 
@@ -177,7 +177,6 @@ qt5_make_qtbase()
                         -sysroot $SYSROOT_DIR \
                         -hostprefix $QT5_HOST_PREFIX \
                         -extprefix $QT5_EXT_PREFIX \
-			-optimized-qmake \
 			-make libs \
                         -nomake examples \
 			-nomake tests \
@@ -259,13 +258,13 @@ qt5_deploy()
 	echo "Deploy QT5 to target system..."
 
 	mkdir -p ${QT5_DEB_DIR}
-	dpkg -x ${BASEDIR}/debs/${QT5_DEB_PKG}.deb	${QT5_DEB_DIR}	2> /dev/null
+	dpkg -x ${BASEDIR}/debs/${QT5_DEB_PKG}.deb ${QT5_DEB_DIR} 2> /dev/null
 	mkdir -p ${SYSROOT_DIR}${QT5_TARGET_LOCATION}
-	rsync -az ${QT5_DEB_DIR}${QT5_TARGET_PREFIX}	${SYSROOT_DIR}${QT5_TARGET_LOCATION}
-	${LIBDIR}/make-relativelinks.sh	${SYSROOT_DIR}${QT5_TARGET_PREFIX}
+	rsync -az ${QT5_DEB_DIR}${QT5_TARGET_PREFIX} ${SYSROOT_DIR}${QT5_TARGET_LOCATION}
+	${LIBDIR}/make-relativelinks.sh $SYSROOT_DIR
 	rm -rf ${QT5_DEB_DIR}
 
-	cp ${BASEDIR}/debs/${QT5_DEB_PKG}.deb	${R}/tmp/
+	cp ${BASEDIR}/debs/${QT5_DEB_PKG}.deb ${R}/tmp/
 	chroot_exec dpkg -i /tmp/${QT5_DEB_PKG}.deb
 	rm -f ${R}/tmp/${QT5_DEB_PKG}.deb
 
@@ -310,11 +309,11 @@ EOF
 	chmod +x ${QT5_DEB_DIR}/DEBIAN/postinst
 
 	mkdir -p ${QT5_DEB_DIR}${QT5_TARGET_LOCATION}
-	rsync -az $QT5_EXT_PREFIX	${QT5_DEB_DIR}${QT5_TARGET_LOCATION}
+	rsync -az $QT5_EXT_PREFIX ${QT5_DEB_DIR}${QT5_TARGET_LOCATION}
 
-	cp ${QTBASE_OUT_DIR}/config.summary	${QT5_DEB_DIR}${QT5_TARGET_PREFIX}
+	cp ${QTBASE_OUT_DIR}/config.summary ${QT5_DEB_DIR}${QT5_TARGET_PREFIX}
 
-	dpkg-deb -z0 -b $QT5_DEB_DIR	${BASEDIR}/debs/${QT5_DEB_PKG}.deb
+	dpkg-deb -z0 -b $QT5_DEB_DIR ${BASEDIR}/debs/${QT5_DEB_PKG}.deb
 	[ $? -eq 0 ] || exit $?;
 
 	rm -rf $QT5_DEB_DIR

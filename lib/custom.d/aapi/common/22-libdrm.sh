@@ -1,4 +1,4 @@
-LIBDRM_VER="2.4.93"
+LIBDRM_VER="2.4.96"
 LIBDRM_SRC_DIR=$EXTRADIR/libdrm-$LIBDRM_VER
 LIBDRM_OUT_DIR=$LIBDRM_SRC_DIR/build/$LINUX_PLATFORM
 
@@ -70,10 +70,9 @@ libdrm_deploy()
 {
 	echo "Deploying LIBDRM..."
 
-	rsync -az ${LIBDRM_OUT_DIR}/dist${LIBDRM_PREFIX}/	${SYSROOT_DIR}${LIBDRM_PREFIX}
-	${LIBDIR}/make-relativelinks.sh	${SYSROOT_DIR}${LIBDRM_PREFIX}/lib
-
-	rsync -az ${LIBDRM_OUT_DIR}/dist${LIBDRM_PREFIX}/	${R}${LIBDRM_PREFIX}
+	rsync -az ${LIBDRM_OUT_DIR}/dist${LIBDRM_PREFIX}/ ${SYSROOT_DIR}${LIBDRM_PREFIX}
+	${LIBDIR}/make-relativelinks.sh $SYSROOT_DIR
+	rsync -az ${LIBDRM_OUT_DIR}/dist${LIBDRM_PREFIX}/ ${R}${LIBDRM_PREFIX}
 
 	echo "Done."
 }

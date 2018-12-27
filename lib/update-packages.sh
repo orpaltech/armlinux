@@ -33,6 +33,8 @@ whois"
 
 MISSING_PACKAGES=""
 
+TOOLCHAIN_FORCE_UPDATE=${TOOLCHAIN_FORCE_UPDATE:="no"}
+
 #-----------------------------------------------------------------------
 
 get_host_pkgs()
@@ -98,6 +100,9 @@ update_toolchains()
                 		# file was not removed, i.e. extraction failed
 	                	rm -rf "./${TOOLCHAIN}"
         		fi
+
+			[[ "${TOOLCHAIN_FORCE_UPDATE}" = yes ]] && rm -rf ./${TOOLCHAIN}
+
 			if [ ! -d "./${TOOLCHAIN}" ] ; then
 				if [ ! -f "./${TOOLCHAIN}.tar.xz" ] ; then
                         		wget "${LINARO_BASE_URL}/${TOOLCHAIN_VER}/${TOOLCHAIN_ARCH}/${TOOLCHAIN}.tar.xz"
@@ -106,7 +111,7 @@ update_toolchains()
 				cat "./${TOOLCHAIN}.tar.xz" | tar -ixJv
 	                	rm -f "./${TOOLCHAIN}.tar.xz"
 			fi
-			TOOLCHAIN_INDEX=$(expr $TOOLCHAIN_INDEX + 1)
+			TOOLCHAIN_INDEX=$(expr ${TOOLCHAIN_INDEX} + 1)
 		done
 	done
 

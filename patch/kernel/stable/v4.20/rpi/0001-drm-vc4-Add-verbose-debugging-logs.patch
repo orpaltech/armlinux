@@ -1,14 +1,14 @@
-From 7435cfbae1d45893e102f0334ec4a336f08da4aa Mon Sep 17 00:00:00 2001
+From 2aa084432b40cec847ba536489372359f26bfe07 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Mon, 19 Nov 2018 01:19:18 +0300
+Date: Sun, 23 Dec 2018 00:12:51 +0300
 Subject: [PATCH] drm/vc4: Add verbose debugging logs
 
 ---
- drivers/gpu/drm/vc4/vc4_dsi.c | 40 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 39 insertions(+), 1 deletion(-)
+ drivers/gpu/drm/vc4/vc4_dsi.c | 81 ++++++++++++++++++++++++++++-------
+ 1 file changed, 66 insertions(+), 15 deletions(-)
 
 diff --git a/drivers/gpu/drm/vc4/vc4_dsi.c b/drivers/gpu/drm/vc4/vc4_dsi.c
-index 0c607eb..11aecc2 100644
+index 0c607eb..a21ee81 100644
 --- a/drivers/gpu/drm/vc4/vc4_dsi.c
 +++ b/drivers/gpu/drm/vc4/vc4_dsi.c
 @@ -29,6 +29,9 @@
@@ -128,8 +128,39 @@ index 0c607eb..11aecc2 100644
  	match = of_match_device(vc4_dsi_dt_match, dev);
  	if (!match)
  		return -ENODEV;
-@@ -1610,9 +1637,13 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
- 		return ret;
+@@ -1583,7 +1610,7 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+ 	if (ret) {
+ 		if (ret != -EPROBE_DEFER)
+ 			dev_err(dev, "Failed to get interrupt: %d\n", ret);
+-		return ret;
++		goto err_release_dma;
+ 	}
+ 
+ 	dsi->escape_clock = devm_clk_get(dev, "escape");
+@@ -1591,7 +1618,7 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+ 		ret = PTR_ERR(dsi->escape_clock);
+ 		if (ret != -EPROBE_DEFER)
+ 			dev_err(dev, "Failed to get escape clock: %d\n", ret);
+-		return ret;
++		goto err_release_dma;
+ 	}
+ 
+ 	dsi->pll_phy_clock = devm_clk_get(dev, "phy");
+@@ -1599,7 +1626,7 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+ 		ret = PTR_ERR(dsi->pll_phy_clock);
+ 		if (ret != -EPROBE_DEFER)
+ 			dev_err(dev, "Failed to get phy clock: %d\n", ret);
+-		return ret;
++		goto err_release_dma;
+ 	}
+ 
+ 	dsi->pixel_clock = devm_clk_get(dev, "pixel");
+@@ -1607,41 +1634,52 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+ 		ret = PTR_ERR(dsi->pixel_clock);
+ 		if (ret != -EPROBE_DEFER)
+ 			dev_err(dev, "Failed to get pixel clock: %d\n", ret);
+-		return ret;
++		goto err_release_dma;
  	}
  
 +	dev_dbg(dev, "try to find a panel\n");
@@ -142,7 +173,17 @@ index 0c607eb..11aecc2 100644
  		/* If the bridge or panel pointed by dev->of_node is not
  		 * enabled, just return 0 here so that we don't prevent the DRM
  		 * dev from being registered. Of course that means the DSI
-@@ -1626,6 +1657,9 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+ 		 * encoder won't be exposed, but that's not a problem since
+ 		 * nothing is connected to it.
+ 		 */
+-		if (ret == -ENODEV)
+-			return 0;
++		if (ret == -ENODEV) {
++			ret = 0;
++		}
+ 
+-		return ret;
++		goto err_release_dma;
  	}
  
  	if (panel) {
@@ -151,17 +192,70 @@ index 0c607eb..11aecc2 100644
 +
  		dsi->bridge = devm_drm_panel_bridge_add(dev, panel,
  							DRM_MODE_CONNECTOR_DSI);
- 		if (IS_ERR(dsi->bridge))
-@@ -1664,6 +1698,8 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+-		if (IS_ERR(dsi->bridge))
+-			return PTR_ERR(dsi->bridge);
++		if (IS_ERR(dsi->bridge)) {
++			ret = PTR_ERR(dsi->bridge);
++			goto err_release_dma;
++		}
+ 	}
+ 
+ 	/* The esc clock rate is supposed to always be 100Mhz. */
+ 	ret = clk_set_rate(dsi->escape_clock, 100 * 1000000);
+ 	if (ret) {
+ 		dev_err(dev, "Failed to set esc clock: %d\n", ret);
+-		return ret;
++		goto err_release_dma;
+ 	}
+ 
+ 	ret = vc4_dsi_init_phy_clocks(dsi);
+-	if (ret)
+-		return ret;
++	if (ret) {
++		goto err_release_dma;
++	}
+ 
+ 	if (dsi->port == 1)
+ 		vc4->dsi1 = dsi;
+@@ -1653,7 +1691,7 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+ 	ret = drm_bridge_attach(dsi->encoder, dsi->bridge, NULL);
+ 	if (ret) {
+ 		dev_err(dev, "bridge attach failed: %d\n", ret);
+-		return ret;
++		goto err_release_dma;
+ 	}
+ 	/* Disable the atomic helper calls into the bridge.  We
+ 	 * manually call the bridge pre_enable / enable / etc. calls
+@@ -1664,7 +1702,15 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
  
  	pm_runtime_enable(dev);
  
 +	dev_dbg(dev, "DSI bind complete\n");
 +
  	return 0;
++
++err_release_dma:
++	if (dsi->port == 1)
++		dma_release_channel(dsi->reg_dma_chan);
++
++	return ret;
  }
  
-@@ -1714,6 +1750,8 @@ static int vc4_dsi_dev_probe(struct platform_device *pdev)
+ static void vc4_dsi_unbind(struct device *dev, struct device *master,
+@@ -1679,8 +1725,11 @@ static void vc4_dsi_unbind(struct device *dev, struct device *master,
+ 
+ 	vc4_dsi_encoder_destroy(dsi->encoder);
+ 
+-	if (dsi->port == 1)
++	if (dsi->port == 1) {
++		dma_release_channel(dsi->reg_dma_chan);
++
+ 		vc4->dsi1 = NULL;
++	}
+ }
+ 
+ static const struct component_ops vc4_dsi_ops = {
+@@ -1714,6 +1763,8 @@ static int vc4_dsi_dev_probe(struct platform_device *pdev)
  	dsi->dsi_host.dev = dev;
  	mipi_dsi_host_register(&dsi->dsi_host);
  

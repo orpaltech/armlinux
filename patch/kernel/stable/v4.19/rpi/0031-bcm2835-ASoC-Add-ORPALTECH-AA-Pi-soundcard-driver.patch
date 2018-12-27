@@ -1,13 +1,13 @@
-From d1f2fe4e5a1399a912bf29f036b2a43f18263306 Mon Sep 17 00:00:00 2001
+From 7f4e9100b2445857bc8edfee8446b7e3d3efc7fc Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Tue, 11 Dec 2018 23:09:31 +0300
+Date: Tue, 25 Dec 2018 21:46:25 +0300
 Subject: [PATCH] bcm2835: ASoC: Add ORPALTECH AA-Pi soundcard driver
 
 ---
- sound/soc/bcm/Kconfig                |   7 ++
+ sound/soc/bcm/Kconfig                |   7 +
  sound/soc/bcm/Makefile               |   3 +
- sound/soc/bcm/orpal-aapi-soundcard.c | 180 +++++++++++++++++++++++++++
- 3 files changed, 190 insertions(+)
+ sound/soc/bcm/orpal-aapi-soundcard.c | 183 +++++++++++++++++++++++++++
+ 3 files changed, 193 insertions(+)
  create mode 100644 sound/soc/bcm/orpal-aapi-soundcard.c
 
 diff --git a/sound/soc/bcm/Kconfig b/sound/soc/bcm/Kconfig
@@ -41,12 +41,12 @@ index fc739d0..75fff41 100644
 +obj-$(CONFIG_SND_ORPAL_AAPI) += snd-soc-orpal-aapi.o
 diff --git a/sound/soc/bcm/orpal-aapi-soundcard.c b/sound/soc/bcm/orpal-aapi-soundcard.c
 new file mode 100644
-index 0000000..51fddfb
+index 0000000..d6733b8
 --- /dev/null
 +++ b/sound/soc/bcm/orpal-aapi-soundcard.c
-@@ -0,0 +1,180 @@
+@@ -0,0 +1,183 @@
 +/*
-+ * ASoC Driver for ORPALTECH AA-Pi Soundcard (capture only).
++ * ASoC Driver for ORPAL-AA-Pi soundcard (capture only).
 + *
 + *  Created on:	06-Jan-2018
 + *  	Author:	Sergey Suloev <ssuloev@orpaltech.com>
@@ -69,6 +69,9 @@ index 0000000..51fddfb
 +
 +#include "../codecs/wm8731.h"
 +
++/*
++ * This is fixed on the board
++ */
 +#define BOARD_XTAL_FREQ	12288000
 +
 +static const unsigned int bcm2835_i2s_rates[] = {
@@ -93,21 +96,22 @@ index 0000000..51fddfb
 +					  struct snd_pcm_hw_params *params)
 +{
 +	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-+	struct snd_soc_card *card = rtd->card;
-+	struct snd_soc_dai *codec_dai = rtd->codec_dai,
-+			*cpu_dai = rtd->cpu_dai;
++	struct snd_soc_card *card	= rtd->card;
++	struct snd_soc_dai *codec_dai	= rtd->codec_dai;
++	struct snd_soc_dai *cpu_dai	= rtd->cpu_dai;
 +	int ret;
 +
-+	/* WM8731 will use BCLK = 64*SR when not in USB mode */
++	/* WM8731 will use BCLK = 64 * FS when not in USB mode */
 +	ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 64);
 +	if (ret < 0) {
-+		dev_err(card->dev, "Failed to set BCLK ratio: %d\n", ret);
++		dev_err(card->dev, "failed to set BCLK ratio: %d\n", ret);
 +		return ret;
 +	}
 +
-+	/* Set sysclk */
++	/* Set codec sysclk */
 +	ret = snd_soc_dai_set_sysclk(codec_dai, WM8731_SYSCLK_XTAL,
-+				     BOARD_XTAL_FREQ, SND_SOC_CLOCK_IN);
++				     BOARD_XTAL_FREQ,
++				     SND_SOC_CLOCK_IN);
 +	if (ret < 0) {
 +		dev_err(card->dev, "Failed to set WM8731 SYSCLK: %d\n", ret);
 +		return ret;
@@ -117,9 +121,9 @@ index 0000000..51fddfb
 +}
 +
 +/* machine stream operations */
-+static struct snd_soc_ops snd_orpal_aapi_soundcard_ops = {
-+	.startup	= orpal_aapi_soundcard_startup,
-+	.hw_params	= orpal_aapi_soundcard_hw_params,
++static struct snd_soc_ops orpal_aapi_soundcard_ops = {
++	.startup   = orpal_aapi_soundcard_startup,
++	.hw_params = orpal_aapi_soundcard_hw_params,
 +};
 +
 +static const struct snd_soc_dapm_widget wm8731_dapm_widgets[] = {
@@ -157,9 +161,9 @@ index 0000000..51fddfb
 +	dai->name = "orpal-aapi-dai";
 +	dai->stream_name = "orpal-aapi-pcm";
 +	dai->codec_dai_name = "wm8731-hifi";
-+	dai->ops = &snd_orpal_aapi_soundcard_ops,
-+        dai->dai_fmt = SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_I2S
-+			| SND_SOC_DAIFMT_NB_NF,
++	dai->ops = &orpal_aapi_soundcard_ops,
++        dai->dai_fmt = SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_I2S |
++		       SND_SOC_DAIFMT_NB_NF;
 +
 +
 +	codec_np = of_parse_phandle(dev->of_node, "orpal,audio-codec", 0);
@@ -208,7 +212,6 @@ index 0000000..51fddfb
 +	{ .compatible = "orpaltech,aapi-wm8731-sound" },
 +	{},
 +};
-+
 +MODULE_DEVICE_TABLE(of, orpal_aapi_soundcard_of_match);
 +
 +static struct platform_driver orpal_aapi_soundcard_driver = {
@@ -222,7 +225,7 @@ index 0000000..51fddfb
 +module_platform_driver(orpal_aapi_soundcard_driver);
 +
 +MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
-+MODULE_DESCRIPTION("ORPALTECH AA-Pi Soundcard driver");
++MODULE_DESCRIPTION("ORPAL-AA-Pi soundcard driver");
 +MODULE_LICENSE("GPL v2");
 +MODULE_ALIAS("platform:orpal-aapi-soundcard");
 -- 

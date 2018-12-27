@@ -1,13 +1,13 @@
-From 9ee3dd74c679758f06df9a50808cb951ee50bbe1 Mon Sep 17 00:00:00 2001
+From 096c538437daaa07a1f1e579b7d5141185ac7906 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 15 Dec 2018 19:37:38 +0300
+Date: Sat, 22 Dec 2018 13:30:02 +0300
 Subject: [PATCH] drm/panel: Add support for Himax HX8379A-based panels
 
 ---
  drivers/gpu/drm/panel/Kconfig               |  10 +
  drivers/gpu/drm/panel/Makefile              |   1 +
- drivers/gpu/drm/panel/panel-himax-hx8379a.c | 548 ++++++++++++++++++++
- 3 files changed, 559 insertions(+)
+ drivers/gpu/drm/panel/panel-himax-hx8379a.c | 472 ++++++++++++++++++++
+ 3 files changed, 483 insertions(+)
  create mode 100644 drivers/gpu/drm/panel/panel-himax-hx8379a.c
 
 diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
@@ -40,10 +40,10 @@ index 5ccaaa9..6968a57 100644
 +obj-$(CONFIG_DRM_PANEL_HIMAX_HX8379A) += panel-himax-hx8379a.o
 diff --git a/drivers/gpu/drm/panel/panel-himax-hx8379a.c b/drivers/gpu/drm/panel/panel-himax-hx8379a.c
 new file mode 100644
-index 0000000..c84f087
+index 0000000..5894a26
 --- /dev/null
 +++ b/drivers/gpu/drm/panel/panel-himax-hx8379a.c
-@@ -0,0 +1,548 @@
+@@ -0,0 +1,472 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * The driver for Himax HX8379A-based MIPI-DSI panels
@@ -80,23 +80,36 @@ index 0000000..c84f087
 +#include <video/mipi_display.h>
 +
 +
-+struct hx8379a_init_cmd {
++enum hx8379a_init_type {
++	INIT_CMD = 1,
++	INIT_DELAY,
++};
++
++struct hx8379a_init_instr {
++	int type;
 +	size_t len;
 +	const char *data;
 +};
 +
 +#define _INIT_CMD(...) { \
++	.type = INIT_CMD, \
 +	.len = sizeof((char[]){__VA_ARGS__}), \
-+	.data = (char[]){__VA_ARGS__} }
-+
++	.data = (char[]){__VA_ARGS__} \
++}
++#define _INIT_DELAY(ms) { \
++	.type = INIT_DELAY, \
++	.len = (ms), \
++}
 +
 +struct hx8379a_panel_desc {
 +	unsigned long flags;
 +	enum mipi_dsi_pixel_format format;
 +	unsigned int lanes;
 +	unsigned int bpc;
++
 +	const struct drm_display_mode *mode;
-+	const struct hx8379a_init_cmd *init_cmds;
++
++	const struct hx8379a_init_instr *init_cmds;
 +	/**
 +	 * @width: width (in mm) of the panel's active display area
 +	 * @height: height (in mm) of the panel's active display area
@@ -120,197 +133,83 @@ index 0000000..c84f087
 +	bool enabled;
 +};
 +
-+//static const u8 hx8379a_setextc_data[]	= { 0xFF,0x83,0x79 };
-+
-+/*TODO: investigate whether this is needed */
-+//static const u8 hx8379a_setmipi_data[]	= { 0x51,0x93 };
-+
-+/*static const u8 hx8379a_setpower_data[]	= { 0x00,0x50,0x24,
-+					    0xF5,0x98,0x08,0x11,
-+					    0x17,0x77,0x29,0x31,
-+					    0x9A,0x1A,0x12,0x0B,
-+					    0x76,0xF1,0x00,0xE6,
-+					    0xE6,0xE6,0xE6,0xE6,
-+					    0x00,0x04,0x05,0x0A,
-+					    0x0B,0x04,0x05 };*/
-+					/*{ 0x00,0x50,0x26,
-+					    0xEC,0x90,0x08,0x11,
-+					    0x11,0x11,0x27,0x2F,
-+					    0x9A,0x1A,0x12,0x0B,
-+					    0x6E,0xF1,0x00,0xE6 };*/
-+
-+/*static const u8 hx8379a_setdisp_data[]	= { 0x00,0x00,0xFE,
-+					    0x0E,0x0A,0x19,0xE2,
-+					    0x00,0xFF,0x0E,0x0A,
-+					    0x19,0x20 };*/
-+					/*{ 0x00,0x00,0xFE,
-+					    0x1E,0x1E,0x19,0x22,
-+					    0x00,0xFF,0x1E,0x1E,
-+					    0x19,0x20 };*/
-+
-+/*static const u8 hx8379a_setcyc_data[]	= { 0x80,0x12,0x00,
-+					    0x32,0x10,0x03,0x54,
-+					    0x13,0x67,0x32,0x13,
-+					    0x6B,0x39,0x00,0x42,
-+					    0x05,0x37,0x00,0x41,
-+					    0x08,0x3C,0x3C,0x08,
-+					    0x00,0x40,0x08,0x28,
-+					    0x08,0x30,0x30,0x04 };*/
-+					/*{ 0x80,0x08,0x00,
-+					    0x32,0x10,0x14,0x32,
-+					    0x10,0x00,0x00,0x00,
-+					    0x00,0x33,0x04,0x30,
-+					    0x18,0x37,0x04,0x30,
-+					    0x08,0x34,0x34,0x08,
-+					    0x00,0x40,0x08,0x28,
-+					    0x08,0x30,0x30,0x04 };*/
-+
-+
-+/*static const u8 hx8379a_setgip_data[]	= { 0x00,0x00,0x0A,
-+					    0x00,0x01,0x00,0x00,
-+					    0x06,0x01,0x01,0x01,
-+					    0x23,0x45,0x67,0xAA,
-+					    0xBB,0x88,0x88,0x67,
-+					    0x45,0x88,0x88,0x88,
-+					    0x88,0x88,0x54,0x10,
-+					    0x76,0x54,0x32,0xAA,
-+					    0xBB,0x88,0x88,0x76,
-+					    0x10,0x88,0x88,0x88,
-+					    0x88,0x88,0x39,0x01,
-+					    0x00,0x00,0x00,0x00 };*/
-+					/*{ 0x00,0x00,0x0A,
-+					    0x00,0x01,0x00,0x00,
-+					    0x03,0x00,0x99,0x88,
-+					    0xBB,0xAA,0x23,0x01,
-+					    0x67,0x45,0x10,0x32,
-+					    0x88,0x88,0x88,0x88,
-+					    0x88,0x88,0x88,0x99,
-+					    0xAA,0xBB,0x54,0x76,
-+					    0x10,0x32,0x23,0x01,
-+					    0x88,0x88,0x88,0x88,
-+					    0x88,0x88,0x01,0xA5,
-+					    0x00,0x00,0x00,0x00 };*/
-+
-+/*static const u8 hx8379a_setgamma_data[]	= { 0x79,0x00,0x01,
-+					    0x0F,0x25,0x26,0x3F,
-+					    0x33,0x47,0x0A,0x11,
-+					    0x11,0x15,0x17,0x14,
-+					    0x16,0x11,0x17,0x00,
-+					    0x01,0x0F,0x25,0x26,
-+					    0x3F,0x33,0x47,0x0A,
-+					    0x11,0x11,0x15,0x17,
-+					    0x14,0x16,0x11,0x17 };*/
-+					/*{ 0x79,0x05,0x0F,
-+					    0x14,0x26,0x20,0x3F,
-+					    0x2A,0x43,0x04,0x0C,
-+					    0x11,0x15,0x17,0x15,
-+					    0x15,0x10,0x13,0x05,
-+					    0x0F,0x14,0x26,0x20,
-+					    0x3F,0x2A,0x43,0x04,
-+					    0x0C,0x11,0x15,0x17,
-+					    0x15,0x15,0x10,0x13 };*/
-+
-+/*static const u8 hx8379a_setpanel_data[]	= { 0x0E };*/ /* rotation 180 */
-+
-+/*static const u8 hx8379a_setvcom_data[]	= { 0x00,0xAC,0x00,0xAC };*/
-+					/*{ 0x00,0x9C,0x00,0x9C };*/
-+
-+/*static const u8 hx8379a_wrcabc_data[]	= { 0x00 };*/ /* disable CABC */
-+
-+
-+static const struct hx8379a_init_cmd truly_tda_fwvga0500g50089_init[] = {
++static const struct hx8379a_init_instr truly_tda_fwvga0500g50008_init[] = {
 +	// Set EXTC
 +	_INIT_CMD(0xB9, 0xFF,0x83,0x79),
 +
-+	// Set MIPI
-+	_INIT_CMD(0xBA,	0x51,0x93),
++	_INIT_CMD(0xBA,	0x51),
 +
 +	// Set POWER
-+	_INIT_CMD(0xB1,	0x00,0x50,0x24,0xF5,0x98,0x08,0x11,0x17,0x77,0x29,
-+			0x31,0x9A,0x1A,0x12,0x0B,0x76,0xF1,0x00,0xE6,0xE6,
-+			0xE6,0xE6,0xE6,0x00,0x04,0x05,0x0A,0x0B,0x04,0x05),
++	_INIT_CMD(0xB1,	0x00,0x50,0x44,0xEA,0x8D,0x08,0x11,0x11,0x11,0x27,
++			0x2F,0x9A,0x1A,0x42,0x0B,0x6E,0xF1,0x00,0xE6),
 +
 +	// Set DISP
-+	_INIT_CMD(0xB2,	0x00,0x00,0xFE,0x0E,0x0A,0x19,0xE2,0x00,0xFF,0x0E,
-+			0x0A,0x19,0x20),
++	_INIT_CMD(0xB2,	0x00,0x00,0xFE,0x08,0x04,0x19,0x22,0x00,0xFF,0x08,
++			0x04,0x19,0x20),
 +
 +	// Set CYC
-+	_INIT_CMD(0xB4,	0x80,0x12,0x00,0x32,0x10,0x03,0x54,0x13,0x67,0x32,
-+			0x13,0x6B,0x39,0x00,0x42,0x05,0x37,0x00,0x41,0x08,
-+			0x3C,0x3C,0x08,0x00,0x40,0x08,0x28,0x08,0x30,0x30,
++	_INIT_CMD(0xB4,	0x80,0x08,0x00,0x32,0x10,0x03,0x32,0x13,0x70,0x32,
++			0x10,0x08,0x37,0x01,0x28,0x07,0x37,0x08,0x4C,0x20,
++			0x44,0x44,0x08,0x00,0x40,0x08,0x28,0x08,0x30,0x30,
 +			0x04),
 +
 +	// Set GIP
-+	_INIT_CMD(0xD5,	0x00,0x00,0x0A,0x00,0x01,0x00,0x00,0x06,0x01,0x01,
-+			0x01,0x23,0x45,0x67,0xAA,0xBB,0x88,0x88,0x67,0x45,
-+			0x88,0x88,0x88,0x88,0x88,0x54,0x10,0x76,0x54,0x32,
-+			0xAA,0xBB,0x88,0x88,0x76,0x10,0x88,0x88,0x88,0x88,
-+			0x88,0x39,0x01,0x00,0x00,0x00,0x00),
-+
-+	// Set PANEL
-+	_INIT_CMD(0xCC,	0x0E),
++	_INIT_CMD(0xD5,	0x00,0x00,0x0A,0x00,0x01,0x05,0x00,0x03,0x00,0x88,
++			0x88,0x88,0x88,0x23,0x01,0x67,0x45,0x02,0x13,0x88,
++			0x88,0x88,0x88,0x88,0x88,0x88,0x88,0x88,0x88,0x54,
++			0x76,0x10,0x32,0x31,0x20,0x88,0x88,0x88,0x88,0x88,
++			0x88,0x00,0x00,0x00,0x00,0x00,0x00),
 +
 +	// Set GAMMA
-+	_INIT_CMD(0xE0,	0x79,0x00,0x01,0x0F,0x25,0x26,0x3F,0x33,0x47,0x0A,
-+			0x11,0x11,0x15,0x17,0x14,0x16,0x11,0x17,0x00,0x01,
-+			0x0F,0x25,0x26,0x3F,0x33,0x47,0x0A,0x11,0x11,0x15,
-+			0x17,0x14,0x16,0x11,0x17),
++	_INIT_CMD(0xE0,	0x79,0x00,0x02,0x09,0x22,0x25,0x3F,0x2B,0x43,0x01,
++			0x0D,0x10,0x15,0x17,0x16,0x16,0x13,0x18,0x00,0x02,
++			0x09,0x22,0x25,0x3F,0x2B,0x43,0x01,0x0D,0x10,0x15,
++			0x17,0x16,0x16,0x13,0x18),
++
++	// Set PANEL
++	_INIT_CMD(0xCC, 0x02),
 +
 +	// Set VCOM
-+	_INIT_CMD(0xB6,	0x00,0xAC,0x00,0xAC),
++	_INIT_CMD(0xB6,	0x00,0x8B,0x00,0x8B),
 +
-+	/* Write CABC */
-+	_INIT_CMD(0x55,	0x00),
++	_INIT_CMD(0xDE,	0x05,0x70,0x04),
 +
-+	{ /*sentinel*/ },
++	{ /*EOF*/ },
 +};
-+
 +
 +/*
 + * The horizontal and vertical timings
 + */
-+#define HX8379A_HSYNC_FPORCH		25	/* pixels */
-+#define HX8379A_HSYNC_BPORCH		25
-+#define HX8379A_HSYNC_PULSE		11
++#define HX8379A_HSYNC		10	/* pixels */
++#define HX8379A_HFP		25
++#define HX8379A_HBP		20
 +
-+#define HX8379A_VSYNC_FPORCH		22	/* lines */
-+#define HX8379A_VSYNC_BPORCH		12
-+#define HX8379A_VSYNC_PULSE		3
++#define HX8379A_VSYNC		6	/* lines */
++#define HX8379A_VFP		6
++#define HX8379A_VBP		4
 +
-+#define HX8379A_HDISPLAY		480
-+#define HX8379A_VDISPLAY		854
++#define HX8379A_HDISP		480
++#define HX8379A_VDISP		854
 +
 +
-+static const struct drm_display_mode truly_tda_fwvga0500g50089_mode = {
-+	.clock		= 29000, /*KHz*/
-+	.vrefresh	= 60,	 /*Hz*/
++static const struct drm_display_mode truly_tda_fwvga0500g50008_mode = {
++	.clock		= 28000, /*KHz*/
++	.vrefresh	= 60,    /*Hz*/
 +
-+	.hdisplay	= HX8379A_HDISPLAY,
-+	.hsync_start	= HX8379A_HDISPLAY
-+				+ HX8379A_HSYNC_FPORCH,
-+	.hsync_end	= HX8379A_HDISPLAY
-+				+ HX8379A_HSYNC_FPORCH
-+				+ HX8379A_HSYNC_PULSE,
-+	.htotal		= HX8379A_HDISPLAY
-+				+ HX8379A_HSYNC_FPORCH
-+				+ HX8379A_HSYNC_PULSE
-+				+ HX8379A_HSYNC_BPORCH,
++	.hdisplay	= HX8379A_HDISP,
++	.hsync_start	= HX8379A_HDISP + HX8379A_HFP,
++	.hsync_end	= HX8379A_HDISP + HX8379A_HFP + HX8379A_HSYNC,
++	.htotal		= HX8379A_HDISP + HX8379A_HFP + HX8379A_HSYNC + HX8379A_HBP,
 +
-+	.vdisplay	= HX8379A_VDISPLAY,
-+	.vsync_start	= HX8379A_VDISPLAY
-+				+ HX8379A_VSYNC_FPORCH,
-+	.vsync_end	= HX8379A_VDISPLAY
-+				+ HX8379A_VSYNC_FPORCH
-+				+ HX8379A_VSYNC_PULSE,
-+	.vtotal		= HX8379A_VDISPLAY
-+				+ HX8379A_VSYNC_FPORCH
-+				+ HX8379A_VSYNC_PULSE
-+				+ HX8379A_VSYNC_BPORCH,
++	.vdisplay	= HX8379A_VDISP,
++	.vsync_start	= HX8379A_VDISP + HX8379A_VFP,
++	.vsync_end	= HX8379A_VDISP + HX8379A_VFP + HX8379A_VSYNC,
++	.vtotal		= HX8379A_VDISP + HX8379A_VFP + HX8379A_VSYNC + HX8379A_VBP,
 +};
 +
-+static const struct hx8379a_panel_desc truly_tda_fwvga0500g50089 = {
-+	.init_cmds = truly_tda_fwvga0500g50089_init,
-+	.mode	= &truly_tda_fwvga0500g50089_mode,
++static const struct hx8379a_panel_desc truly_tda_fwvga0500g50008 = {
++	.init_cmds = truly_tda_fwvga0500g50008_init,
++	.mode	= &truly_tda_fwvga0500g50008_mode,
 +	.bpc	= 8,
 +	.size	= {
 +		.width	= 62,
@@ -338,12 +237,16 @@ index 0000000..c84f087
 +
 +	dev_dbg(dev, "panel unprepare\n");
 +
++	ret = mipi_dsi_dcs_set_display_off(hxp->dsi);
++	if (ret)
++		DRM_WARN("failed to set display OFF: %d\n", ret);
++
 +	ret = mipi_dsi_dcs_enter_sleep_mode(hxp->dsi);
-+	if (ret < 0)
-+		dev_err(dev,"failed to enter sleep mode, ret = %d\n",ret);
++	if (ret)
++		DRM_WARN("failed to enter sleep mode: %d\n", ret);
 +
 +	/* wait for entering sleep mode*/
-+	msleep(120);
++	msleep(150);
 +
 +	hxp->prepared = false;
 +
@@ -354,7 +257,9 @@ index 0000000..c84f087
 +{
 +	struct hx8379a_panel *hxp = panel_to_hxpanel(panel);
 +	struct device *dev = &hxp->dsi->dev;
-+	int ret;
++	const struct hx8379a_init_instr *cmds =
++					hxp->desc->init_cmds;
++	int ret, i;
 +
 +	if (hxp->prepared)
 +		return 0;
@@ -362,50 +267,54 @@ index 0000000..c84f087
 +	dev_dbg(dev, "panel prepare\n");
 +
 +	/* reset the panel*/
++	msleep(20);
 +	reset_control_reset(hxp->rstc);
-+
 +	/* pause after reset */
-+	msleep(120);
++	msleep(100);
 +
-+	if (hxp->desc->init_cmds) {
-+		const struct hx8379a_init_cmd *cmds =
-+					hxp->desc->init_cmds;
-+		unsigned int i;
-+
++	if (cmds) {
 +		/* panel init sequence */
-+		for (i = 0; cmds[i].len > 0; i++) {
-+			const struct hx8379a_init_cmd *cmd = &cmds[i];
++		for (i = 0; cmds[i].type != 0; i++) {
++			const struct  hx8379a_init_instr *cmd = &cmds[i];
 +
-+			dev_dbg(dev, "panel write, len = %d\n", cmd->len);
++			if (cmd->type == INIT_DELAY)
++                                msleep(cmd->len);
 +
-+			ret = mipi_dsi_generic_write(hxp->dsi, cmd->data,
-+						     cmd->len);
-+		        if (ret < 0) {
-+				dev_err(dev, "panel write failed: %d\n", ret);
-+				return ret;
-+			}
++			else if (cmd->type == INIT_CMD) {
++				dev_dbg(dev, "panel write, len = %d\n", cmd->len);
 +
-+			ret = mipi_dsi_dcs_nop(hxp->dsi);
-+			if (ret < 0) {
-+				dev_err(dev,
-+					"failed to send DCS nop: %d\n", ret);
-+				return ret;
++				ret = mipi_dsi_generic_write(hxp->dsi, cmd->data,
++							     cmd->len);
++			        if (ret < 0) {
++					DRM_ERROR("panel write failed: %d\n", ret);
++					return ret;
++				}
 +			}
 +		}
 +	}
 +
 +	ret = mipi_dsi_dcs_set_tear_on(hxp->dsi,
 +				MIPI_DSI_DCS_TEAR_MODE_VBLANK);
++//	ret = mipi_dsi_dcs_set_tear_off(hxp->dsi);
 +	if (ret)
-+		return ret;
++		DRM_WARN("failed to set tear on: %d\n", ret);
 +
 +	ret = mipi_dsi_dcs_exit_sleep_mode(hxp->dsi);
 +	if (ret) {
-+		dev_err(dev, "couldn't exit sleep mode: %d\n", ret);
++		DRM_ERROR("failed to exit sleep mode: %d\n", ret);
 +		return ret;
 +	}
 +
 +	/* wait for exit sleep mode */
++	msleep(150);
++
++	ret = mipi_dsi_dcs_set_display_on(hxp->dsi);
++	if (ret) {
++		DRM_ERROR("couldn't set display ON: %d\n", ret);
++		return ret;
++	}
++
++	/* wait for display on */
 +	msleep(120);
 +
 +	hxp->prepared = true;
@@ -426,10 +335,6 @@ index 0000000..c84f087
 +
 +	backlight_disable(hxp->bldev);
 +
-+	ret = mipi_dsi_dcs_set_display_off(hxp->dsi);
-+	if (ret < 0)
-+		dev_err(dev,"faied to set display OFF: %d\n",ret);
-+
 +	hxp->enabled = false;
 +
 +	return 0;
@@ -446,17 +351,36 @@ index 0000000..c84f087
 +
 +	dev_dbg(dev, "panel enable\n");
 +
-+	ret = mipi_dsi_dcs_set_display_on(hxp->dsi);
++	ret = backlight_enable(hxp->bldev);
 +	if (ret) {
-+		dev_err(dev,"couldn't set display ON: %d\n", ret);
++		DRM_ERROR("failed to enable backlight: %d\n",ret);
 +		return ret;
 +	}
 +
-+	ret = backlight_enable(hxp->bldev);
-+	if (ret) {
-+		dev_err(dev,"failed to enable backlight: %d\n",ret);
-+		return ret;
++/*----------------------------*/
++	u8 mode;
++
++	ret = mipi_dsi_dcs_get_power_mode(hxp->dsi, &mode);
++	if (ret < 0){
++		dev_err(dev,"failed to get power mode: %d\n",ret);
++	} else {
++		dev_dbg(dev,"power mode: 0x%02X\n",mode);
 +	}
++
++	u8 disp_id[3];
++
++	ret = mipi_dsi_dcs_read(hxp->dsi,
++				MIPI_DCS_GET_DISPLAY_ID,
++				disp_id,
++				sizeof(disp_id));
++	if (ret > 0) {
++		dev_dbg(dev,"display id: %02X-%02X-%02X\n",
++			disp_id[0], disp_id[1], disp_id[2]);
++	} else {
++		dev_err(dev,"failed to read display id: %d\n",ret);
++	}
++
++/********************************/
 +
 +	hxp->enabled = true;
 +
@@ -466,26 +390,25 @@ index 0000000..c84f087
 +static int hx8379a_panel_get_modes(struct drm_panel *panel)
 +{
 +	struct hx8379a_panel *hxp = panel_to_hxpanel(panel);
-+	struct drm_connector *connector = panel->connector;
-+	const struct drm_display_mode *m = hxp->desc->mode;
++	const struct hx8379a_panel_desc *desc = hxp->desc;
++	const struct drm_display_mode *m = desc->mode;
 +	struct drm_display_mode *mode;
 +
 +	mode = drm_mode_duplicate(panel->drm, m);
 +	if (!mode) {
-+		DRM_DEV_ERROR(panel->drm->dev,
-+			      "failed to add mode %ux%ux@%u\n",
-+			      m->hdisplay, m->vdisplay, m->vrefresh);
++		DRM_ERROR("failed to add mode %ux%ux@%u\n",
++			  m->hdisplay, m->vdisplay, m->vrefresh);
 +		return -ENOMEM;
 +	}
 +
 +	drm_mode_set_name(mode);
 +
 +	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
-+	drm_mode_probed_add(connector, mode);
++	drm_mode_probed_add(panel->connector, mode);
 +
-+	connector->display_info.bpc	= hxp->desc->bpc;
-+	connector->display_info.width_mm = hxp->desc->size.width;
-+	connector->display_info.height_mm = hxp->desc->size.height;
++	panel->connector->display_info.bpc	= desc->bpc;
++	panel->connector->display_info.width_mm	= desc->size.width;
++	panel->connector->display_info.height_mm = desc->size.height;
 +
 +	return 1;
 +}
@@ -500,8 +423,8 @@ index 0000000..c84f087
 +
 +static const struct of_device_id hx8379a_panel_dsi_of_match[] = {
 +	{
-+		.compatible = "truly,tda-fwvga0500g50089",
-+		.data	    = &truly_tda_fwvga0500g50089,
++		.compatible = "truly,tda-fwvga0500g50008",
++		.data	    = &truly_tda_fwvga0500g50008,
 +	},{
 +		/* sentinel */
 +	}
@@ -510,7 +433,6 @@ index 0000000..c84f087
 +
 +static int hx8379a_panel_probe(struct mipi_dsi_device *dsi)
 +{
-+	struct device_node *np;
 +	struct hx8379a_panel *hxp;
 +        const struct of_device_id *match;
 +	int ret;
@@ -529,31 +451,33 @@ index 0000000..c84f087
 +	hxp->dsi = dsi;
 +	hxp->desc = match->data;
 +
-+	drm_panel_init(&hxp->base);
-+	hxp->base.dev = &dsi->dev;
-+	hxp->base.funcs = &hx8379a_panel_funcs;
-+
 +	hxp->rstc = devm_reset_control_get_shared(&dsi->dev, "reset");
 +	if (IS_ERR(hxp->rstc)) {
-+		dev_err(&dsi->dev, "couldn't get our reset line\n");
-+		return PTR_ERR(hxp->rstc);
++		ret = PTR_ERR(hxp->rstc);
++		dev_err(&dsi->dev, "couldn't get our reset line: %d\n", ret);
++		return ret;
 +	}
 +
 +	hxp->bldev = devm_of_find_backlight(&dsi->dev);
 +	if (IS_ERR(hxp->bldev)) {
-+		dev_err(&dsi->dev, "couldn't find backlight\n");
-+		return PTR_ERR(hxp->bldev);
-+	}
-+
-+	ret = drm_panel_add(&hxp->base);
-+	if (ret) {
-+		dev_err(&dsi->dev, "couldn't add drm panel\n");
++		ret = PTR_ERR(hxp->bldev);
++		dev_err(&dsi->dev, "couldn't find backlight: %d\n", ret);
 +		return ret;
 +	}
 +
-+	dsi->format	= hxp->desc->format;
-+	dsi->mode_flags	= hxp->desc->flags;
-+	dsi->lanes	= hxp->desc->lanes;
++	drm_panel_init(&hxp->base);
++	hxp->base.dev = &dsi->dev;
++	hxp->base.funcs = &hx8379a_panel_funcs;
++
++	ret = drm_panel_add(&hxp->base);
++	if (ret) {
++		dev_err(&dsi->dev, "couldn't add drm panel: %d\n", ret);
++		return ret;
++	}
++
++	dsi->lanes = hxp->desc->lanes;
++	dsi->format = hxp->desc->format;
++	dsi->mode_flags = hxp->desc->flags;
 +
 +	ret = mipi_dsi_attach(dsi);
 +	if (ret) {
@@ -572,7 +496,7 @@ index 0000000..c84f087
 +
 +	ret = mipi_dsi_detach(dsi);
 +	if (ret)
-+		dev_err(&dsi->dev,"failed to detach from DSI host: %d\n", ret);
++		dev_err(&dsi->dev,"failed to detach DSI host: %d\n", ret);
 +
 +	drm_panel_remove(&hxp->base);
 +
@@ -590,7 +514,7 @@ index 0000000..c84f087
 +module_mipi_dsi_driver(hx8379a_panel_dsi_driver);
 +
 +MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
-+MODULE_DESCRIPTION("Himax HX8379A-based MIPI-DSI panel driver");
++MODULE_DESCRIPTION("The driver for Himax HX8379A-based MIPI-DSI panels");
 +MODULE_LICENSE("GPL v2");
 -- 
 2.17.1

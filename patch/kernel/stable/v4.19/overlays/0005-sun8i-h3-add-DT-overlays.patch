@@ -1,22 +1,23 @@
-From 138a2e2e95ad0bc20a6546425342da6725268199 Mon Sep 17 00:00:00 2001
+From d99423369f7b82660ec9792bdc3f61b7e94ba0f6 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Wed, 5 Sep 2018 20:36:03 +0300
+Date: Tue, 25 Dec 2018 22:09:15 +0300
 Subject: [PATCH] sun8i-h3: add DT-overlays
 
 ---
  arch/arm/boot/dts/Makefile                    |   2 +
- arch/arm/boot/dts/overlays/Makefile           |  33 +++++
- .../dts/overlays/README.sun8i-h3-overlays     |  14 +++
- .../boot/dts/overlays/sun8i-h3-aapi-sound.dts |  44 +++++++
- arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts  |  67 ++++++++++
+ arch/arm/boot/dts/overlays/Makefile           |  32 +++++
+ .../dts/overlays/README.sun8i-h3-overlays     |   1 +
+ .../boot/dts/overlays/sun8i-h3-aapi-clk.dts   |  47 +++++++
+ .../boot/dts/overlays/sun8i-h3-aapi-sound.dts |  47 +++++++
+ .../boot/dts/overlays/sun8i-h3-aapi-vna.dts   |  31 +++++
+ arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts  |  93 ++++++++++++++
  .../overlays/sun8i-h3-audioinjector-pi.dts    |  45 +++++++
  arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts |  29 +++++
  .../dts/overlays/sun8i-h3-ertft0356-drm.dts   | 102 +++++++++++++++
  .../boot/dts/overlays/sun8i-h3-fixup.scr-cmd  | 116 ++++++++++++++++++
  .../overlays/sun8i-h3-gy-pcm5102-sound.dts    |  34 +++++
- arch/arm/boot/dts/overlays/sun8i-h3-ir.dts    |  13 ++
  .../boot/dts/overlays/sun8i-h3-nrf24-spi.dts  |  71 +++++++++++
- arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts   |  39 ++++++
+ arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts   |  40 ++++++
  .../boot/dts/overlays/sun8i-h3-spi-cs1.dts    |  41 +++++++
  .../arm/boot/dts/overlays/sun8i-h3-spidev.dts |  42 +++++++
  arch/arm/boot/dts/overlays/sun8i-h3-uart1.dts |  22 ++++
@@ -28,17 +29,18 @@ Subject: [PATCH] sun8i-h3: add DT-overlays
  .../boot/dts/overlays/sun8i-h3-usbhost3.dts   |  20 +++
  .../dts/overlays/sun8i-h3-waveshare35-drm.dts |  68 ++++++++++
  .../overlays/sun8i-h3-waveshare35-fbtft.dts   |  93 ++++++++++++++
- 24 files changed, 1006 insertions(+)
+ 25 files changed, 1087 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.sun8i-h3-overlays
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-aapi-clk.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-aapi-vna.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-audioinjector-pi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-ertft0356-drm.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-fixup.scr-cmd
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-ir.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-nrf24-spi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-spi-cs1.dts
@@ -65,20 +67,19 @@ index b5bd3de..98d005e 100644
 +subdir-y	:= overlays
 diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
 new file mode 100644
-index 0000000..4743570
+index 0000000..e046aa1
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/Makefile
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,32 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
 +dtbo-$(CONFIG_MACH_SUN8I) += \
 +	sun8i-h3-audioinjector-pi.dtbo \
 +	sun8i-h3-aapi-sound.dtbo \
++	sun8i-h3-aapi-clk.dtbo \
++	sun8i-h3-aapi-vna.dtbo \
 +	sun8i-h3-aapi.dtbo \
-+	sun8i-h3-dht11.dtbo \
-+	sun8i-h3-gy-pcm5102-sound.dtbo \
-+	sun8i-h3-ir.dtbo \
 +	sun8i-h3-nrf24-spi.dtbo \
 +	sun8i-h3-pwm.dtbo \
 +	sun8i-h3-spi-cs1.dtbo \
@@ -104,80 +105,17 @@ index 0000000..4743570
 +extra-y	:= $(dtbo-y) $(scr-y) $(dtbotxt-y)
 diff --git a/arch/arm/boot/dts/overlays/README.sun8i-h3-overlays b/arch/arm/boot/dts/overlays/README.sun8i-h3-overlays
 new file mode 100644
-index 0000000..62eb974
+index 0000000..ae59524
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/README.sun8i-h3-overlays
-@@ -0,0 +1,14 @@
-+This document describes overlays provided in the kernel packages
-+For generic Armbian overlays documentation please see
-+https://docs.armbian.com/User-Guide_Allwinner_overlays/
-+
-+### Platform:
-+
-+sun8i-h3 (Allwinner H3)
-+
-+### Platform details:
-+
-+Supported pin banks: PA, PC, PD, PG
-+
-+Both SPI controllers have only one hardware CS pin exposed,
-+adding fixed software (GPIO) chip selects is possible with a separate overlay
-diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts b/arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts
+@@ -0,0 +1 @@
++# overlays for sun8i-h3 (Allwinner H3)
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-aapi-clk.dts b/arch/arm/boot/dts/overlays/sun8i-h3-aapi-clk.dts
 new file mode 100644
-index 0000000..a90dfb0
+index 0000000..527d69a
 --- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts
-@@ -0,0 +1,44 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "allwinner,sun8i-h3";
-+
-+	fragment@0 {
-+		target = <&i2s0>;
-+		__overlay__ {
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
-+				    <&i2s0_pins_di>;
-+			status = "okay";
-+		};
-+	};
-+
-+	fragment@1 {
-+		target = <&i2c0>;
-+		__overlay__ {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			status = "okay";
-+
-+			wm8731: wm8731@1a {
-+				#sound-dai-cells = <0>;
-+				compatible = "wlf,wm8731";
-+				reg = <0x1a>;
-+				status = "okay";
-+			};
-+		};
-+	};
-+
-+	fragment@2 {
-+		target-path = "/soc/";
-+		__overlay__ {
-+			sound {
-+				compatible = "orpaltech,aapi-sound";
-+				cpu-node = <&i2s0>;
-+				codec-node = <&wm8731>;
-+				status = "okay";
-+                        };
-+                };
-+	};
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts b/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts
-new file mode 100644
-index 0000000..b81a9fe
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts
-@@ -0,0 +1,67 @@
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-aapi-clk.dts
+@@ -0,0 +1,47 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -187,22 +125,12 @@ index 0000000..b81a9fe
 +	fragment@0 {
 +		target-path = "/soc/";
 +		__overlay__ {
-+			vna-aapi {
-+				compatible = "orpaltech,aapi-160";
-+				clocks = <&aapi_clk 0>,
-+					 <&aapi_clk 1>;
-+				clock-names = "clk0",
-+					      "clk1";
-+				intermediate-frequency = <10031>;
-+				initial-frequency = <14000000>;
-+				status = "okay";
-+			};
 +
-+			sound-aapi {
-+				compatible = "orpaltech,aapi-sound";
-+				cpu-node = <&i2s0>;
-+				codec-node = <&aapi_codec>;
-+				status = "okay";
++			/* 27MHz reference crystal */
++			aapi_xtal: aapi-xtal@27 {
++				compatible = "fixed-clock";
++				#clock-cells = <0>;
++				clock-frequency = <27000000>;
 +			};
 +		};
 +	};
@@ -213,20 +141,199 @@ index 0000000..b81a9fe
 +			/* needed to avoid dtc warning */
 +			#address-cells = <1>;
 +			#size-cells = <0>;
++			clock-frequency = <400000>;
++			status = "okay";
++
++			aapi_clk: aapi-clk@60 {
++				compatible = "orpaltech,aapi-clk-si5351";
++				reg = <0x60>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++				#clock-cells = <1>;
++
++				/* connect xtal input to 27MHz reference */
++				clocks = <&aapi_xtal>;
++				clock-names = "xtal";
++
++				xtal-frequency = <27000000>;
++				xtal-correction = <0 0>; /*<value,sign>*/
++
++				clock-output-names = "clk0", "clk1";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts b/arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts
+new file mode 100644
+index 0000000..b0e20f6
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-aapi-sound.dts
+@@ -0,0 +1,47 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_di>;
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&i2c0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			aapi_codec: wm8731@1a {
++				compatible = "wlf,wm8731";
++				#sound-dai-cells = <0>;
++				reg = <0x1a>;
++
++				/*---------------REMOVE THIS----------------------------*/
++				clocks = <&aapi_clk 0>;
++				clock-names = "dummy-clk";
++				/*------------------------------------------------------*/
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/";
++		__overlay__ {
++			aapi_sound: aapi-sound {
++				compatible = "orpaltech,aapi-wm8731-sound";
++				orpal,i2s-controller = <&i2s0>;
++				orpal,audio-codec = <&aapi_codec>;
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-aapi-vna.dts b/arch/arm/boot/dts/overlays/sun8i-h3-aapi-vna.dts
+new file mode 100644
+index 0000000..91a54f7
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-aapi-vna.dts
+@@ -0,0 +1,31 @@
++#include <dt-bindings/gpio/gpio.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			aapi_vna: aapi-vna {
++				compatible = "orpaltech,aapi-160";
++				clocks = <&aapi_clk 0>,
++					 <&aapi_clk 1>;
++				clock-names = "clk0",
++					      "clk1";
++				intermediate-freq = <10031>;
++				initial-freq = <14000000>;
++
++				shutdown-ctrl-gpios = <&pio 6 9 GPIO_ACTIVE_LOW>; /*PG9*/
++				shutdown-timeout-ms = <7000>;
++
++				low-battery-gpios = <&pio 6 7 0>;	/*PG7*/
++				charger-pg-gpios = <&pio 0 6 0>;	/*PA6*/
++				charger-stat1-gpios = <&pio 0 8 0>;	/*PA8*/
++				charger-stat2-gpios = <&pio 0 7 0>;	/*PA7*/
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts b/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts
+new file mode 100644
+index 0000000..ae540cb
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-aapi.dts
+@@ -0,0 +1,93 @@
++#include <dt-bindings/gpio/gpio.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			aapi_vna: aapi-vna {
++				compatible = "orpaltech,aapi-160";
++				clocks = <&aapi_clk 0>,
++					 <&aapi_clk 1>;
++				clock-names = "clk0",
++					      "clk1";
++				intermediate-freq = <10031>;
++				initial-freq = <14000000>;
++
++				shutdown-ctrl-gpios = <&pio 6 9 GPIO_ACTIVE_LOW>; /*PG9*/
++				shutdown-timeout-ms = <7000>;
++
++				low-battery-gpios = <&pio 6 7 0>;	/*PG7*/
++				charger-pg-gpios = <&pio 0 6 0>;	/*PA6*/
++				charger-stat1-gpios = <&pio 0 8 0>;	/*PA8*/
++				charger-stat2-gpios = <&pio 0 7 0>;	/*PA7*/
++			};
++
++			aapi_sound: aapi-sound {
++				compatible = "orpaltech,aapi-wm8731-sound";
++				orpal,i2s-controller = <&i2s0>;
++				orpal,audio-codec = <&aapi_codec>;
++			};
++
++			/* 27MHz reference crystal */
++			aapi_xtal: aapi-xtal@27 {
++				compatible = "fixed-clock";
++				#clock-cells = <0>;
++				clock-frequency = <27000000>;
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&i2c0>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clock-frequency = <400000>;
 +			status = "okay";
 +
 +			aapi_codec: wm8731@1a {
 +				compatible = "wlf,wm8731";
 +				reg = <0x1a>;
 +				#sound-dai-cells = <0>;
++
++				/*---------------REMOVE THIS----------------------------*/
++				clocks = <&aapi_clk 0>;
++				clock-names = "dummy-clk";
++				/*------------------------------------------------------*/
 +				status = "okay";
 +			};
 +
-+			aapi_clk: clk-aapi@60 {
++			aapi_clk: aapi-clk@60 {
 +				compatible = "orpaltech,aapi-clk-si5351";
 +				reg = <0x60>;
++				#address-cells = <1>;
++				#size-cells = <0>;
 +				#clock-cells = <1>;
-+				status = "okay";
++
++				/* connect xtal input to 27MHz reference */
++				clocks = <&aapi_xtal>;
++				clock-names = "xtal";
 +
 +				xtal-frequency = <27000000>;
 +				xtal-correction = <0 0>; /*<corr,sign>*/
@@ -239,8 +346,8 @@ index 0000000..b81a9fe
 +	fragment@2 {
 +		target = <&i2s0>;
 +		__overlay__ {
-+			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_di>;
 +			pinctrl-names = "default";
++			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_di>;
 +			status = "okay";
 +		};
 +	};
@@ -601,25 +708,6 @@ index 0000000..da479c8
 +                };
 +	};
 +};
-diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-ir.dts b/arch/arm/boot/dts/overlays/sun8i-h3-ir.dts
-new file mode 100644
-index 0000000..6e413f1
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun8i-h3-ir.dts
-@@ -0,0 +1,13 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "allwinner,sun8i-h3";
-+
-+	fragment@0 {
-+		target = <&i2c0>;
-+		__overlay__ {
-+			status = "okay";
-+		};
-+	};
-+};
 diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-nrf24-spi.dts b/arch/arm/boot/dts/overlays/sun8i-h3-nrf24-spi.dts
 new file mode 100644
 index 0000000..eae2d1a
@@ -699,10 +787,10 @@ index 0000000..eae2d1a
 +};
 diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts b/arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts
 new file mode 100644
-index 0000000..ed3b8e6
+index 0000000..b7accc4
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,40 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -719,6 +807,7 @@ index 0000000..ed3b8e6
 +	fragment@1 {
 +		target = <&uart0>;
 +		__overlay__ {
++			/* uart0 must be disabled in order to release PA5 pin */
 +			status = "disabled";
 +		};
 +	};

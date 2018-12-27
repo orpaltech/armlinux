@@ -1,0 +1,97 @@
+From 0c0e61dd2c2a20dc0f42a00539dca4337fd8ea02 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sat, 22 Dec 2018 14:18:18 +0300
+Subject: [PATCH] input: Use reset controller in edt-ft5x06 driver
+
+---
+ drivers/input/touchscreen/edt-ft5x06.c | 29 +++++++++++++-------------
+ 1 file changed, 14 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/input/touchscreen/edt-ft5x06.c b/drivers/input/touchscreen/edt-ft5x06.c
+index 1e18ca0..652328a 100644
+--- a/drivers/input/touchscreen/edt-ft5x06.c
++++ b/drivers/input/touchscreen/edt-ft5x06.c
+@@ -25,6 +25,7 @@
+  *    http://www.glyn.com/Products/Displays
+  */
+ 
++#define DEBUG
+ #include <linux/module.h>
+ #include <linux/ratelimit.h>
+ #include <linux/irq.h>
+@@ -39,6 +40,7 @@
+ #include <linux/input/mt.h>
+ #include <linux/input/touchscreen.h>
+ #include <linux/of_device.h>
++#include <linux/reset.h>
+ 
+ #define WORK_REGISTER_THRESHOLD		0x00
+ #define WORK_REGISTER_REPORT_RATE	0x08
+@@ -92,8 +94,8 @@ struct edt_ft5x06_ts_data {
+ 	u16 num_x;
+ 	u16 num_y;
+ 
+-	struct gpio_desc *reset_gpio;
+ 	struct gpio_desc *wake_gpio;
++	struct reset_control *rstc;
+ 
+ #if defined(CONFIG_DEBUG_FS)
+ 	struct dentry *debug_dir;
+@@ -991,12 +993,11 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
+ 
+ 	tsdata->max_support_points = chip_data->max_support_points;
+ 
+-	tsdata->reset_gpio = devm_gpiod_get_optional(&client->dev,
+-						     "reset", GPIOD_OUT_HIGH);
+-	if (IS_ERR(tsdata->reset_gpio)) {
+-		error = PTR_ERR(tsdata->reset_gpio);
++	tsdata->rstc = devm_reset_control_get_shared(&client->dev, "reset");
++	if (IS_ERR(tsdata->rstc)) {
++		error = PTR_ERR(tsdata->rstc);
+ 		dev_err(&client->dev,
+-			"Failed to request GPIO reset pin, error %d\n", error);
++			"couldn't get our reset line: %d\n", error);
+ 		return error;
+ 	}
+ 
+@@ -1005,7 +1006,7 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
+ 	if (IS_ERR(tsdata->wake_gpio)) {
+ 		error = PTR_ERR(tsdata->wake_gpio);
+ 		dev_err(&client->dev,
+-			"Failed to request GPIO wake pin, error %d\n", error);
++			"failed to request GPIO wake pin: %d\n", error);
+ 		return error;
+ 	}
+ 
+@@ -1014,11 +1015,10 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
+ 		gpiod_set_value_cansleep(tsdata->wake_gpio, 1);
+ 	}
+ 
+-	if (tsdata->reset_gpio) {
+-		usleep_range(5000, 6000);
+-		gpiod_set_value_cansleep(tsdata->reset_gpio, 0);
+-		msleep(300);
+-	}
++	/* reset the panel*/
++	msleep(20);
++	reset_control_reset(tsdata->rstc);
++	msleep(300);
+ 
+ 	input = devm_input_allocate_device(&client->dev);
+ 	if (!input) {
+@@ -1100,10 +1100,9 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
+ 	device_init_wakeup(&client->dev, 1);
+ 
+ 	dev_dbg(&client->dev,
+-		"EDT FT5x06 initialized: IRQ %d, WAKE pin %d, Reset pin %d.\n",
++		"EDT FT5x06 initialized: IRQ %d, WAKE pin %d.\n",
+ 		client->irq,
+-		tsdata->wake_gpio ? desc_to_gpio(tsdata->wake_gpio) : -1,
+-		tsdata->reset_gpio ? desc_to_gpio(tsdata->reset_gpio) : -1);
++		tsdata->wake_gpio ? desc_to_gpio(tsdata->wake_gpio) : -1);
+ 
+ 	return 0;
+ }
+-- 
+2.17.1
+

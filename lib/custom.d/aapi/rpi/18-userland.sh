@@ -41,7 +41,7 @@ userland_update()
 
         LAST_COMMIT_ID=$(git -C ${USERLAND_DIR} log --format="%h" -n 1)
         USERLAND_DEB_VER="${USERLAND_VER}-${LAST_COMMIT_ID}"
-	USERLAND_DEB_PKG_VER="${USERLAND_DEB_VER}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}"
+	USERLAND_DEB_PKG_VER="${USERLAND_DEB_VER}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}-${CONFIG}-${VERSION}"
         USERLAND_DEB_PKG="userland-${USERLAND_DEB_PKG_VER}"
         USERLAND_DEB_DIR="${DEBS_DIR}/${USERLAND_DEB_PKG}-deb"
 }
@@ -139,7 +139,7 @@ userland_deploy()
         dpkg -x ${BASEDIR}/debs/${USERLAND_DEB_PKG}.deb  ${USERLAND_DEB_DIR} 2> /dev/null
 	mkdir -p ${SYSROOT_DIR}/opt
         rsync -az ${USERLAND_DEB_DIR}/opt/  ${SYSROOT_DIR}/opt
-        ${LIBDIR}/make-relativelinks.sh  ${SYSROOT_DIR}/opt/vc/lib
+	${LIBDIR}/make-relativelinks.sh	$SYSROOT_DIR
         rm -rf ${USERLAND_DEB_DIR}
 
         cp ${BASEDIR}/debs/${USERLAND_DEB_PKG}.deb  ${R}/tmp/

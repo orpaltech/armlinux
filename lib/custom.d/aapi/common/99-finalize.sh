@@ -1,0 +1,3 @@
+#
+# Finalize image customization
+#

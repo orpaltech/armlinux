@@ -1,6 +1,6 @@
-From b41091f6c7e66fdf114c7754610fd8fa470b134d Mon Sep 17 00:00:00 2001
+From eca934181370a9af907b83cef1bf0621fc573d5f Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Wed, 8 Aug 2018 19:33:33 +0300
+Date: Tue, 18 Dec 2018 23:53:23 +0300
 Subject: [PATCH] qtbase: Add mkspecs for Raspberry Pi3 aarch64
 
 ---
@@ -84,5 +84,5 @@ index 0000000..4435fb2
 +
 +#include "../../linux-g++/qplatformdefs.h"
 -- 
-2.18.0
+2.17.1
 

@@ -13,4 +13,4 @@ rsync -az ${R}/usr/include	${SYSROOT_DIR}/usr
 rsync -az ${R}/usr/lib		${SYSROOT_DIR}/usr
 
 # adjust symlinks to be relative
-${LIBDIR}/make-relativelinks.sh ${SYSROOT_DIR}
+${LIBDIR}/make-relativelinks.sh $SYSROOT_DIR

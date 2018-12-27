@@ -64,9 +64,8 @@ if [ "${KERNEL_DIR}" != "${KERNEL_SOURCE_DIR}" ] ; then
   make -C "${KERNEL_DIR}" mrproper
 fi
 
-
-# Setup kernel boot environment; allow fb1 to take over the console
-CMDLINE="rootwait panic=10 consoleblank=0 console=tty1 fbcon=map:10 loglevel=7 init=/bin/systemd"
+# Setup kernel boot environment
+CMDLINE="consoleblank=0 loglevel=7 rootfstype=ext4 rootwait panic=10 rootflags=commit=60,data=writeback elevator=deadline init=/bin/systemd"
 
 # Remove IPv6 networking support
 if [ "${ENABLE_IPV6}" != yes ] ; then
@@ -78,14 +77,6 @@ if [ "${ENABLE_IFNAMES}" = yes ] ; then
   CMDLINE="net.ifnames=1 ${CMDLINE}"
 else
   CMDLINE="net.ifnames=0 ${CMDLINE}"
-fi
-
-# Add serial console support
-if [ "$ENABLE_CONSOLE" = yes ] ; then
-  CMDLINE="console=ttyS0,115200 ${CMDLINE}"
-
-  # Enable serial console systemd style
-  chroot_exec systemctl --no-reload enable serial-getty\@ttyS0.service
 fi
 
 # Install and setup fstab

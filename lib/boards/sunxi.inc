@@ -27,13 +27,13 @@ FELBOOT_FDT_ADDR=0x43000000
 # The option should be overriden if you want GPU support in QT5
 QT5_OPENGL_OPTION="-no-opengl"
 
-# Install packages required for QT5 "eglfs_kms" integration
-APT_BOARD_PACKAGES="libgbm-dev,libgles2-mesa-dev,weston"
-
 #
 # Custom EDID binary for DRM
 #
-DRM_USE_FIRMWARE_EDID=no
+DRM_USE_FIRMWARE_EDID="no"
 DRM_EDID_BINARY="edid/1280x1024.bin"
 DRM_CONNECTOR="HDMI-A-1"
 DRM_VIDEO_MODE="1280x1024-24@60"
+
+# sunxi-specific clean options
+CLEAN_OPTIONS="${CLEAN_OPTIONS}"

@@ -2,6 +2,8 @@
 # First boot actions
 #
 
+echo "Prepare rc.firstboot script"
+
 # Prepare rc.firstboot script
 cat ${FILES_DIR}/firstboot/10-begin.sh > "${ETC_DIR}/rc.firstboot"
 
@@ -28,7 +30,11 @@ if [ ! -f "${ETC_DIR}/rc.local" ] ; then
   install_exec ${FILES_DIR}/etc/rc.local "${ETC_DIR}/rc.local"
 fi
 
+echo "Add rc.firstboot script to rc.local"
+
 # Add rc.firstboot script to rc.local
 sed -i '/exit 0/d' "${ETC_DIR}/rc.local"
 echo /etc/rc.firstboot >> "${ETC_DIR}/rc.local"
 echo exit 0 >> "${ETC_DIR}/rc.local"
+
+echo "Done."

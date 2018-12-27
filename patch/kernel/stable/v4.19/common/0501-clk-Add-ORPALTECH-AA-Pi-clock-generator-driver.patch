@@ -1,13 +1,13 @@
-From c1fad3bffac6dca9a910ef5638afeb6855f2bf87 Mon Sep 17 00:00:00 2001
+From df8b10ffef7601d6ccb7e3c03eee8afb0e13d33f Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 1 Dec 2018 03:17:33 +0300
+Date: Tue, 25 Dec 2018 15:42:07 +0300
 Subject: [PATCH] clk: Add ORPALTECH AA-Pi clock generator driver
 
 ---
  drivers/clk/Kconfig          |    8 +
  drivers/clk/Makefile         |    1 +
- drivers/clk/clk-orpal-aapi.c | 1360 ++++++++++++++++++++++++++++++++++
- 3 files changed, 1369 insertions(+)
+ drivers/clk/clk-orpal-aapi.c | 1064 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 1073 insertions(+)
  create mode 100644 drivers/clk/clk-orpal-aapi.c
 
 diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
@@ -43,10 +43,10 @@ index a84c557..d2009e6 100644
  obj-$(CONFIG_COMMON_CLK_HI655X)		+= clk-hi655x.o
 diff --git a/drivers/clk/clk-orpal-aapi.c b/drivers/clk/clk-orpal-aapi.c
 new file mode 100644
-index 0000000..3eee232
+index 0000000..28f7e37
 --- /dev/null
 +++ b/drivers/clk/clk-orpal-aapi.c
-@@ -0,0 +1,1360 @@
+@@ -0,0 +1,1064 @@
 +/* ORPALTECH AA-Pi si5351-based synthesizer driver.
 + *
 + *  Created on: 05-May-2018
@@ -87,7 +87,7 @@ index 0000000..3eee232
 +#define SI5351_PLL_VCO_MAX			900000000
 +#define SI5351_MSYNTH_MIN_FREQ			1000000
 +#define SI5351_MSYNTH_DIVBY4_FREQ		150000000
-+#define SI5351_MSYNTH_MAX_FREQ			160000000
++#define SI5351_MSYNTH_MAX_FREQ			190000000	/*typical max is 160 MHz, make sure your device is capable!!!*/
 +#define SI5351_CLKOUT_MIN_FREQ			8000
 +#define SI5351_CLKOUT_MAX_FREQ			SI5351_MSYNTH_MAX_FREQ
 +
@@ -385,7 +385,6 @@ index 0000000..3eee232
 +static int si5351_clkout_prepare(struct clk_hw *hw)
 +{
 +	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
-+	u8 mask, val;
 +
 +	dev_dbg(&hwdata->drv->client->dev, "%s: prepare clk%d\n",
 +                __func__, hwdata->num);
@@ -406,253 +405,6 @@ index 0000000..3eee232
 +	si5351_clkout_disable_out(hwdata->drv, hwdata->num);
 +	si5351_clkout_power_down(hwdata->drv, hwdata->num);
 +}
-+
-+/*static unsigned long si5351_clkout_get_rate(struct clk_hw *hw,
-+					    unsigned long parent_rate)
-+{
-+	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
-+	struct si5351_parameters pll_params;
-+	struct si5351_parameters ms_params;
-+	int num = hwdata->num;
-+	u64 lltmp;
-+	unsigned long m, rate;
-+	unsigned long ms_freq, pll_freq;
-+	unsigned long ref_freq = hwdata->drv->ref_freq;
-+	u8 rdiv, pll_reg, ms_reg;
-+
-+	pll_reg = (num == 0) ? SI5351_REG_PLLA_PARAMETERS :
-+		   SI5351_REG_PLLB_PARAMETERS;
-+	ms_reg	= SI5351_REG_CLK0_PARAMETERS +
-+		(SI5351_PARAMETERS_LENGTH * num);
-+*/
-+	/* pll rate from parameters */
-+/*	si5351_read_parameters(hwdata->drv, pll_reg, &pll_params);
-+
-+	if (pll_params.p3 == 0)
-+		return 0;
-+*/
-+	/* fVCO = fIN * (P1*P3 + 512*P3 + P2)/(128*P3) */
-+/*	lltmp  = pll_params.p1 * pll_params.p3;
-+	lltmp += 512 * pll_params.p3;
-+	lltmp += pll_params.p2;
-+	lltmp *= ref_freq;
-+	pll_freq = (unsigned long)div_u64(lltmp, 128 * pll_params.p3);
-+
-+	dev_dbg(&hwdata->drv->client->dev,
-+		"%s - %s: p1 = %lu, p2 = %lu, p3 = %lu, ref_freq = %lu, pll_freq = %lu\n",
-+		__func__, clk_hw_get_name(hw),
-+		pll_params.p1, pll_params.p2, pll_params.p3,
-+		ref_freq, pll_freq);
-+*/
-+	/* msynth rate from parameters */
-+/*	si5351_read_parameters(hwdata->drv, ms_reg, &ms_params);
-+
-+	if (ms_params.p3 == 0)
-+		return 0;
-+*/
-+	/* fOUT = (fIN * 128 * P3) / (P1*P3 + P2 + 512*P3) */
-+/*	lltmp = pll_freq;
-+	if ((si5351_reg_read(hwdata->drv, ms_reg + 2) &
-+		    SI5351_OUTPUT_CLK_DIVBY4) == SI5351_OUTPUT_CLK_DIVBY4) {
-+		m = 4;
-+	} else {
-+		lltmp *= 128 * ms_params.p3;
-+		m  = ms_params.p1 * ms_params.p3;
-+		m += ms_params.p2;
-+		m += 512 * ms_params.p3;
-+	}
-+
-+	if (m == 0)
-+		return 0;
-+	ms_freq = (unsigned long)div_u64(lltmp, m);
-+
-+	rdiv = si5351_reg_read(hwdata->drv, ms_reg + 2);
-+	rdiv &= SI5351_OUTPUT_CLK_DIV_MASK;
-+	rdiv >>= SI5351_OUTPUT_CLK_DIV_SHIFT;
-+
-+	rate = (ms_freq >> rdiv);
-+
-+	dev_dbg(&hwdata->drv->client->dev,
-+		"%s - %s: p1 = %lu, p2 = %lu, p3 = %lu, ms_freq = %lu, rdiv = %u, rate = %lu\n",
-+		__func__, clk_hw_get_name(hw),
-+		ms_params.p1, ms_params.p2, ms_params.p3,
-+		ms_freq, rdiv, rate);
-+
-+	return rate;
-+}
-+
-+static long si5351_clkout_round_rate(struct clk_hw *hw, unsigned long rate,
-+				     unsigned long *parent_rate)
-+{
-+	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
-+*/
-+	/* clkout frequency is 8kHz - 160MHz */
-+/*	if (rate > SI5351_CLKOUT_MAX_FREQ)
-+		rate = SI5351_CLKOUT_MAX_FREQ;
-+	if (rate < SI5351_CLKOUT_MIN_FREQ)
-+		rate = SI5351_CLKOUT_MIN_FREQ;
-+
-+	dev_dbg(&hwdata->drv->client->dev,
-+		"%s - %s: parent_rate = %lu, rate = %lu\n",
-+		__func__, clk_hw_get_name(hw), *parent_rate, rate);
-+
-+	return rate;
-+}
-+*/
-+
-+/*static void si5351_setup_pll(struct clk_hw *hw, unsigned long pll_freq)
-+{
-+	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
-+	struct si5351_parameters params;
-+	int num = hwdata->num;
-+	u64 lltmp;
-+	unsigned long a, b, c, rfrac, denom;
-+	unsigned long ref_freq = hwdata->drv->ref_freq;
-+	u8 reg;
-+
-+	reg = (num == 0) ? SI5351_REG_PLLA_PARAMETERS :
-+			SI5351_REG_PLLB_PARAMETERS;
-+*/
-+	/* determine integer part of feedback equation */
-+/*	a = pll_freq / ref_freq;
-+
-+	if (a < SI5351_PLL_A_MIN)
-+		pll_freq = ref_freq * SI5351_PLL_A_MIN;
-+	if (a > SI5351_PLL_A_MAX)
-+		pll_freq = ref_freq * SI5351_PLL_A_MAX;
-+*/
-+	/* find best approximation for b/c = fVCO mod fIN */
-+/*	denom  = 1000UL * 1000UL;
-+	lltmp  = pll_freq % ref_freq;
-+	lltmp *= denom;
-+	rfrac  = (unsigned long)div_u64(lltmp, ref_freq);
-+
-+	b = 0;
-+	c = 1;
-+	if (rfrac)
-+		rational_best_approximation(rfrac, denom,
-+				SI5351_PLL_B_MAX, SI5351_PLL_C_MAX, &b, &c);
-+*/
-+	/* calculate parameters */
-+/*	params.p3 = c;
-+	params.p2 = 128 * b - c * ((128 * b) / c);
-+    	params.p1 = 128 * a + (128 * b / c) - 512;
-+*/
-+	/* write pll parameters */
-+/*	si5351_write_parameters(hwdata->drv, reg, &params);
-+*/
-+	/* soft reset on the affected pll */
-+/*	si5351_clkout_reset_pll(hwdata->drv, num);
-+*/
-+	/* recalculate rate by fIN * (a + b/c) */
-+/*	lltmp  = ref_freq;
-+	lltmp *= b;
-+	pll_freq  = (unsigned long)div_u64(lltmp, c);
-+	pll_freq += a * ref_freq;
-+
-+	dev_dbg(&hwdata->drv->client->dev,
-+		"%s - %s: a = %lu, b = %lu, c = %lu, ref_freq = %lu, pll_freq = %lu\n",
-+
-+		__func__, clk_hw_get_name(hw),
-+		a, b, c, ref_freq, pll_freq);
-+}
-+
-+static unsigned long si5351_setup_msynth(struct clk_hw *hw,
-+					 unsigned long freq)
-+{
-+	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
-+	struct si5351_parameters params;
-+	int num = hwdata->num;
-+	int divby4 = 0;
-+	u64 lltmp;
-+        unsigned long a, b, c, pll_freq;
-+	u8 rdiv, reg;
-+
-+	reg	= SI5351_REG_CLK0_PARAMETERS +
-+		(SI5351_PARAMETERS_LENGTH * num);
-+*/
-+        /* select a proper R-div value */
-+/*	rdiv = si5351_select_rdiv(&freq);
-+
-+        if (freq > SI5351_MSYNTH_DIVBY4_FREQ)
-+                divby4 = 1;
-+*/
-+	/*
-+	 * find largest integer divider for max
-+	 * vco frequency and given target rate
-+	 */
-+/*	if (divby4 == 0) {
-+		lltmp = SI5351_PLL_VCO_MAX;
-+		a = (unsigned long)div_u64(lltmp, freq);
-+	} else
-+		a = 4;
-+
-+	b = 0;
-+	c = 1;
-+	pll_freq = freq * a;
-+*/
-+	/* calculate msynth parameters */
-+/*	if (divby4) {
-+		params.p3 = 1;
-+		params.p2 = 0;
-+		params.p1 = 0;
-+	} else {
-+		params.p3 = c;
-+		params.p2 = 128 * b - c * ((128 * b) / c);
-+		params.p1 = 128 * a + (128 * b / c) - 512;
-+	}
-+*/
-+	/* write multisynth parameters */
-+/*	si5351_write_parameters(hwdata->drv, reg, &params);
-+
-+	si5351_set_bits(hwdata->drv, reg + 2,
-+			SI5351_OUTPUT_CLK_DIV_MASK,
-+			rdiv << SI5351_OUTPUT_CLK_DIV_SHIFT);
-+
-+	si5351_set_bits(hwdata->drv, reg + 2,
-+			SI5351_OUTPUT_CLK_DIVBY4,
-+			(divby4) ? SI5351_OUTPUT_CLK_DIVBY4 : 0);
-+*/
-+	/* set msynth to integer mode */
-+/*	si5351_set_bits(hwdata->drv, SI5351_REG_CLK0_CTRL + num,
-+			SI5351_CLK_INTEGER_MODE,
-+			(params.p2 == 0) ? SI5351_CLK_INTEGER_MODE : 0);
-+*/
-+	/* set msynth source pll */
-+/*	si5351_set_bits(hwdata->drv, SI5351_REG_CLK0_CTRL + num,
-+			SI5351_CLK_PLL_SELECT,
-+			(num == 0) ? 0 : SI5351_CLK_PLL_SELECT);
-+
-+	dev_dbg(&hwdata->drv->client->dev,
-+		"%s - %s: a = %lu, b = %lu, c = %lu, divby4 = %d, pll_freq = %lu, freq = %lu\n",
-+		__func__, clk_hw_get_name(hw),
-+		a, b, c, divby4, pll_freq, freq);
-+
-+	return pll_freq;
-+}
-+
-+static int si5351_clkout_set_rate(struct clk_hw *hw, unsigned long rate,
-+				  unsigned long parent_rate)
-+{
-+	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
-+	unsigned long pll_freq = 0;
-+*/
-+	/* clkout frequency is 8kHz - 160MHz */
-+/*	if (rate > SI5351_CLKOUT_MAX_FREQ)
-+		rate = SI5351_CLKOUT_MAX_FREQ;
-+	if (rate < SI5351_CLKOUT_MIN_FREQ)
-+		rate = SI5351_CLKOUT_MIN_FREQ;
-+
-+	pll_freq = si5351_setup_msynth(hw, rate);
-+
-+	si5351_setup_pll(hw, pll_freq);
-+
-+	dev_dbg(&hwdata->drv->client->dev,
-+		"%s - %s: pll_freq = %lu, parent_rate = %lu, rate = %lu\n",
-+		__func__, clk_hw_get_name(hw), pll_freq, parent_rate, rate);
-+
-+	return 0;
-+}*/
 +
 +static struct clk_hw *si53351_of_clk_get(struct of_phandle_args *clkspec,
 +					 void *data)
@@ -886,28 +638,6 @@ index 0000000..3eee232
 +	return 0;
 +}
 +
-+/*static u8 si5351_pll_get_parent(struct clk_hw *hw)
-+{
-+	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
-+*/
-+	/* pll source is XTAL for Si5351A */
-+/*	return 0;
-+}*/
-+
-+/*static int si5351_pll_set_parent(struct clk_hw *hw, u8 index)
-+{
-+	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
-+	u8 mask = (hwdata->num == 0) ? SI5351_PLLA_SOURCE
-+				     : SI5351_PLLB_SOURCE;
-+	if (index > 0)
-+		return -EPERM;
-+*/
-+	/* ensure pll source is XTAL for Si5351A */
-+/*	si5351_set_bits(hwdata->drv, SI5351_REG_PLL_INPUT_SOURCE,
-+			mask, 0);
-+	return 0;
-+}*/
-+
 +static const struct clk_ops si5351_pll_ops = {
 +	.recalc_rate = si5351_pll_recalc_rate,
 +	.round_rate = si5351_pll_round_rate,
@@ -1085,31 +815,6 @@ index 0000000..3eee232
 +	return 0;
 +}
 +
-+/*static u8 si5351_msynth_get_parent(struct clk_hw *hw)
-+{
-+	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
-+*/
-+	/* PLLA for ms0, PLLB for the rest */
-+/*	return hwdata->num;
-+}*/
-+
-+/*static int si5351_msynth_set_parent(struct clk_hw *hw, u8 index)
-+{
-+	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
-+*/
-+	/* PLLA for ms0, PLLB for the rest */
-+/*	if (hwdata->num == 0) {
-+		if (index > 0)
-+			return -EINVAL;
-+	} else if (index == 0)
-+		return -EINVAL;
-+
-+	si5351_set_bits(hwdata->drv, SI5351_REG_CLK0_CTRL + hwdata->num,
-+			SI5351_CLK_PLL_SELECT,
-+			(hwdata->num == 0) ? 0 : SI5351_CLK_PLL_SELECT);
-+	return 0;
-+}*/
-+
 +static const struct clk_ops si5351_msynth_ops = {
 +	.recalc_rate = si5351_msynth_recalc_rate,
 +	.round_rate = si5351_msynth_round_rate,
@@ -1232,7 +937,6 @@ index 0000000..3eee232
 +static const char *const si5351_msynth_names[] = {
 +	"ms0", "ms1", "ms2"
 +};
-+
 +static const char *const si5351_clkout_names[] = {
 +	"clk0", "clk1", "clk2"
 +};

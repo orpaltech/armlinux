@@ -24,3 +24,18 @@ else
   # Set no root password to disable root login
   chroot_exec usermod -p \'!\' root
 fi
+
+if [ "$ENABLE_SSHD" = yes ] ; then
+  # Enable password-less login
+  if [ ! -f /home/$CURRENT_USER/.ssh/id_rsa ] ; then
+  	ssh-keygen -f id_rsa -t rsa -N '' &> /dev/null
+  fi
+
+  mkdir -p ${R}/root/.ssh
+  cat /home/$CURRENT_USER/.ssh/id_rsa.pub >> ${R}/root/.ssh/authorized_keys
+
+  if [ "$ENABLE_USER" = yes ] ; then
+    mkdir -p ${R}/home/$USER_NAME/.ssh
+    cat /home/$CURRENT_USER/.ssh/id_rsa.pub >> ${R}/home/$USER_NAME/.ssh/authorized_keys
+  fi
+fi

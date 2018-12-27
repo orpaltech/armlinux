@@ -61,7 +61,7 @@ mesa_update()
 		MESA_DEB_VER="${MESA_RELEASE}-${LAST_COMMIT_ID}"
 	fi
 
-	MESA_DEB_PKG_VER="${MESA_DEB_VER}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}"
+	MESA_DEB_PKG_VER="${MESA_DEB_VER}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}-${CONFIG}-${VERSION}"
 	MESA_DEB_PKG="mesa-${MESA_DEB_PKG_VER}"
 	MESA_DEB_DIR="${DEBS_DIR}/${MESA_DEB_PKG}-deb"
 
@@ -109,6 +109,7 @@ mesa_make()
 			CXX="${DEV_CXX}" \
 			CFLAGS="--sysroot=${SYSROOT_DIR} -DNULL=0" \
 			CXXFLAGS="--sysroot=${SYSROOT_DIR} -DNULL=0"
+
 		[ $? -eq 0 ] || exit $?;
 
 		echo "Done."
@@ -144,6 +145,23 @@ Priority: optional
 Description: This package provides Mesa 3D libraries for RaspberryPi
 EOF
 
+	cat <<-EOF > ${MESA_DEB_DIR}/DEBIAN/postinst
+#!/bin/sh
+
+set -e
+
+case "\$1" in
+  configure)
+    echo "${MESA_PREFIX}/lib" > /etc/ld.so.conf.d/mesa.conf
+    ldconfig -X
+    ;;
+esac
+
+exit 0
+EOF
+
+	chmod +x ${MESA_DEB_DIR}/DEBIAN/postinst
+
 	mkdir -p ${MESA_DEB_DIR}${MESA_PREFIX}
 	rsync -az ${MESA_OUT_DIR}/dist${MESA_PREFIX}/  ${MESA_DEB_DIR}${MESA_PREFIX}
 
@@ -161,9 +179,10 @@ mesa_deploy()
 
 	mkdir -p ${MESA_DEB_DIR}
         dpkg -x ${BASEDIR}/debs/${MESA_DEB_PKG}.deb  ${MESA_DEB_DIR}  2> /dev/null
+
         mkdir -p ${SYSROOT_DIR}${MESA_PREFIX}
         rsync -az ${MESA_DEB_DIR}${MESA_PREFIX}/  ${SYSROOT_DIR}${MESA_PREFIX}
-	${LIBDIR}/make-relativelinks.sh ${SYSROOT_DIR}${MESA_PREFIX}/lib
+	${LIBDIR}/make-relativelinks.sh $SYSROOT_DIR
         rm -rf ${MESA_DEB_DIR}
 
         cp ${BASEDIR}/debs/${MESA_DEB_PKG}.deb	${R}/tmp/

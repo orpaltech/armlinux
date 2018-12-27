@@ -14,7 +14,7 @@ GDB_NAME="gdb-${GDB_VERSION}"
 GDB_SRC_DIR=${EXTRADIR}/${GDB_NAME}
 GDB_OUT_DIR=${GDB_SRC_DIR}/build/${LINUX_PLATFORM}
 
-GDB_DEB_PKG_VER="${GDB_VERSION}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}-${VERSION}"
+GDB_DEB_PKG_VER="${GDB_VERSION}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}-${CONFIG}-${VERSION}"
 GDB_DEB_PKG="gdb-${GDB_DEB_PKG_VER}"
 GDB_DEB_DIR=${BASEDIR}/debs/${GDB_DEB_PKG}-deb
 
@@ -90,12 +90,12 @@ gdb_deploy()
         echo "Deploy GDB to target system..."
 
 	mkdir -p $GDB_DEB_DIR
-	dpkg -x ${BASEDIR}/debs/${GDB_DEB_PKG}.deb	$GDB_DEB_DIR	2> /dev/null
-	rsync -az ${GDB_DEB_DIR}/	$SYSROOT_DIR
-	${LIBDIR}/make-relativelinks.sh	${SYSROOT_DIR}${GDB_PREFIX}/lib
+	dpkg -x ${BASEDIR}/debs/${GDB_DEB_PKG}.deb $GDB_DEB_DIR	2> /dev/null
+	rsync -az ${GDB_DEB_DIR}/ $SYSROOT_DIR
+	${LIBDIR}/make-relativelinks.sh $SYSROOT_DIR
 	rm -rf $GDB_DEB_DIR
 
-	cp $BASEDIR/debs/${GDB_DEB_PKG}.deb	${R}/tmp/
+	cp $BASEDIR/debs/${GDB_DEB_PKG}.deb ${R}/tmp/
 	chroot_exec dpkg -i /tmp/${GDB_DEB_PKG}.deb
 	rm -f ${R}/tmp/${GDB_DEB_PKG}.deb
 
@@ -133,6 +133,10 @@ gdb_deb_pkg()
 }
 
 # ----------------------------------------------------------------------------
+
+if [[ $CLEAN =~ (^|,)"gdb"(,|$) ]] ; then
+	rm -f ${BASEDIR}/debs/${GDB_DEB_PKG}.deb
+fi
 
 if [ ! -f ${BASEDIR}/debs/${GDB_DEB_PKG}.deb ] ; then
 	echo "Building GDB..."

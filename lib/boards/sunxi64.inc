@@ -33,5 +33,5 @@ KERNEL_IMAGE_TARGET="linux.uImage"
 # The option should be overriden if you want GPU support in QT5
 QT5_OPENGL_OPTION="-no-opengl"
 
-# Install packages required for QT5 "eglfs_kms" integration
-APT_BOARD_PACKAGES="libgbm-dev,libgles2-mesa-dev,weston"
+# sunxi aarch64-specific clean options
+CLEAN_OPTIONS="${CLEAN_OPTIONS}"

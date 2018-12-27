@@ -81,6 +81,7 @@ fi
 . $BOARD_CONF
 
 CPUINFO_NUM_CORES=$(grep -c ^processor /proc/cpuinfo)
+[ $SUDO_USER ] && CURRENT_USER=$SUDO_USER || CURRENT_USER=$(whoami)
 
 # Introduce settings
 set -e
@@ -127,7 +128,7 @@ NET_NTP_2=${NET_NTP_2:=""}
 
 # APT settings
 APT_PROXY=${APT_PROXY:=""}
-APT_SERVER=${APT_SERVER:="deb.debian.org"}
+APT_SERVER=${APT_SERVER:="ftp.ru.debian.org"}
 
 # Feature settings
 ENABLE_CONSOLE=${ENABLE_CONSOLE:="yes"}
