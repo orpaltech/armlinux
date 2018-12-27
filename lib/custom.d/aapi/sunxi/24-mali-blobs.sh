@@ -59,9 +59,7 @@ mali_blobs_deploy()
 		chroot_exec dpkg-divert --divert ${MALI_BLOB_PREFIX_LIB}/libgbm.so.orig --rename --add ${MALI_BLOB_PREFIX_LIB}/libgbm.so
 		chroot_exec dpkg-divert --divert ${MALI_BLOB_PREFIX_LIB}/libgbm.so.1.orig --rename --add ${MALI_BLOB_PREFIX_LIB}/libgbm.so.1
 
-		if [ -f ${MALI_BLOB_PREFIX_LIB}/libwayland-egl.so ] ; then
-			chroot_exec dpkg-divert --divert ${MALI_BLOB_PREFIX_LIB}/libwayland-egl.so.orig --rename --add ${MALI_BLOB_PREFIX_LIB}/libwayland-egl.so
-		fi
+#		chroot_exec dpkg-divert --divert ${MALI_BLOB_PREFIX_LIB}/libwayland-egl.so.orig --rename --add ${MALI_BLOB_PREFIX_LIB}/libwayland-egl.so
 	fi
 
 	rsync -az ${MALI_BLOB_INC_DIR}/* ${R}${MALI_BLOB_PREFIX_INC}
