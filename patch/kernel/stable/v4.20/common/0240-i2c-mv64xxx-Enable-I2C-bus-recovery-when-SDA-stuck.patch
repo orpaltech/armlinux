@@ -1,6 +1,6 @@
-From 8018d227f531294d6e4d6f95fab3c805031f1574 Mon Sep 17 00:00:00 2001
+From e4fa660e93f1d67f42c461bd83f9ea2e5db122c0 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Tue, 29 May 2018 16:50:02 +0300
+Date: Fri, 18 Jan 2019 14:20:31 +0300
 Subject: [PATCH] i2c: mv64xxx: Enable I2C-bus recovery when SDA stuck
 
 ---
@@ -359,5 +359,5 @@ index a5a95ea..d740ebb 100644
  		rc = mv64xxx_of_config(drv_data, &pd->dev);
  		if (rc)
 -- 
-2.17.0
+2.17.1
 

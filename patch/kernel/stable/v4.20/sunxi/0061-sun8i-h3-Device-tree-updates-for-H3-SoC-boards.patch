@@ -1,13 +1,12 @@
-From 5e5440c1fe226432dc2ee193872d9c1d9d26dc1d Mon Sep 17 00:00:00 2001
+From a0ac53f18e6d0a50f1d257f79318249a8427698d Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 1 Sep 2018 22:04:24 +0300
+Date: Sat, 29 Dec 2018 21:54:45 +0300
 Subject: [PATCH] sun8i-h3: Device tree updates for H3 SoC boards
 
 ---
  arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts |  2 +-
- arch/arm/boot/dts/sun8i-h3.dtsi            | 21 +++++++++++++++++++++
- arch/arm/boot/dts/sunxi-h3-h5.dtsi         | 15 +++++++++++++++
- 3 files changed, 37 insertions(+), 1 deletion(-)
+ arch/arm/boot/dts/sun8i-h3.dtsi            | 20 ++++++++++++++++++++
+ 2 files changed, 21 insertions(+), 1 deletion(-)
 
 diff --git a/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts b/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts
 index 4624033..1b65a64 100644
@@ -23,18 +22,10 @@ index 4624033..1b65a64 100644
  
  &mmc0 {
 diff --git a/arch/arm/boot/dts/sun8i-h3.dtsi b/arch/arm/boot/dts/sun8i-h3.dtsi
-index f009607..e5c18df 100644
+index 3ecfabb..4396825 100644
 --- a/arch/arm/boot/dts/sun8i-h3.dtsi
 +++ b/arch/arm/boot/dts/sun8i-h3.dtsi
-@@ -162,6 +162,7 @@
- 			clocks = <&ccu CLK_BUS_GPU>, <&ccu CLK_GPU>;
- 			clock-names = "bus", "core";
- 			resets = <&ccu RST_BUS_GPU>;
-+			memory-region = <&cma>;
- 
- 			assigned-clocks = <&ccu CLK_GPU>;
- 			assigned-clock-rates = <384000000>;
-@@ -215,4 +216,24 @@
+@@ -240,4 +240,24 @@
  
  &pio {
  	compatible = "allwinner,sun8i-h3-pinctrl";
@@ -59,35 +50,6 @@ index f009607..e5c18df 100644
 +		function = "i2s0";
 +	};
  };
-diff --git a/arch/arm/boot/dts/sunxi-h3-h5.dtsi b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
-index fc61313..e2bd683 100644
---- a/arch/arm/boot/dts/sunxi-h3-h5.dtsi
-+++ b/arch/arm/boot/dts/sunxi-h3-h5.dtsi
-@@ -108,9 +108,24 @@
- 	de: display-engine {
- 		compatible = "allwinner,sun8i-h3-display-engine";
- 		allwinner,pipelines = <&mixer0>;
-+		memory-region = <&cma>;
- 		status = "disabled";
- 	};
- 
-+	reserved-memory {
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		ranges;
-+
-+		cma: linux,cma {
-+			compatible = "shared-dma-pool";
-+			reusable;
-+			size = <0x8000000>;
-+			alignment = <0x2000>;
-+			linux,cma-default;
-+		};
-+	};
-+
- 	soc {
- 		compatible = "simple-bus";
- 		#address-cells = <1>;
 -- 
 2.17.1
 

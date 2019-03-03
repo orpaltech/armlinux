@@ -1,47 +1,30 @@
-From c7f8e580f3411393a54cc9714fae4409d3a1cfb8 Mon Sep 17 00:00:00 2001
+From cda9449dc9f8d3e207aca2f09cf406279bdde8c1 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Wed, 26 Dec 2018 18:16:22 +0300
+Date: Thu, 27 Dec 2018 14:20:10 +0300
 Subject: [PATCH] qtbase: Add mkspecs for Allwinner sun50i-a64 devices
 
 ---
- .../linux-sun50i-a64-drm-g++/qmake.conf       | 34 ++++++++++++++++
+ .../linux-sun50i-a64-drm-g++/qmake.conf       | 21 ++++++++++
  .../linux-sun50i-a64-drm-g++/qplatformdefs.h  | 40 +++++++++++++++++++
- .../linux-sun50i-a64-fb-g++/qmake.conf        | 15 +++++++
- .../linux-sun50i-a64-fb-g++/qplatformdefs.h   | 40 +++++++++++++++++++
- .../linux-sun50i-a64-mali-g++/qmake.conf      | 35 ++++++++++++++++
+ .../linux-sun50i-a64-mali-g++/qmake.conf      | 38 ++++++++++++++++++
  .../linux-sun50i-a64-mali-g++/qplatformdefs.h | 40 +++++++++++++++++++
- 6 files changed, 204 insertions(+)
+ 4 files changed, 139 insertions(+)
  create mode 100644 mkspecs/devices/linux-sun50i-a64-drm-g++/qmake.conf
  create mode 100644 mkspecs/devices/linux-sun50i-a64-drm-g++/qplatformdefs.h
- create mode 100644 mkspecs/devices/linux-sun50i-a64-fb-g++/qmake.conf
- create mode 100644 mkspecs/devices/linux-sun50i-a64-fb-g++/qplatformdefs.h
  create mode 100644 mkspecs/devices/linux-sun50i-a64-mali-g++/qmake.conf
  create mode 100644 mkspecs/devices/linux-sun50i-a64-mali-g++/qplatformdefs.h
 
 diff --git a/mkspecs/devices/linux-sun50i-a64-drm-g++/qmake.conf b/mkspecs/devices/linux-sun50i-a64-drm-g++/qmake.conf
 new file mode 100644
-index 0000000..e71db0b
+index 0000000..a6ac277
 --- /dev/null
 +++ b/mkspecs/devices/linux-sun50i-a64-drm-g++/qmake.conf
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,21 @@
 +# qmake configuration for the Allwinner A64 SoC
 +
 +include(../common/linux_device_pre.conf)
 +
 +QT_QPA_DEFAULT_PLATFORM	= eglfs
-+
-+QMAKE_INCDIR_POST	+= \
-+	$$[QT_SYSROOT]/usr/include
-+
-+QMAKE_LIBDIR_POST	+= \
-+	$$[QT_SYSROOT]/usr/lib \
-+	$$[QT_SYSROOT]/usr/lib/aarch64-linux-gnu \
-+	$$[QT_SYSROOT]/lib/aarch64-linux-gnu
-+
-+QMAKE_RPATHLINKDIR_POST	+= \
-+	$$[QT_SYSROOT]/usr/lib \
-+	$$[QT_SYSROOT]/usr/lib/aarch64-linux-gnu \
-+	$$[QT_SYSROOT]/lib/aarch64-linux-gnu
 +
 +QMAKE_LIBS_OPENGL_ES2	= -lGLESv2
 +QMAKE_LIBS_EGL		= -lEGL
@@ -104,79 +87,12 @@ index 0000000..4435fb2
 +****************************************************************************/
 +
 +#include "../../linux-g++/qplatformdefs.h"
-diff --git a/mkspecs/devices/linux-sun50i-a64-fb-g++/qmake.conf b/mkspecs/devices/linux-sun50i-a64-fb-g++/qmake.conf
-new file mode 100644
-index 0000000..95c389e
---- /dev/null
-+++ b/mkspecs/devices/linux-sun50i-a64-fb-g++/qmake.conf
-@@ -0,0 +1,15 @@
-+# qmake configuration for the Allwinner A64 SoC
-+
-+include(../common/linux_device_pre.conf)
-+
-+QT_QPA_DEFAULT_PLATFORM	= linuxfb
-+
-+COMPILER_FLAGS	+= -march=armv8-a -mtune=cortex-a53
-+QMAKE_LIBS	+= -lrt -lpthread -ldl -lz
-+
-+DISTRO_OPTS	+= deb-multi-arch
-+DISTRO_OPTS	+= aarch64
-+
-+include(../common/linux_arm_device_post.conf)
-+
-+load(qt_config)
-diff --git a/mkspecs/devices/linux-sun50i-a64-fb-g++/qplatformdefs.h b/mkspecs/devices/linux-sun50i-a64-fb-g++/qplatformdefs.h
-new file mode 100644
-index 0000000..4435fb2
---- /dev/null
-+++ b/mkspecs/devices/linux-sun50i-a64-fb-g++/qplatformdefs.h
-@@ -0,0 +1,40 @@
-+/****************************************************************************
-+**
-+** Copyright (C) 2017 The Qt Company Ltd.
-+** Contact: https://www.qt.io/licensing/
-+**
-+** This file is part of the qmake spec of the Qt Toolkit.
-+**
-+** $QT_BEGIN_LICENSE:LGPL$
-+** Commercial License Usage
-+** Licensees holding valid commercial Qt licenses may use this file in
-+** accordance with the commercial license agreement provided with the
-+** Software or, alternatively, in accordance with the terms contained in
-+** a written agreement between you and The Qt Company. For licensing terms
-+** and conditions see https://www.qt.io/terms-conditions. For further
-+** information use the contact form at https://www.qt.io/contact-us.
-+**
-+** GNU Lesser General Public License Usage
-+** Alternatively, this file may be used under the terms of the GNU Lesser
-+** General Public License version 3 as published by the Free Software
-+** Foundation and appearing in the file LICENSE.LGPL3 included in the
-+** packaging of this file. Please review the following information to
-+** ensure the GNU Lesser General Public License version 3 requirements
-+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-+**
-+** GNU General Public License Usage
-+** Alternatively, this file may be used under the terms of the GNU
-+** General Public License version 2.0 or (at your option) the GNU General
-+** Public license version 3 or any later version approved by the KDE Free
-+** Qt Foundation. The licenses are as published by the Free Software
-+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-+** included in the packaging of this file. Please review the following
-+** information to ensure the GNU General Public License requirements will
-+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-+** https://www.gnu.org/licenses/gpl-3.0.html.
-+**
-+** $QT_END_LICENSE$
-+**
-+****************************************************************************/
-+
-+#include "../../linux-g++/qplatformdefs.h"
 diff --git a/mkspecs/devices/linux-sun50i-a64-mali-g++/qmake.conf b/mkspecs/devices/linux-sun50i-a64-mali-g++/qmake.conf
 new file mode 100644
-index 0000000..721d51f
+index 0000000..ae47c21
 --- /dev/null
 +++ b/mkspecs/devices/linux-sun50i-a64-mali-g++/qmake.conf
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,38 @@
 +# qmake configuration for the Allwinner A64 SoC
 +
 +include(../common/linux_device_pre.conf)
@@ -186,10 +102,13 @@ index 0000000..721d51f
 +MALI_LIB_PATH	= /opt/mali/lib
 +MALI_INC_PATH	= /opt/mali/include
 +
-+QMAKE_INCDIR_POST	+= $$[QT_SYSROOT]$${MALI_INC_PATH}
-+QMAKE_LIBDIR_POST	+= $$[QT_SYSROOT]$${MALI_LIB_PATH}
++QMAKE_INCDIR_POST += \
++	$$[QT_SYSROOT]$${MALI_INC_PATH}
++QMAKE_LIBDIR_POST += \
++	$$[QT_SYSROOT]$${MALI_LIB_PATH}
 +
-+QMAKE_RPATHLINKDIR_POST	+= $$[QT_SYSROOT]$${MALI_LIB_PATH}
++QMAKE_RPATHLINKDIR_POST	+= \
++	$$[QT_SYSROOT]$${MALI_LIB_PATH}
 +
 +QMAKE_LIBDIR_OPENGL_ES2	= $${MALI_LIB_PATH}
 +QMAKE_LIBDIR_EGL	= $${QMAKE_LIBDIR_OPENGL_ES2}

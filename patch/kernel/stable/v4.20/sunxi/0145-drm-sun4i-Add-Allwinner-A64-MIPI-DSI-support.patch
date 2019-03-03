@@ -1,0 +1,714 @@
+From 3867af5b7204302f01ef203854a7a4039aff69e1 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Thu, 28 Feb 2019 23:15:53 +0300
+Subject: [PATCH] drm/sun4i: Add Allwinner A64 MIPI-DSI support
+
+---
+ .../bindings/display/sunxi/sun6i-dsi.txt      |   3 +
+ arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi |  45 +++
+ drivers/gpu/drm/sun4i/sun4i_tcon.c            |   6 +-
+ drivers/gpu/drm/sun4i/sun4i_tcon.h            |   1 +
+ drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c        | 286 ++++++++++++++----
+ drivers/gpu/drm/sun4i/sun6i_mipi_dsi.h        |  10 +
+ 6 files changed, 296 insertions(+), 55 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/display/sunxi/sun6i-dsi.txt b/Documentation/devicetree/bindings/display/sunxi/sun6i-dsi.txt
+index 6a6cf5d..d0ce51f 100644
+--- a/Documentation/devicetree/bindings/display/sunxi/sun6i-dsi.txt
++++ b/Documentation/devicetree/bindings/display/sunxi/sun6i-dsi.txt
+@@ -12,6 +12,7 @@ The DSI Encoder generates the DSI signal from the TCON's.
+ Required properties:
+   - compatible: value must be one of:
+     * allwinner,sun6i-a31-mipi-dsi
++    * allwinner,sun50i-a64-mipi-dsi
+   - reg: base address and size of memory-mapped region
+   - interrupts: interrupt associated to this IP
+   - clocks: phandles to the clocks feeding the DSI encoder
+@@ -21,6 +22,7 @@ Required properties:
+   - phys: phandle to the D-PHY
+   - phy-names: must be "dphy"
+   - resets: phandle to the reset controller driving the encoder
++  - vcc-dsi-supply: the VCC-DSI power supply of the DSI encoder
+ 
+   - ports: A ports node with endpoint definitions as defined in
+     Documentation/devicetree/bindings/media/video-interfaces.txt. The
+@@ -36,6 +38,7 @@ D-PHY
+ Required properties:
+   - compatible: value must be one of:
+     * allwinner,sun6i-a31-mipi-dphy
++    * allwinner,sun50i-a64-mipi-dphy, allwinner,sun6i-a31-mipi-dphy
+   - reg: base address and size of memory-mapped region
+   - clocks: phandles to the clocks feeding the DSI encoder
+     * bus: the DSI interface clock
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+index f3a66f8..d6f2698 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+@@ -320,6 +320,12 @@
+ 					#address-cells = <1>;
+ 					#size-cells = <0>;
+ 					reg = <1>;
++
++					tcon0_out_dsi: endpoint@1 {
++						reg = <1>;
++						remote-endpoint = <&dsi_in_tcon0>;
++						allwinner,tcon-channel = <1>;
++					};
+ 				};
+ 			};
+ 		};
+@@ -829,6 +835,45 @@
+ 			status = "disabled";
+ 		};
+ 
++		dsi: dsi@1ca0000 {
++			compatible = "allwinner,sun50i-a64-mipi-dsi";
++			reg = <0x01ca0000 0x1000>;
++			interrupts = <GIC_SPI 89 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_MIPI_DSI>;
++			clock-names = "bus";
++			resets = <&ccu RST_BUS_MIPI_DSI>;
++			phys = <&dphy>;
++			phy-names = "dphy";
++			status = "disabled";
++
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				port@0 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <0>;
++
++					dsi_in_tcon0: endpoint {
++						remote-endpoint = <&tcon0_out_dsi>;
++					};
++				};
++			};
++		};
++
++		dphy: d-phy@1ca1000 {
++			compatible = "allwinner,sun50i-a64-mipi-dphy",
++				     "allwinner,sun6i-a31-mipi-dphy";
++			reg = <0x01ca1000 0x1000>;
++			clocks = <&ccu CLK_BUS_MIPI_DSI>,
++				 <&ccu CLK_DSI_DPHY>;
++			clock-names = "bus", "mod";
++			resets = <&ccu RST_BUS_MIPI_DSI>;
++			status = "disabled";
++			#phy-cells = <0>;
++		};
++
+ 		hdmi: hdmi@1ee0000 {
+ 			compatible = "allwinner,sun50i-a64-dw-hdmi",
+ 				     "allwinner,sun8i-a83t-dw-hdmi";
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.c b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+index f949287..9764a56 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.c
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+@@ -221,7 +221,7 @@ EXPORT_SYMBOL(sun4i_tcon_enable_vblank);
+  * are located in TCON0. This helper returns a pointer to TCON0's
+  * sun4i_tcon structure, or NULL if not found.
+  */
+-static struct sun4i_tcon *sun4i_get_tcon0(struct drm_device *drm)
++struct sun4i_tcon *sun4i_get_tcon0(struct drm_device *drm)
+ {
+ 	struct sun4i_drv *drv = drm->dev_private;
+ 	struct sun4i_tcon *tcon;
+@@ -235,6 +235,7 @@ static struct sun4i_tcon *sun4i_get_tcon0(struct drm_device *drm)
+ 
+ 	return NULL;
+ }
++EXPORT_SYMBOL(sun4i_get_tcon0);
+ 
+ void sun4i_tcon_set_mux(struct sun4i_tcon *tcon, int channel,
+ 			const struct drm_encoder *encoder)
+@@ -341,8 +342,7 @@ static void sun4i_tcon0_mode_set_cpu(struct sun4i_tcon *tcon,
+ 	u32 block_space, start_delay;
+ 	u32 tcon_div;
+ 
+-	tcon->dclk_min_div = 4;
+-	tcon->dclk_max_div = 127;
++	tcon->dclk_min_div = tcon->dclk_max_div = (bpp/lanes);
+ 
+ 	sun4i_tcon0_mode_set_common(tcon, mode);
+ 
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.h b/drivers/gpu/drm/sun4i/sun4i_tcon.h
+index 3d492c8..195deb9 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.h
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.h
+@@ -273,6 +273,7 @@ struct sun4i_tcon {
+ struct drm_bridge *sun4i_tcon_find_bridge(struct device_node *node);
+ struct drm_panel *sun4i_tcon_find_panel(struct device_node *node);
+ 
++struct sun4i_tcon *sun4i_get_tcon0(struct drm_device *drm);
+ void sun4i_tcon_enable_vblank(struct sun4i_tcon *tcon, bool enable);
+ void sun4i_tcon_mode_set(struct sun4i_tcon *tcon,
+ 			 const struct drm_encoder *encoder,
+diff --git a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+index e3b34a3..53e5c18 100644
+--- a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
++++ b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+@@ -6,10 +6,13 @@
+  * Maxime Ripard <maxime.ripard@bootlin.com>
+  */
+ 
++#define DEBUG
++
+ #include <linux/clk.h>
+ #include <linux/component.h>
+ #include <linux/crc-ccitt.h>
+ #include <linux/of_address.h>
++#include <linux/of_device.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/regmap.h>
+ #include <linux/reset.h>
+@@ -23,7 +26,9 @@
+ #include <drm/drm_mipi_dsi.h>
+ #include <drm/drm_panel.h>
+ 
++#include "sun4i_crtc.h"
+ #include "sun4i_drv.h"
++#include "sun4i_tcon.h"
+ #include "sun6i_mipi_dsi.h"
+ 
+ #include <video/mipi_display.h>
+@@ -32,6 +37,8 @@
+ #define SUN6I_DSI_CTL_EN			BIT(0)
+ 
+ #define SUN6I_DSI_BASIC_CTL_REG		0x00c
++#define SUN6I_DSI_BASIC_CTL_TRAIL_INV(n)		(((n) & 0xf) << 4)
++#define SUN6I_DSI_BASIC_CTL_TRAIL_FILL		BIT(3)
+ #define SUN6I_DSI_BASIC_CTL_HBP_DIS		BIT(2)
+ #define SUN6I_DSI_BASIC_CTL_HSA_HSE_DIS		BIT(1)
+ #define SUN6I_DSI_BASIC_CTL_VIDEO_BURST		BIT(0)
+@@ -152,6 +159,8 @@
+ 
+ #define SUN6I_DSI_CMD_TX_REG(n)		(0x300 + (n) * 0x04)
+ 
++#define SUN6I_DSI_SYNC_POINT		40
++
+ enum sun6i_dsi_start_inst {
+ 	DSI_START_LPRX,
+ 	DSI_START_LPTX,
+@@ -357,7 +366,60 @@ static void sun6i_dsi_inst_init(struct sun6i_dsi *dsi,
+ static u16 sun6i_dsi_get_video_start_delay(struct sun6i_dsi *dsi,
+ 					   struct drm_display_mode *mode)
+ {
+-	return mode->vtotal - (mode->vsync_end - mode->vdisplay) + 1;
++	u16 start = clamp(mode->vtotal - mode->vdisplay - 10, 8, 100);
++	u16 delay = mode->vtotal - (mode->vsync_end - mode->vdisplay) + start;
++
++	if (delay > mode->vtotal)
++		delay = delay % mode->vtotal;
++
++	return max_t(u16, delay, 1);
++}
++
++static u16 sun6i_dsi_get_line_num(struct sun6i_dsi *dsi,
++				  struct drm_display_mode *mode)
++{
++	struct mipi_dsi_device *device = dsi->device;
++	unsigned Bpp = mipi_dsi_pixel_format_to_bpp(device->format) / 8;
++
++	return mode->htotal * Bpp / device->lanes;
++}
++
++static u16 sun6i_dsi_get_drq_edge0(struct sun6i_dsi *dsi,
++				   struct drm_display_mode *mode,
++				   u16 line_num, u16 edge1)
++{
++	struct sun4i_tcon *tcon = dsi->tcon;
++	unsigned long dclk_rate, dclk_parent_rate, tcon0_div;
++	u16 edge0 = edge1;
++
++	dclk_rate = clk_get_rate(tcon->dclk);
++	dclk_parent_rate = clk_get_rate(clk_get_parent(tcon->dclk));
++	tcon0_div = dclk_parent_rate / dclk_rate;
++
++	edge0 += (mode->hdisplay + 40) * tcon0_div / 8;
++
++	if (edge0 > line_num)
++		return edge0 - line_num;
++
++	return 1;
++}
++
++static u16 sun6i_dsi_get_drq_edge1(struct sun6i_dsi *dsi,
++				   struct drm_display_mode *mode,
++				   u16 line_num)
++{
++	struct mipi_dsi_device *device = dsi->device;
++	unsigned Bpp = mipi_dsi_pixel_format_to_bpp(device->format) / 8;
++	unsigned hbp = mode->htotal - mode->hsync_end;
++	u16 edge1;
++
++	edge1 = SUN6I_DSI_SYNC_POINT;
++	edge1 += (mode->hdisplay + hbp + 20) * Bpp / device->lanes;
++
++	if (edge1 > line_num)
++		return line_num;
++
++	return edge1;
+ }
+ 
+ static void sun6i_dsi_setup_burst(struct sun6i_dsi *dsi,
+@@ -366,9 +428,25 @@ static void sun6i_dsi_setup_burst(struct sun6i_dsi *dsi,
+ 	struct mipi_dsi_device *device = dsi->device;
+ 	u32 val = 0;
+ 
+-	if ((mode->hsync_end - mode->hdisplay) > 20) {
++	if (device->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) {
++		u16 line_num = sun6i_dsi_get_line_num(dsi, mode);
++		u16 edge0, edge1;
++
++		edge1 = sun6i_dsi_get_drq_edge1(dsi, mode, line_num);
++		edge0 = sun6i_dsi_get_drq_edge0(dsi, mode, line_num, edge1);
++
++		regmap_write(dsi->regs, SUN6I_DSI_BURST_DRQ_REG,
++			     SUN6I_DSI_BURST_DRQ_EDGE0(edge0) |
++			     SUN6I_DSI_BURST_DRQ_EDGE1(edge1));
++
++		regmap_write(dsi->regs, SUN6I_DSI_BURST_LINE_REG,
++			     SUN6I_DSI_BURST_LINE_NUM(line_num) |
++			     SUN6I_DSI_BURST_LINE_SYNC_POINT(SUN6I_DSI_SYNC_POINT));
++
++		val = SUN6I_DSI_TCON_DRQ_ENABLE_MODE;
++	} else if ((mode->hsync_start - mode->hdisplay) > 20) {
+ 		/* Maaaaaagic */
+-		u16 drq = (mode->hsync_end - mode->hdisplay) - 20;
++		u16 drq = (mode->hsync_start - mode->hdisplay) - 20;
+ 
+ 		drq *= mipi_dsi_pixel_format_to_bpp(device->format);
+ 		drq /= 32;
+@@ -383,8 +461,19 @@ static void sun6i_dsi_setup_burst(struct sun6i_dsi *dsi,
+ static void sun6i_dsi_setup_inst_loop(struct sun6i_dsi *dsi,
+ 				      struct drm_display_mode *mode)
+ {
++	struct mipi_dsi_device *device = dsi->device;
+ 	u16 delay = 50 - 1;
+ 
++	if (device->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) {
++		delay = (mode->htotal - mode->hdisplay) * 150;
++		delay /= (mode->clock / 1000) * 8;
++		delay -= 50;
++	}
++
++	regmap_write(dsi->regs, SUN6I_DSI_INST_LOOP_SEL_REG,
++			 2 << (4 * DSI_INST_ID_LP11) |
++			 3 << (4 * DSI_INST_ID_DLY));
++
+ 	regmap_write(dsi->regs, SUN6I_DSI_INST_LOOP_NUM_REG(0),
+ 		     SUN6I_DSI_INST_LOOP_NUM_N0(50 - 1) |
+ 		     SUN6I_DSI_INST_LOOP_NUM_N1(delay));
+@@ -445,54 +534,89 @@ static void sun6i_dsi_setup_format(struct sun6i_dsi *dsi,
+ 		     SUN6I_DSI_PIXEL_CTL0_FORMAT(fmt));
+ }
+ 
++static u16 sun6i_dsi_get_timings_vblk(struct sun6i_dsi *dsi,
++				      struct drm_display_mode *mode, u16 hblk)
++{
++	struct mipi_dsi_device *device = dsi->device;
++	unsigned int Bpp = mipi_dsi_pixel_format_to_bpp(device->format) / 8;
++	int tmp;
++
++	if (device->lanes != 4)
++		return 0;
++
++	/*
++	 * The vertical blank is set using a blanking packet (4 bytes +
++	 * payload + 2 bytes). Its minimal size is therefore 6 bytes
++	 */
++#define VBLK_PACKET_OVERHEAD	6
++	tmp = (mode->htotal * Bpp) * mode->vtotal -
++	      (hblk + VBLK_PACKET_OVERHEAD);
++
++	return (device->lanes - tmp % device->lanes);
++}
++
+ static void sun6i_dsi_setup_timings(struct sun6i_dsi *dsi,
+ 				    struct drm_display_mode *mode)
+ {
+ 	struct mipi_dsi_device *device = dsi->device;
+ 	unsigned int Bpp = mipi_dsi_pixel_format_to_bpp(device->format) / 8;
+-	u16 hbp, hfp, hsa, hblk, vblk;
++	u16 hbp = 0, hfp = 0, hsa = 0;
++	u16 hblk, vblk = 0;
++	u32 basic_ctl = 0;
+ 	size_t bytes;
+ 	u8 *buffer;
+ 
+ 	/* Do all timing calculations up front to allocate buffer space */
+ 
+-	/*
+-	 * A sync period is composed of a blanking packet (4 bytes +
+-	 * payload + 2 bytes) and a sync event packet (4 bytes). Its
+-	 * minimal size is therefore 10 bytes
+-	 */
+-#define HSA_PACKET_OVERHEAD	10
+-	hsa = max((unsigned int)HSA_PACKET_OVERHEAD,
+-		  (mode->hsync_end - mode->hsync_start) * Bpp - HSA_PACKET_OVERHEAD);
++	if (device->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) {
++		hblk = mode->hdisplay * Bpp;
++		basic_ctl = SUN6I_DSI_BASIC_CTL_VIDEO_BURST |
++			    SUN6I_DSI_BASIC_CTL_HSA_HSE_DIS |
++			    SUN6I_DSI_BASIC_CTL_HBP_DIS;
+ 
+-	/*
+-	 * The backporch is set using a blanking packet (4 bytes +
+-	 * payload + 2 bytes). Its minimal size is therefore 6 bytes
+-	 */
++		if (device->lanes == 4)
++			basic_ctl |= SUN6I_DSI_BASIC_CTL_TRAIL_FILL |
++				     SUN6I_DSI_BASIC_CTL_TRAIL_INV(0xc);
++	} else {
++		/*
++		 * A sync period is composed of a blanking packet (4
++		 * bytes + payload + 2 bytes) and a sync event packet
++		 * (4 bytes). Its minimal size is therefore 10 bytes
++		 */
++#define HSA_PACKET_OVERHEAD	10
++		hsa = max((unsigned int)HSA_PACKET_OVERHEAD,
++			  (mode->hsync_end - mode->hsync_start) * Bpp - HSA_PACKET_OVERHEAD);
++
++		/*
++		 * The backporch is set using a blanking packet (4
++		 * bytes + payload + 2 bytes). Its minimal size is
++		 * therefore 6 bytes
++		 */
+ #define HBP_PACKET_OVERHEAD	6
+-	hbp = max((unsigned int)HBP_PACKET_OVERHEAD,
+-		  (mode->hsync_start - mode->hdisplay) * Bpp - HBP_PACKET_OVERHEAD);
+-
+-	/*
+-	 * The frontporch is set using a blanking packet (4 bytes +
+-	 * payload + 2 bytes). Its minimal size is therefore 6 bytes
+-	 */
++		hbp = max((unsigned int)HBP_PACKET_OVERHEAD,
++			  (mode->htotal - mode->hsync_end) * Bpp - HBP_PACKET_OVERHEAD);
++
++		/*
++		 * The frontporch is set using a blanking packet (4
++		 * bytes + payload + 2 bytes). Its minimal size is
++		 * therefore 6 bytes
++		 */
+ #define HFP_PACKET_OVERHEAD	6
+-	hfp = max((unsigned int)HFP_PACKET_OVERHEAD,
+-		  (mode->htotal - mode->hsync_end) * Bpp - HFP_PACKET_OVERHEAD);
+-
+-	/*
+-	 * hblk seems to be the line + porches length.
+-	 */
+-	hblk = mode->htotal * Bpp - hsa;
+-
+-	/*
+-	 * And I'm not entirely sure what vblk is about. The driver in
+-	 * Allwinner BSP is using a rather convoluted calculation
+-	 * there only for 4 lanes. However, using 0 (the !4 lanes
+-	 * case) even with a 4 lanes screen seems to work...
+-	 */
+-	vblk = 0;
++		hfp = max((unsigned int)HFP_PACKET_OVERHEAD,
++			  (mode->hsync_start - mode->hdisplay) * Bpp - HFP_PACKET_OVERHEAD);
++
++		/*
++		 * The blanking is set using a sync event (4 bytes)
++		 * and a blanking packet (4 bytes + payload + 2
++		 * bytes). Its minimal size is therefore 10 bytes.
++		 */
++#define HBLK_PACKET_OVERHEAD	10
++		hblk = max((unsigned int)HBLK_PACKET_OVERHEAD,
++			   (mode->htotal - (mode->hsync_end - mode->hsync_start)) * Bpp -
++			   HBLK_PACKET_OVERHEAD);
++
++		vblk = sun6i_dsi_get_timings_vblk(dsi, mode, hblk);
++	}
+ 
+ 	/* How many bytes do we need to send all payloads? */
+ 	bytes = max_t(size_t, max(max(hfp, hblk), max(hsa, hbp)), vblk);
+@@ -500,7 +624,7 @@ static void sun6i_dsi_setup_timings(struct sun6i_dsi *dsi,
+ 	if (WARN_ON(!buffer))
+ 		return;
+ 
+-	regmap_write(dsi->regs, SUN6I_DSI_BASIC_CTL_REG, 0);
++	regmap_write(dsi->regs, SUN6I_DSI_BASIC_CTL_REG, basic_ctl);
+ 
+ 	regmap_write(dsi->regs, SUN6I_DSI_SYNC_HSS_REG,
+ 		     sun6i_dsi_build_sync_pkt(MIPI_DSI_H_SYNC_START,
+@@ -525,8 +649,8 @@ static void sun6i_dsi_setup_timings(struct sun6i_dsi *dsi,
+ 	regmap_write(dsi->regs, SUN6I_DSI_BASIC_SIZE0_REG,
+ 		     SUN6I_DSI_BASIC_SIZE0_VSA(mode->vsync_end -
+ 					       mode->vsync_start) |
+-		     SUN6I_DSI_BASIC_SIZE0_VBP(mode->vsync_start -
+-					       mode->vdisplay));
++		     SUN6I_DSI_BASIC_SIZE0_VBP(mode->vtotal -
++					       mode->vsync_end));
+ 
+ 	regmap_write(dsi->regs, SUN6I_DSI_BASIC_SIZE1_REG,
+ 		     SUN6I_DSI_BASIC_SIZE1_VACT(mode->vdisplay) |
+@@ -736,6 +860,8 @@ static u32 sun6i_dsi_dcs_build_pkt_hdr(struct sun6i_dsi *dsi,
+ static int sun6i_dsi_dcs_write_short(struct sun6i_dsi *dsi,
+ 				     const struct mipi_dsi_msg *msg)
+ {
++	dev_dbg(dsi->dev, "%s: enter\n", __func__);
++
+ 	regmap_write(dsi->regs, SUN6I_DSI_CMD_TX_REG(0),
+ 		     sun6i_dsi_dcs_build_pkt_hdr(dsi, msg));
+ 	regmap_write_bits(dsi->regs, SUN6I_DSI_CMD_CTL_REG,
+@@ -753,6 +879,8 @@ static int sun6i_dsi_dcs_write_long(struct sun6i_dsi *dsi,
+ 	u8 *bounce;
+ 	u16 crc;
+ 
++	dev_dbg(dsi->dev, "%s: enter\n", __func__);
++
+ 	regmap_write(dsi->regs, SUN6I_DSI_CMD_TX_REG(0),
+ 		     sun6i_dsi_dcs_build_pkt_hdr(dsi, msg));
+ 
+@@ -774,6 +902,9 @@ static int sun6i_dsi_dcs_write_long(struct sun6i_dsi *dsi,
+ 	sun6i_dsi_start(dsi, DSI_START_LPTX);
+ 
+ 	ret = sun6i_dsi_inst_wait_for_completion(dsi);
++
++	dev_dbg(dsi->dev, "%s: wait complete, ret = %d\n", __func__, ret);
++
+ 	if (ret < 0) {
+ 		sun6i_dsi_inst_abort(dsi);
+ 		return ret;
+@@ -858,6 +989,8 @@ static ssize_t sun6i_dsi_transfer(struct mipi_dsi_host *host,
+ 	struct sun6i_dsi *dsi = host_to_sun6i_dsi(host);
+ 	int ret;
+ 
++	dev_dbg(host->dev, "%s: message type = %d\n", __func__, msg->type);
++
+ 	ret = sun6i_dsi_inst_wait_for_completion(dsi);
+ 	if (ret < 0)
+ 		sun6i_dsi_inst_abort(dsi);
+@@ -870,10 +1003,12 @@ static ssize_t sun6i_dsi_transfer(struct mipi_dsi_host *host,
+ 	switch (msg->type) {
+ 	case MIPI_DSI_DCS_SHORT_WRITE:
+ 	case MIPI_DSI_DCS_SHORT_WRITE_PARAM:
++	case MIPI_DSI_GENERIC_SHORT_WRITE_2_PARAM:
+ 		ret = sun6i_dsi_dcs_write_short(dsi, msg);
+ 		break;
+ 
+ 	case MIPI_DSI_DCS_LONG_WRITE:
++	case MIPI_DSI_GENERIC_LONG_WRITE:
+ 		ret = sun6i_dsi_dcs_write_long(dsi, msg);
+ 		break;
+ 
+@@ -887,6 +1022,8 @@ static ssize_t sun6i_dsi_transfer(struct mipi_dsi_host *host,
+ 		ret = -EINVAL;
+ 	}
+ 
++	dev_dbg(host->dev, "%s: complete, ret = %d\n", __func__, ret);
++
+ 	return ret;
+ }
+ 
+@@ -910,6 +1047,7 @@ static int sun6i_dsi_bind(struct device *dev, struct device *master,
+ 	struct drm_device *drm = data;
+ 	struct sun4i_drv *drv = drm->dev_private;
+ 	struct sun6i_dsi *dsi = dev_get_drvdata(dev);
++	struct sun4i_tcon *tcon0 = sun4i_get_tcon0(drm);
+ 	int ret;
+ 
+ 	if (!dsi->panel)
+@@ -917,6 +1055,11 @@ static int sun6i_dsi_bind(struct device *dev, struct device *master,
+ 
+ 	dsi->drv = drv;
+ 
++	if (!tcon0)
++		return -EINVAL;
++
++	dsi->tcon = tcon0;
++
+ 	drm_encoder_helper_add(&dsi->encoder,
+ 			       &sun6i_dsi_enc_helper_funcs);
+ 	ret = drm_encoder_init(drm,
+@@ -944,6 +1087,8 @@ static int sun6i_dsi_bind(struct device *dev, struct device *master,
+ 	drm_connector_attach_encoder(&dsi->connector, &dsi->encoder);
+ 	drm_panel_attach(dsi->panel, &dsi->connector);
+ 
++	dev_dbg(dsi->dev, "%s: bind success\n", __func__);
++
+ 	return 0;
+ 
+ err_cleanup_connector:
+@@ -956,6 +1101,8 @@ static void sun6i_dsi_unbind(struct device *dev, struct device *master,
+ {
+ 	struct sun6i_dsi *dsi = dev_get_drvdata(dev);
+ 
++	dev_dbg(dsi->dev, "%s: enter\n", __func__);
++
+ 	drm_panel_detach(dsi->panel);
+ }
+ 
+@@ -980,6 +1127,7 @@ static int sun6i_dsi_probe(struct platform_device *pdev)
+ 	dsi->dev = dev;
+ 	dsi->host.ops = &sun6i_dsi_host_ops;
+ 	dsi->host.dev = dev;
++	dsi->variant = of_device_get_match_data(dev);
+ 
+ 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+ 	base = devm_ioremap_resource(dev, res);
+@@ -988,6 +1136,12 @@ static int sun6i_dsi_probe(struct platform_device *pdev)
+ 		return PTR_ERR(base);
+ 	}
+ 
++	dsi->power = devm_regulator_get(dev, "vcc-dsi");
++	if (IS_ERR(dsi->power)) {
++		dev_err(dev, "Couldn't get VCC-DSI supply\n");
++		return PTR_ERR(dsi->power);
++	}
++
+ 	dsi->regs = devm_regmap_init_mmio_clk(dev, "bus", base,
+ 					      &sun6i_dsi_regmap_config);
+ 	if (IS_ERR(dsi->regs)) {
+@@ -1001,17 +1155,20 @@ static int sun6i_dsi_probe(struct platform_device *pdev)
+ 		return PTR_ERR(dsi->reset);
+ 	}
+ 
+-	dsi->mod_clk = devm_clk_get(dev, "mod");
+-	if (IS_ERR(dsi->mod_clk)) {
+-		dev_err(dev, "Couldn't get the DSI mod clock\n");
+-		return PTR_ERR(dsi->mod_clk);
++	if (dsi->variant->has_mod_clk) {
++		dsi->mod_clk = devm_clk_get(dev, "mod");
++		if (IS_ERR(dsi->mod_clk)) {
++			dev_err(dev, "Couldn't get the DSI mod clock\n");
++			return PTR_ERR(dsi->mod_clk);
++		}
+ 	}
+ 
+ 	/*
+ 	 * In order to operate properly, that clock seems to be always
+ 	 * set to 297MHz.
+ 	 */
+-	clk_set_rate_exclusive(dsi->mod_clk, 297000000);
++	if (dsi->variant->has_mod_clk)
++		clk_set_rate_exclusive(dsi->mod_clk, 297000000);
+ 
+ 	dphy_node = of_parse_phandle(dev->of_node, "phys", 0);
+ 	ret = sun6i_dphy_probe(dsi, dphy_node);
+@@ -1043,7 +1200,8 @@ err_remove_phy:
+ 	pm_runtime_disable(dev);
+ 	sun6i_dphy_remove(dsi);
+ err_unprotect_clk:
+-	clk_rate_exclusive_put(dsi->mod_clk);
++	if (dsi->variant->has_mod_clk)
++		clk_rate_exclusive_put(dsi->mod_clk);
+ 	return ret;
+ }
+ 
+@@ -1056,7 +1214,8 @@ static int sun6i_dsi_remove(struct platform_device *pdev)
+ 	mipi_dsi_host_unregister(&dsi->host);
+ 	pm_runtime_disable(dev);
+ 	sun6i_dphy_remove(dsi);
+-	clk_rate_exclusive_put(dsi->mod_clk);
++	if (dsi->variant->has_mod_clk)
++		clk_rate_exclusive_put(dsi->mod_clk);
+ 
+ 	return 0;
+ }
+@@ -1064,9 +1223,17 @@ static int sun6i_dsi_remove(struct platform_device *pdev)
+ static int __maybe_unused sun6i_dsi_runtime_resume(struct device *dev)
+ {
+ 	struct sun6i_dsi *dsi = dev_get_drvdata(dev);
++	int ret;
++
++	ret = regulator_enable(dsi->power);
++	if (ret) {
++		dev_err(dsi->dev, "failed to enable VCC-DSI supply: %d\n", ret);
++		return ret;
++	}
+ 
+ 	reset_control_deassert(dsi->reset);
+-	clk_prepare_enable(dsi->mod_clk);
++	if (dsi->variant->has_mod_clk)
++		clk_prepare_enable(dsi->mod_clk);
+ 
+ 	/*
+ 	 * Enable the DSI block.
+@@ -1094,8 +1261,10 @@ static int __maybe_unused sun6i_dsi_runtime_suspend(struct device *dev)
+ {
+ 	struct sun6i_dsi *dsi = dev_get_drvdata(dev);
+ 
+-	clk_disable_unprepare(dsi->mod_clk);
++	if (dsi->variant->has_mod_clk)
++		clk_disable_unprepare(dsi->mod_clk);
+ 	reset_control_assert(dsi->reset);
++	regulator_disable(dsi->power);
+ 
+ 	return 0;
+ }
+@@ -1106,9 +1275,22 @@ static const struct dev_pm_ops sun6i_dsi_pm_ops = {
+ 			   NULL)
+ };
+ 
++static const struct sun6i_dsi_variant sun6i_a31_mipi_dsi = {
++	.has_mod_clk = true,
++};
++static const struct sun6i_dsi_variant sun50i_a64_mipi_dsi = {
++};
++
+ static const struct of_device_id sun6i_dsi_of_table[] = {
+-	{ .compatible = "allwinner,sun6i-a31-mipi-dsi" },
+-	{ }
++	{
++		.compatible = "allwinner,sun6i-a31-mipi-dsi",
++		.data = &sun6i_a31_mipi_dsi,
++	},
++	{
++		.compatible = "allwinner,sun50i-a64-mipi-dsi",
++		.data = &sun50i_a64_mipi_dsi,
++	},
++	{ /* sentinel */ }
+ };
+ MODULE_DEVICE_TABLE(of, sun6i_dsi_of_table);
+ 
+diff --git a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.h b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.h
+index dbbc5b3..f314646 100644
+--- a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.h
++++ b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.h
+@@ -12,6 +12,9 @@
+ #include <drm/drm_connector.h>
+ #include <drm/drm_encoder.h>
+ #include <drm/drm_mipi_dsi.h>
++#include <linux/regulator/consumer.h>
++
++#define SUN6I_DSI_TCON_DIV	4
+ 
+ struct sun6i_dphy {
+ 	struct clk		*bus_clk;
+@@ -20,6 +23,10 @@ struct sun6i_dphy {
+ 	struct reset_control	*reset;
+ };
+ 
++struct sun6i_dsi_variant {
++	bool			has_mod_clk;
++};
++
+ struct sun6i_dsi {
+ 	struct drm_connector	connector;
+ 	struct drm_encoder	encoder;
+@@ -28,13 +35,16 @@ struct sun6i_dsi {
+ 	struct clk		*bus_clk;
+ 	struct clk		*mod_clk;
+ 	struct regmap		*regs;
++	struct regulator	*power;
+ 	struct reset_control	*reset;
+ 	struct sun6i_dphy	*dphy;
+ 
+ 	struct device		*dev;
+ 	struct sun4i_drv	*drv;
++	struct sun4i_tcon	*tcon;
+ 	struct mipi_dsi_device	*device;
+ 	struct drm_panel	*panel;
++	const struct sun6i_dsi_variant	*variant;
+ };
+ 
+ static inline struct sun6i_dsi *host_to_sun6i_dsi(struct mipi_dsi_host *host)
+-- 
+2.17.1
+

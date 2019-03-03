@@ -1,6 +1,6 @@
-From 5335b0d1166b8c4ea4be6a5d98dfba8973941fbd Mon Sep 17 00:00:00 2001
+From eabbc1788f0062cb69ee7532e14c24e30af0fdc6 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 1 Sep 2018 21:34:30 +0300
+Date: Sat, 29 Dec 2018 22:28:36 +0300
 Subject: [PATCH] opp: core: fix debug messages
 
 ---
@@ -8,10 +8,10 @@ Subject: [PATCH] opp: core: fix debug messages
  1 file changed, 6 deletions(-)
 
 diff --git a/drivers/opp/core.c b/drivers/opp/core.c
-index 31ff03d..889d198 100644
+index 2c2df4e..da11d67 100644
 --- a/drivers/opp/core.c
 +++ b/drivers/opp/core.c
-@@ -515,9 +515,6 @@ static int _set_opp_voltage(struct device *dev, struct regulator *reg,
+@@ -520,9 +520,6 @@ static int _set_opp_voltage(struct device *dev, struct regulator *reg,
  		return 0;
  	}
  
@@ -21,7 +21,7 @@ index 31ff03d..889d198 100644
  	ret = regulator_set_voltage_triplet(reg, supply->u_volt_min,
  					    supply->u_volt, supply->u_volt_max);
  	if (ret)
-@@ -694,9 +691,6 @@ int dev_pm_opp_set_rate(struct device *dev, unsigned long target_freq)
+@@ -699,9 +696,6 @@ int dev_pm_opp_set_rate(struct device *dev, unsigned long target_freq)
  		goto put_old_opp;
  	}
  

@@ -26,6 +26,11 @@ sed -i "s/^\(setenv dtb_file \).*/\1${DTB_FILE_BASENAME}/" $BOOT_SCR_CMD
 
 sed -i "s/^\(setenv kernel_file \).*/\1${KERNEL_IMAGE_TARGET}/" $BOOT_SCR_CMD
 
+
+sed -i "s/^\(setenv load_addr \).*/\1${BOOTSCR_LOAD_ADDR}/" $BOOT_SCR_CMD
+sed -i "s/^\(setenv fdt_addr \).*/\1${BOOTSCR_FDT_ADDR}/" $BOOT_SCR_CMD
+
+
 # Remove all leading blank lines
 sed -i "/./,\$!d" $BOOT_SCR_CMD
 

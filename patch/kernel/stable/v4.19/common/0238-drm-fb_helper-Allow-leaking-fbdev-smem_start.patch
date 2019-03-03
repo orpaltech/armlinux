@@ -1,0 +1,133 @@
+From 6527bd330d643c661ebc765a4e2e09d122ab93d2 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Fri, 28 Dec 2018 20:35:21 +0300
+Subject: [PATCH] drm/fb_helper: Allow leaking fbdev smem_start
+
+---
+ drivers/gpu/drm/Kconfig          | 20 ++++++++++++++++++++
+ drivers/gpu/drm/drm_fb_helper.c  | 31 +++++++++++++++++++++++++++++++
+ drivers/video/fbdev/core/fbmem.c |  2 ++
+ include/linux/fb.h               |  7 +++++++
+ 4 files changed, 60 insertions(+)
+
+diff --git a/drivers/gpu/drm/Kconfig b/drivers/gpu/drm/Kconfig
+index cb88528..e44e567 100644
+--- a/drivers/gpu/drm/Kconfig
++++ b/drivers/gpu/drm/Kconfig
+@@ -110,6 +110,26 @@ config DRM_FBDEV_OVERALLOC
+ 	  is 100. Typical values for double buffering will be 200,
+ 	  triple buffering 300.
+ 
++config DRM_FBDEV_LEAK_PHYS_SMEM
++	bool "Shamelessly allow leaking of fbdev physical address (DANGEROUS)"
++	depends on DRM_FBDEV_EMULATION && EXPERT
++	default n
++	help
++	  In order to keep user-space compatibility, we want in certain
++	  use-cases to keep leaking the fbdev physical address to the
++	  user-space program handling the fbdev buffer.
++	  This affects, not only, Amlogic, Allwinner or Rockchip devices
++	  with ARM Mali GPUs using an userspace Blob.
++	  This option is not supported by upstream developers and should be
++	  removed as soon as possible and be considered as a broken and
++	  legacy behaviour from a modern fbdev device driver.
++
++	  Please send any bug reports when using this to your proprietary
++	  software vendor that requires this.
++
++	  If in doubt, say "N" or spread the word to your closed source
++	  library vendor.
++
+ config DRM_LOAD_EDID_FIRMWARE
+ 	bool "Allow to specify an EDID data set instead of probing for it"
+ 	depends on DRM
+diff --git a/drivers/gpu/drm/drm_fb_helper.c b/drivers/gpu/drm/drm_fb_helper.c
+index 9214c8b..fd51e1d 100644
+--- a/drivers/gpu/drm/drm_fb_helper.c
++++ b/drivers/gpu/drm/drm_fb_helper.c
+@@ -56,6 +56,25 @@ MODULE_PARM_DESC(drm_fbdev_overalloc,
+ 		 "Overallocation of the fbdev buffer (%) [default="
+ 		 __MODULE_STRING(CONFIG_DRM_FBDEV_OVERALLOC) "]");
+ 
++/*
++ * In order to keep user-space compatibility, we want in certain use-cases
++ * to keep leaking the fbdev physical address to the user-space program
++ * handling the fbdev buffer.
++ * This is a bad habit essentially kept into closed source opengl driver
++ * that should really be moved into open-source upstream projects instead
++ * of using legacy physical addresses in user space to communicate with
++ * other out-of-tree kernel modules.
++ *
++ * This module_param *should* be removed as soon as possible and be
++ * considered as a broken and legacy behaviour from a modern fbdev device.
++ */
++#if IS_ENABLED(CONFIG_DRM_FBDEV_LEAK_PHYS_SMEM)
++static bool drm_leak_fbdev_smem = true;
++module_param_unsafe(drm_leak_fbdev_smem, bool, 0600);
++MODULE_PARM_DESC(drm_leak_fbdev_smem,
++		 "Allow unsafe leaking fbdev physical smem address [default=true]");
++#endif
++
+ static LIST_HEAD(kernel_fb_helper_list);
+ static DEFINE_MUTEX(kernel_fb_helper_lock);
+ 
+@@ -2634,6 +2653,12 @@ __drm_fb_helper_initial_config_and_unlock(struct drm_fb_helper *fb_helper,
+ 
+ 	info = fb_helper->fbdev;
+ 	info->var.pixclock = 0;
++	/* Shamelessly allow physical address leaking to userspace */
++#if IS_ENABLED(CONFIG_DRM_FBDEV_LEAK_PHYS_SMEM)
++	if (!drm_leak_fbdev_smem)
++#endif
++		/* don't leak any physical addresses to userspace */
++		info->flags |= FBINFO_HIDE_SMEM_START;
+ 
+ 	/* Need to drop locks to avoid recursive deadlock in
+ 	 * register_framebuffer. This is ok because the only thing left to do is
+@@ -3041,6 +3066,12 @@ int drm_fb_helper_generic_probe(struct drm_fb_helper *fb_helper,
+ 	fbi->screen_size = fb->height * fb->pitches[0];
+ 	fbi->fix.smem_len = fbi->screen_size;
+ 	fbi->screen_buffer = buffer->vaddr;
++	/* Shamelessly leak the physical address to user-space */
++#if IS_ENABLED(CONFIG_DRM_FBDEV_LEAK_PHYS_SMEM)
++	if (drm_leak_fbdev_smem && fbi->fix.smem_start == 0)
++		fbi->fix.smem_start =
++			page_to_phys(virt_to_page(fbi->screen_buffer));
++#endif
+ 	strcpy(fbi->fix.id, "DRM emulated");
+ 
+ 	drm_fb_helper_fill_fix(fbi, fb->pitches[0], fb->format->depth);
+diff --git a/drivers/video/fbdev/core/fbmem.c b/drivers/video/fbdev/core/fbmem.c
+index 2040542..cc6feef 100644
+--- a/drivers/video/fbdev/core/fbmem.c
++++ b/drivers/video/fbdev/core/fbmem.c
+@@ -1116,6 +1116,8 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
+ 		if (!lock_fb_info(info))
+ 			return -ENODEV;
+ 		fix = info->fix;
++		if (info->flags & FBINFO_HIDE_SMEM_START)
++			fix.smem_start = 0;
+ 		unlock_fb_info(info);
+ 
+ 		ret = copy_to_user(argp, &fix, sizeof(fix)) ? -EFAULT : 0;
+diff --git a/include/linux/fb.h b/include/linux/fb.h
+index 3e7e753..67c76cd 100644
+--- a/include/linux/fb.h
++++ b/include/linux/fb.h
+@@ -457,6 +457,13 @@ struct fb_tile_ops {
+  */
+ #define FBINFO_BE_MATH  0x100000
+ 
++/*
++ * Hide smem_start in the FBIOGET_FSCREENINFO IOCTL. This is used by modern DRM
++ * drivers to stop userspace from trying to share buffers behind the kernel's
++ * back. Instead dma-buf based buffer sharing should be used.
++ */
++#define FBINFO_HIDE_SMEM_START  0x200000
++
+ /* report to the VT layer that this fb driver can accept forced console
+    output like oopses */
+ #define FBINFO_CAN_FORCE_OUTPUT     0x200000
+-- 
+2.17.1
+

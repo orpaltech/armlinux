@@ -1,1 +1,0 @@
-	/	ext4	noatime,nodiratime,errors=remount-ro,discard,data=writeback,commit=100	0	1

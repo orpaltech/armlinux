@@ -23,6 +23,8 @@ update_uboot()
 #	local BRANCH_FIXED=$(echo $UBOOT_REPO_BRANCH | sed -e 's/\//-/g')
         UBOOT_SOURCE_DIR="${UBOOT_BASE_DIR}"
 
+	mkdir -p $UBOOT_BASE_DIR
+
         if [ -d "${UBOOT_SOURCE_DIR}" ] && [ -d "${UBOOT_SOURCE_DIR}/.git" ] ; then
 		local UBOOT_OLD_URL=$(git -C $UBOOT_SOURCE_DIR config --get remote.origin.url)
 		if [ "${UBOOT_OLD_URL}" != "${UBOOT_REPO_URL}" ] ; then
@@ -38,7 +40,7 @@ update_uboot()
 		git -C $UBOOT_SOURCE_DIR fetch origin --tags --depth=1
 		[ $? -eq 0 ] || exit $?;
 
-		git -C $UBOOT_SOURCE_DIR reset --hard origin/$UBOOT_REPO_BRANCH
+		git -C $UBOOT_SOURCE_DIR reset --hard
 		git -C $UBOOT_SOURCE_DIR clean -fd
 
                 echo "Checking out branch: ${UBOOT_REPO_BRANCH}"
@@ -50,12 +52,8 @@ update_uboot()
 		display_alert "Cloning U-Boot from" "${UBOOT_REPO_URL} | ${UBOOT_REPO_BRANCH}" "info"
 
 		[[ -d $UBOOT_SOURCE_DIR ]] && rm -rf $UBOOT_SOURCE_DIR
-		mkdir -p $UBOOT_BASE_DIR
 
                 git clone $UBOOT_REPO_URL -b $UBOOT_REPO_BRANCH --depth=1 $UBOOT_SOURCE_DIR
-		[ $? -eq 0 ] || exit $?;
-
-		git -C $UBOOT_SOURCE_DIR fetch origin --tags --depth=1
 		[ $? -eq 0 ] || exit $?;
         fi
 
@@ -184,7 +182,7 @@ update_kernel()
 		git -C $KERNEL_SOURCE_DIR fetch origin --tags --depth=1
 		[ $? -eq 0 ] || exit $?;
 
-		git -C $KERNEL_SOURCE_DIR reset --hard origin/$KERNEL_REPO_BRANCH
+		git -C $KERNEL_SOURCE_DIR reset --hard
 		git -C $KERNEL_SOURCE_DIR clean -fd
 
 		echo "Checking out branch: ${KERNEL_REPO_BRANCH}"
@@ -196,9 +194,6 @@ update_kernel()
 		[[ -d $KERNEL_SOURCE_DIR ]] && rm -rf $KERNEL_SOURCE_DIR
 
 		git clone $KERNEL_REPO_URL -b $KERNEL_REPO_BRANCH --depth=1 $KERNEL_SOURCE_DIR
-		[ $? -eq 0 ] || exit $?;
-
-		git -C $KERNEL_SOURCE_DIR fetch origin --tags --depth=1
 		[ $? -eq 0 ] || exit $?;
 	fi
 
@@ -266,13 +261,22 @@ update_firmware()
 		mkdir -p $FIRMWARE_BASE_DIR
 
 		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
+			local FW_OLD_URL=$(git -C $FIRMWARE_SOURCE_DIR config --get remote.origin.url)
+			if [ "${FW_OLD_URL}" != "${FIRMWARE_URL}" ] ; then
+				echo "Firmware repository has changed, clean up working dir ?"
+				pause
+				rm -rf $FIRMWARE_SOURCE_DIR
+			fi
+		fi
+
+		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
 			display_alert "Updating Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"
 
-			# update sources
+			 # update sources
 			git -C $FIRMWARE_SOURCE_DIR fetch origin --tags --depth=1
 			[ $? -eq 0 ] || exit $?;
 
-			git -C $FIRMWARE_SOURCE_DIR reset --hard origin/$FIRMWARE_BRANCH
+			git -C $FIRMWARE_SOURCE_DIR reset --hard
 			git -C $FIRMWARE_SOURCE_DIR clean -fd
 
 			echo "Checking out branch: ${FIRMWARE_BRANCH}"

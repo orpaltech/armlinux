@@ -65,7 +65,7 @@ if [ "${KERNEL_DIR}" != "${KERNEL_SOURCE_DIR}" ] ; then
 fi
 
 # Setup kernel boot environment
-CMDLINE="consoleblank=0 loglevel=7 rootfstype=ext4 rootwait panic=10 rootflags=commit=60,data=writeback elevator=deadline init=/bin/systemd"
+CMDLINE="${CMDLINE} consoleblank=0 loglevel=7 rootfstype=ext4 rootwait panic=10 rootflags=commit=60,data=writeback elevator=deadline init=/bin/systemd"
 
 # Remove IPv6 networking support
 if [ "${ENABLE_IPV6}" != yes ] ; then

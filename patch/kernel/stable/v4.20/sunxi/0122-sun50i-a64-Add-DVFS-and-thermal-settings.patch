@@ -1,15 +1,15 @@
-From e2ff678c6321bdcba28d8a4a72d1856a781be160 Mon Sep 17 00:00:00 2001
+From 252c1d4927279a2b89af4c75ac7abbb12e94cb03 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sun, 2 Sep 2018 20:32:25 +0300
+Date: Sat, 29 Dec 2018 23:14:53 +0300
 Subject: [PATCH] sun50i: a64: Add DVFS and thermal settings
 
 ---
  arch/arm64/boot/dts/allwinner/axp803.dtsi     |  15 +
  .../dts/allwinner/sun50i-a64-nanopi-a64.dts   |   4 +
- arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi | 138 +++++
+ arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi | 129 ++++
  drivers/iio/adc/sun4i-gpadc-iio.c             | 586 ++++++++++++++++--
  include/linux/mfd/sun4i-gpadc.h               |  66 +-
- 5 files changed, 763 insertions(+), 46 deletions(-)
+ 5 files changed, 754 insertions(+), 46 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/allwinner/axp803.dtsi b/arch/arm64/boot/dts/allwinner/axp803.dtsi
 index e5eae8b..57d00aa 100644
@@ -43,10 +43,10 @@ index e5eae8b..57d00aa 100644
 +	};
  };
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts b/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
-index 98dbff1..bf6070a 100644
+index 31884db..a04b0ec 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-a64-nanopi-a64.dts
-@@ -59,6 +59,10 @@
+@@ -87,6 +87,10 @@
  	};
  };
  
@@ -54,11 +54,11 @@ index 98dbff1..bf6070a 100644
 +	cpu-supply = <&reg_dcdc2>;
 +};
 +
- &ehci0 {
+ &de {
  	status = "okay";
  };
 diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
-index d3daf90..35842bc 100644
+index f3a66f8..6b00f7e 100644
 --- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
 +++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
 @@ -49,6 +49,7 @@
@@ -122,58 +122,49 @@ index d3daf90..35842bc 100644
  	cpus {
  		#address-cells = <1>;
  		#size-cells = <0>;
-@@ -88,6 +135,11 @@
+@@ -88,6 +135,10 @@
  			device_type = "cpu";
  			reg = <0>;
  			enable-method = "psci";
 +			clocks = <&ccu CLK_CPUX>;
 +			clock-names = "cpu";
-+			next-level-cache = <&L2>;
 +			operating-points-v2 = <&cpu0_opp_table>;
 +			#cooling-cells = <2>;
+ 			next-level-cache = <&L2>;
  		};
  
- 		cpu1: cpu@1 {
-@@ -95,6 +147,10 @@
+@@ -96,6 +147,9 @@
  			device_type = "cpu";
  			reg = <1>;
  			enable-method = "psci";
 +			clocks = <&ccu CLK_CPUX>;
 +			clock-names = "cpu";
-+			next-level-cache = <&L2>;
 +			operating-points-v2 = <&cpu0_opp_table>;
+ 			next-level-cache = <&L2>;
  		};
  
- 		cpu2: cpu@2 {
-@@ -102,6 +158,10 @@
+@@ -104,6 +158,9 @@
  			device_type = "cpu";
  			reg = <2>;
  			enable-method = "psci";
 +			clocks = <&ccu CLK_CPUX>;
 +			clock-names = "cpu";
-+			next-level-cache = <&L2>;
 +			operating-points-v2 = <&cpu0_opp_table>;
+ 			next-level-cache = <&L2>;
  		};
  
- 		cpu3: cpu@3 {
-@@ -109,6 +169,15 @@
+@@ -112,6 +169,9 @@
  			device_type = "cpu";
  			reg = <3>;
  			enable-method = "psci";
 +			clocks = <&ccu CLK_CPUX>;
 +			clock-names = "cpu";
-+			next-level-cache = <&L2>;
 +			operating-points-v2 = <&cpu0_opp_table>;
-+		};
-+
-+		L2: l2-cache {
-+			compatible = "cache";
-+			cache-level = <2>;
+ 			next-level-cache = <&L2>;
  		};
- 	};
  
-@@ -157,6 +226,64 @@
- 		compatible = "linux,spdif-dit";
+@@ -185,6 +245,64 @@
+ 			(GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
  	};
  
 +	thermal-zones {
@@ -234,11 +225,11 @@ index d3daf90..35842bc 100644
 +		};
 +	};
 +
- 	timer {
- 		compatible = "arm,armv8-timer";
- 		interrupts = <GIC_PPI 13
-@@ -270,6 +397,17 @@
- 			#size-cells = <0>;
+ 	soc {
+ 		compatible = "simple-bus";
+ 		#address-cells = <1>;
+@@ -406,6 +524,17 @@
+ 			reg = <0x1c14000 0x400>;
  		};
  
 +		ths: thermal-sensor@1c25000 {

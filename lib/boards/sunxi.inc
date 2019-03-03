@@ -35,5 +35,8 @@ DRM_EDID_BINARY="edid/1280x1024.bin"
 DRM_CONNECTOR="HDMI-A-1"
 DRM_VIDEO_MODE="1280x1024-24@60"
 
+# Set no wireless support by default
+SUPPORT_WIRELESS=no
+
 # sunxi-specific clean options
 CLEAN_OPTIONS="${CLEAN_OPTIONS}"

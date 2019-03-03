@@ -42,13 +42,13 @@ if [ ! -f "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" ] ; then
   chroot_exec /debootstrap/debootstrap --second-stage
   [ $? -eq 0 ] || exit $?;
 
-  echo "Compress rootfs to speed-up next builds"
+  echo "Compressing rootfs to speed-up next builds..."
   tar -czf "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" -C "${BUILDDIR}/" "chroot"
-
 else
   echo "Rootfs already exists, extract it"
   tar -C "${R}/" --strip-components=1 -xzf "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz"
 fi
+echo "Done."
 
 # Mount required filesystems
 mount -t proc none "${R}/proc"

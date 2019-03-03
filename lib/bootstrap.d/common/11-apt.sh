@@ -34,4 +34,8 @@ fi
 
 chroot_exec apt-get -qq -y -f install $(echo "${APT_INCLUDES}" | sed -e 's/,/ /g')
 
+if [ ! -z "${APT_REMOVE_PACKAGES}" ] ; then
+	chroot_exec apt-get -qq -y remove $(echo "${APT_REMOVE_PACKAGES}" | sed -e 's/,/ /g')
+fi
+
 chroot_exec apt-get -qq -y check

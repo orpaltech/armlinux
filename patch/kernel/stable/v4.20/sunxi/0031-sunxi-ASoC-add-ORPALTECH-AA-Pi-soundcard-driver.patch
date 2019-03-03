@@ -1,6 +1,6 @@
-From 0a792af9dacb0a0ab1c48a6f80a8febeab0ac552 Mon Sep 17 00:00:00 2001
+From 7f98bff77f8df35bffcc3c90585b36a4e2625e53 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Tue, 25 Dec 2018 21:18:48 +0300
+Date: Sat, 29 Dec 2018 22:06:22 +0300
 Subject: [PATCH] sunxi: ASoC: add ORPALTECH AA-Pi soundcard driver
 
 ---

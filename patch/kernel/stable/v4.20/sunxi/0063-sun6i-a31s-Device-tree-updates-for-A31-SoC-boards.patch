@@ -1,6 +1,6 @@
-From 978f24adecd059b8909db2dcff8951125ada6b42 Mon Sep 17 00:00:00 2001
+From cde6bbae34061da5285b8182c0c07ebdd6f1d10c Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 1 Sep 2018 22:33:02 +0300
+Date: Sat, 29 Dec 2018 22:02:58 +0300
 Subject: [PATCH] sun6i-a31s: Device tree updates for A31 SoC boards
 
 ---

@@ -42,7 +42,6 @@ if [ ! -f "${ARMLINUX_CONF}" ] ; then
 fi
 . $ARMLINUX_CONF
 
-ENABLE_WIRELESS="${ENABLE_WIRELESS_GLOBAL}"
 BOARD=${BOARD:="${_BOARD_}"}
 BOARD_CONF=$LIBDIR/boards/${BOARD}.conf
 CLEAN=${CLEAN:="${_CLEAN_}"}
@@ -79,6 +78,8 @@ fi
 
 # Apply board configuration
 . $BOARD_CONF
+
+[[ "${SUPPORT_WIRELESS}" != "yes" ]] && ENABLE_WIRELESS="no"
 
 CPUINFO_NUM_CORES=$(grep -c ^processor /proc/cpuinfo)
 [ $SUDO_USER ] && CURRENT_USER=$SUDO_USER || CURRENT_USER=$(whoami)

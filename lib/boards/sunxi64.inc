@@ -30,6 +30,9 @@ KERNEL_MKIMAGE_LOADADDR=0x40080000
 KERNEL_IMAGE_SOURCE="Image"
 KERNEL_IMAGE_TARGET="linux.uImage"
 
+# Set no wireless support by default
+SUPPORT_WIRELESS=no
+
 # The option should be overriden if you want GPU support in QT5
 QT5_OPENGL_OPTION="-no-opengl"
 

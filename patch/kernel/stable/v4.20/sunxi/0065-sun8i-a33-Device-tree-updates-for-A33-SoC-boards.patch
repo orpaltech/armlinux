@@ -1,6 +1,6 @@
-From 30202b183cd55403801b45c96ea48d9385683ad2 Mon Sep 17 00:00:00 2001
+From 107e1f69f024df05f733283351e8df0bfe64e706 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 1 Sep 2018 22:35:48 +0300
+Date: Sat, 29 Dec 2018 22:11:52 +0300
 Subject: [PATCH] sun8i-a33: Device tree updates for A33 SoC boards
 
 ---
@@ -8,7 +8,7 @@ Subject: [PATCH] sun8i-a33: Device tree updates for A33 SoC boards
  1 file changed, 7 insertions(+), 1 deletion(-)
 
 diff --git a/arch/arm/boot/dts/sun8i-a33.dtsi b/arch/arm/boot/dts/sun8i-a33.dtsi
-index 4e92741..f3e6461 100644
+index c1cc8f0..6ee5370 100644
 --- a/arch/arm/boot/dts/sun8i-a33.dtsi
 +++ b/arch/arm/boot/dts/sun8i-a33.dtsi
 @@ -124,7 +124,10 @@

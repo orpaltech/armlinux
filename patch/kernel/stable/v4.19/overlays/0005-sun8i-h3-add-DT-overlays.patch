@@ -1,11 +1,11 @@
-From d99423369f7b82660ec9792bdc3f61b7e94ba0f6 Mon Sep 17 00:00:00 2001
+From 3b7cfa924bdf9df65e411adac92d583509fc3b91 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Tue, 25 Dec 2018 22:09:15 +0300
+Date: Thu, 27 Dec 2018 22:47:22 +0300
 Subject: [PATCH] sun8i-h3: add DT-overlays
 
 ---
  arch/arm/boot/dts/Makefile                    |   2 +
- arch/arm/boot/dts/overlays/Makefile           |  32 +++++
+ arch/arm/boot/dts/overlays/Makefile           |  33 +++++
  .../dts/overlays/README.sun8i-h3-overlays     |   1 +
  .../boot/dts/overlays/sun8i-h3-aapi-clk.dts   |  47 +++++++
  .../boot/dts/overlays/sun8i-h3-aapi-sound.dts |  47 +++++++
@@ -15,6 +15,7 @@ Subject: [PATCH] sun8i-h3: add DT-overlays
  arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts |  29 +++++
  .../dts/overlays/sun8i-h3-ertft0356-drm.dts   | 102 +++++++++++++++
  .../boot/dts/overlays/sun8i-h3-fixup.scr-cmd  | 116 ++++++++++++++++++
+ .../boot/dts/overlays/sun8i-h3-gpio-reset.dts |  24 ++++
  .../overlays/sun8i-h3-gy-pcm5102-sound.dts    |  34 +++++
  .../boot/dts/overlays/sun8i-h3-nrf24-spi.dts  |  71 +++++++++++
  arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts   |  40 ++++++
@@ -29,7 +30,7 @@ Subject: [PATCH] sun8i-h3: add DT-overlays
  .../boot/dts/overlays/sun8i-h3-usbhost3.dts   |  20 +++
  .../dts/overlays/sun8i-h3-waveshare35-drm.dts |  68 ++++++++++
  .../overlays/sun8i-h3-waveshare35-fbtft.dts   |  93 ++++++++++++++
- 25 files changed, 1087 insertions(+)
+ 26 files changed, 1112 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.sun8i-h3-overlays
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-aapi-clk.dts
@@ -40,6 +41,7 @@ Subject: [PATCH] sun8i-h3: add DT-overlays
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-dht11.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-ertft0356-drm.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-fixup.scr-cmd
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-gpio-reset.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-nrf24-spi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-h3-pwm.dts
@@ -67,10 +69,10 @@ index b5bd3de..98d005e 100644
 +subdir-y	:= overlays
 diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
 new file mode 100644
-index 0000000..e046aa1
+index 0000000..6ebff35
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/Makefile
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,33 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
@@ -80,6 +82,7 @@ index 0000000..e046aa1
 +	sun8i-h3-aapi-clk.dtbo \
 +	sun8i-h3-aapi-vna.dtbo \
 +	sun8i-h3-aapi.dtbo \
++	sun8i-h3-gpio-reset.dtbo \
 +	sun8i-h3-nrf24-spi.dtbo \
 +	sun8i-h3-pwm.dtbo \
 +	sun8i-h3-spi-cs1.dtbo \
@@ -668,6 +671,36 @@ index 0000000..8fb1d5c
 +	fdt set /soc/serial@01c28c00 pinctrl-1 "<${tmp_phandle2}>"
 +	env delete tmp_phandle1 tmp_phandle2
 +fi
+diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-gpio-reset.dts b/arch/arm/boot/dts/overlays/sun8i-h3-gpio-reset.dts
+new file mode 100644
+index 0000000..c005a23
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-h3-gpio-reset.dts
+@@ -0,0 +1,24 @@
++#include <dt-bindings/gpio/gpio.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-h3";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			rstc_gpio: gpio-reset-controller@0 {
++				compatible = "linux,gpio-reset-controller";
++				#reset-cells = <1>;
++
++				lcd0-reset {
++					gpios = <&pio 2 7 GPIO_ACTIVE_LOW>; /*PC7*/
++					duration-ms = <20>;
++					max-resets = <1>;
++				};
++			};
++		};
++	};
++};
 diff --git a/arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts b/arch/arm/boot/dts/overlays/sun8i-h3-gy-pcm5102-sound.dts
 new file mode 100644
 index 0000000..da479c8

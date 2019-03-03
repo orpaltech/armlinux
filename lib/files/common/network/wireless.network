@@ -5,8 +5,8 @@ Name=wlan0
 DHCP=yes
 ## to use static IP uncomment these instead of DHCP
 # Address=192.168.1.100
-Gateway=192.168.1.1
-DNS=192.168.1.1
+Gateway=192.168.100.1
+DNS=192.168.100.1
 DNS=
 Domains=
 NTP=

@@ -1,6 +1,6 @@
-From 54cd912bf34637f656830098bd550c1a4293d59a Mon Sep 17 00:00:00 2001
+From ec9e775c5aff3ecc652f9d6f64771295954c55fc Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sun, 2 Sep 2018 00:33:39 +0300
+Date: Thu, 27 Dec 2018 23:55:51 +0300
 Subject: [PATCH] pwm: sun4i: Add support for A31, A64 and H6 SoCs
 
 ---

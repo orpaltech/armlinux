@@ -70,6 +70,7 @@ qt5_update()
 
 		# clone sources
 		git clone $QTBASE_URL -b $QT5_BRANCH $QTBASE_SRC_DIR
+		[ $? -eq 0 ] || exit $?;
 	fi
 
 	if [ ! -z "${QT5_TAG}" ] ; then
@@ -107,6 +108,7 @@ qt5_update()
 
 			# clone sources
 			git clone $QT5_MODULE_URL -b $QT5_BRANCH $QT5_MODULE_DIR
+			[ $? -eq 0 ] || exit $?;
 		fi
 
 		if [ ! -z "${QT5_TAG}" ] ; then

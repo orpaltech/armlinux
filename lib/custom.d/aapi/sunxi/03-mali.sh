@@ -5,11 +5,11 @@
 SUNXI_DIR="${EXTRADIR}/drivers/sunxi"
 
 MALI_DRV_SRC="${SUNXI_DIR}/sunxi-mali"
-# MALI_DRV_URL="https://github.com/mripard/sunxi-mali.git"
-MALI_DRV_URL="https://github.com/sergey-suloev/sunxi-mali.git"
+MALI_DRV_URL="https://github.com/mripard/sunxi-mali.git"
+# MALI_DRV_URL="https://github.com/sergey-suloev/sunxi-mali.git"
 MALI_DRV_BRANCH="master"
 MALI_DRV_VER="r6p2"
-MALI_DRV_BUILD="debug"
+# MALI_DRV_BUILD="debug"
 
 
 mali_update()
@@ -36,8 +36,10 @@ mali_build()
         export KDIR="${KERNEL_SOURCE_DIR}"
         export INSTALL_MOD_PATH="${R}"
 
-        $MALI_DRV_SRC/build.sh -r $MALI_DRV_VER -m $MALI_DRV_BUILD -j $NUM_CPU_CORES -b
-        $MALI_DRV_SRC/build.sh -r $MALI_DRV_VER -m $MALI_DRV_BUILD -i
+#        $MALI_DRV_SRC/build.sh -r $MALI_DRV_VER -m $MALI_DRV_BUILD -j $NUM_CPU_CORES -b
+#        $MALI_DRV_SRC/build.sh -r $MALI_DRV_VER -m $MALI_DRV_BUILD -i
+	$MALI_DRV_SRC/build.sh -r $MALI_DRV_VER -j $NUM_CPU_CORES -b
+	$MALI_DRV_SRC/build.sh -r $MALI_DRV_VER -i
 
         echo "Build finished."
 }

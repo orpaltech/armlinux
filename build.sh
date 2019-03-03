@@ -3,7 +3,7 @@
 ########################################################################
 # build.sh
 #
-# Description:	Main script for ORPALTECH ARMLINUX build framework.
+# Description:	Main script for Armlinux build framework.
 #
 # Author:	Sergey Suloev <ssuloev@orpaltech.com>
 #

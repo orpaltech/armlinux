@@ -21,6 +21,15 @@ cat ${FILES_DIR}/firstboot/25-create-resolv-symlink.sh >> "${ETC_DIR}/rc.firstbo
 # Resize rootfs partition
 cat ${FILES_DIR}/firstboot/40-resize-rootfs.sh >> "${ETC_DIR}/rc.firstboot"
 
+
+if [ -n "${DISABLE_NETWORK_IFACES}" ] ; then
+  IFS=, read -ra disable_net_ifaces <<< "${DISABLE_NETWORK_IFACES}"
+  for disable_net_iface in "${disable_net_ifaces[@]}"
+  do
+    echo "ip link set ${disable_net_iface} down" >> "${ETC_DIR}/rc.firstboot"
+  done
+fi
+
 # Finalize rc.firstboot script
 cat ${FILES_DIR}/firstboot/99-finish.sh >> "${ETC_DIR}/rc.firstboot"
 chmod +x "${ETC_DIR}/rc.firstboot"

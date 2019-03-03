@@ -1,14 +1,14 @@
-From 0c0e61dd2c2a20dc0f42a00539dca4337fd8ea02 Mon Sep 17 00:00:00 2001
+From fefaf2b875639c918025d1446073954724a462e2 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 22 Dec 2018 14:18:18 +0300
+Date: Fri, 18 Jan 2019 02:15:00 +0300
 Subject: [PATCH] input: Use reset controller in edt-ft5x06 driver
 
 ---
- drivers/input/touchscreen/edt-ft5x06.c | 29 +++++++++++++-------------
- 1 file changed, 14 insertions(+), 15 deletions(-)
+ drivers/input/touchscreen/edt-ft5x06.c | 52 ++++++++++++++++----------
+ 1 file changed, 33 insertions(+), 19 deletions(-)
 
 diff --git a/drivers/input/touchscreen/edt-ft5x06.c b/drivers/input/touchscreen/edt-ft5x06.c
-index 1e18ca0..652328a 100644
+index 1e18ca0..bd3156a 100644
 --- a/drivers/input/touchscreen/edt-ft5x06.c
 +++ b/drivers/input/touchscreen/edt-ft5x06.c
 @@ -25,6 +25,7 @@
@@ -19,25 +19,40 @@ index 1e18ca0..652328a 100644
  #include <linux/module.h>
  #include <linux/ratelimit.h>
  #include <linux/irq.h>
-@@ -39,6 +40,7 @@
+@@ -39,6 +40,8 @@
  #include <linux/input/mt.h>
  #include <linux/input/touchscreen.h>
  #include <linux/of_device.h>
++#include <linux/regulator/consumer.h>
 +#include <linux/reset.h>
  
  #define WORK_REGISTER_THRESHOLD		0x00
  #define WORK_REGISTER_REPORT_RATE	0x08
-@@ -92,8 +94,8 @@ struct edt_ft5x06_ts_data {
+@@ -86,17 +89,18 @@ struct edt_reg_addr {
+ };
+ 
+ struct edt_ft5x06_ts_data {
+-	struct i2c_client *client;
+-	struct input_dev *input;
++	struct i2c_client	*client;
++	struct input_dev	*input;
+ 	struct touchscreen_properties prop;
  	u16 num_x;
  	u16 num_y;
  
 -	struct gpio_desc *reset_gpio;
- 	struct gpio_desc *wake_gpio;
-+	struct reset_control *rstc;
+-	struct gpio_desc *wake_gpio;
++	struct gpio_desc	*wake_gpio;
++	struct regulator	*power;
++	struct reset_control	*rstc;
  
  #if defined(CONFIG_DEBUG_FS)
- 	struct dentry *debug_dir;
-@@ -991,12 +993,11 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
+-	struct dentry *debug_dir;
++	struct dentry	*debug_dir;
+ 	u8 *raw_buffer;
+ 	size_t raw_bufsize;
+ #endif
+@@ -991,12 +995,19 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
  
  	tsdata->max_support_points = chip_data->max_support_points;
  
@@ -45,6 +60,14 @@ index 1e18ca0..652328a 100644
 -						     "reset", GPIOD_OUT_HIGH);
 -	if (IS_ERR(tsdata->reset_gpio)) {
 -		error = PTR_ERR(tsdata->reset_gpio);
++	tsdata->power = devm_regulator_get(&client->dev, "power");
++	if (IS_ERR(tsdata->power)) {
++		error = PTR_ERR(tsdata->power);
++		dev_err(&client->dev,
++			"couldn't get our power regulator: %d\n", error);
++		return error;
++	}
++
 +	tsdata->rstc = devm_reset_control_get_shared(&client->dev, "reset");
 +	if (IS_ERR(tsdata->rstc)) {
 +		error = PTR_ERR(tsdata->rstc);
@@ -54,7 +77,7 @@ index 1e18ca0..652328a 100644
  		return error;
  	}
  
-@@ -1005,7 +1006,7 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
+@@ -1005,7 +1016,7 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
  	if (IS_ERR(tsdata->wake_gpio)) {
  		error = PTR_ERR(tsdata->wake_gpio);
  		dev_err(&client->dev,
@@ -63,7 +86,7 @@ index 1e18ca0..652328a 100644
  		return error;
  	}
  
-@@ -1014,11 +1015,10 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
+@@ -1014,11 +1025,15 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
  		gpiod_set_value_cansleep(tsdata->wake_gpio, 1);
  	}
  
@@ -72,6 +95,11 @@ index 1e18ca0..652328a 100644
 -		gpiod_set_value_cansleep(tsdata->reset_gpio, 0);
 -		msleep(300);
 -	}
++	/* power up */
++	error = regulator_enable(tsdata->power);
++	if (error)
++		return error;
++
 +	/* reset the panel*/
 +	msleep(20);
 +	reset_control_reset(tsdata->rstc);
@@ -79,7 +107,7 @@ index 1e18ca0..652328a 100644
  
  	input = devm_input_allocate_device(&client->dev);
  	if (!input) {
-@@ -1100,10 +1100,9 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
+@@ -1100,10 +1115,9 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
  	device_init_wakeup(&client->dev, 1);
  
  	dev_dbg(&client->dev,

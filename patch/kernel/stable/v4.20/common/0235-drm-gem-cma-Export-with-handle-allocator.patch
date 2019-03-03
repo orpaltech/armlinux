@@ -1,6 +1,6 @@
-From 0bbd91cc097d3dad5946a486b8d9f11855f235ab Mon Sep 17 00:00:00 2001
+From 2a0115885ae54987531b63cedbb3f619e76e13f6 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Mon, 8 Oct 2018 11:04:22 +0300
+Date: Sat, 29 Dec 2018 22:20:44 +0300
 Subject: [PATCH] drm: gem: cma: Export with handle allocator
 
 ---
@@ -9,7 +9,7 @@ Subject: [PATCH] drm: gem: cma: Export with handle allocator
  2 files changed, 7 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/gpu/drm/drm_gem_cma_helper.c b/drivers/gpu/drm/drm_gem_cma_helper.c
-index 80a5115..077c61f 100644
+index 1d2ced8..3347e3f 100644
 --- a/drivers/gpu/drm/drm_gem_cma_helper.c
 +++ b/drivers/gpu/drm/drm_gem_cma_helper.c
 @@ -142,7 +142,7 @@ EXPORT_SYMBOL_GPL(drm_gem_cma_create);

@@ -1,13 +1,13 @@
-From f114faa60ed61283c9988590fbf6f65ba1dfde66 Mon Sep 17 00:00:00 2001
+From b67cc81865880825097af4a07d69f7e1d7b09e82 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 22 Dec 2018 14:24:20 +0300
+Date: Fri, 1 Mar 2019 15:22:11 +0300
 Subject: [PATCH] reset: Add GPIO support to reset controller framework
 
 ---
  drivers/reset/Kconfig      |   7 ++
  drivers/reset/Makefile     |   1 +
- drivers/reset/reset-gpio.c | 235 +++++++++++++++++++++++++++++++++++++
- 3 files changed, 243 insertions(+)
+ drivers/reset/reset-gpio.c | 234 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 242 insertions(+)
  create mode 100644 drivers/reset/reset-gpio.c
 
 diff --git a/drivers/reset/Kconfig b/drivers/reset/Kconfig
@@ -42,10 +42,10 @@ index d08e8b9..a23eeb8 100644
  obj-$(CONFIG_RESET_LANTIQ) += reset-lantiq.o
 diff --git a/drivers/reset/reset-gpio.c b/drivers/reset/reset-gpio.c
 new file mode 100644
-index 0000000..cec692e
+index 0000000..e74f2b2
 --- /dev/null
 +++ b/drivers/reset/reset-gpio.c
-@@ -0,0 +1,235 @@
+@@ -0,0 +1,234 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * GPIO Reset controller driver.
@@ -75,10 +75,10 @@ index 0000000..cec692e
 +#include <linux/slab.h>
 +
 +
-+struct gpio_reset_data;
++struct gpio_reset_controller;
 +
 +struct gpio_reset_line {
-+	struct gpio_reset_data *data;
++	struct gpio_reset_controller *rc;
 +	const char *name;
 +	struct gpio_desc *gpiod;
 +	u32 duration_ms;
@@ -89,15 +89,15 @@ index 0000000..cec692e
 +	struct mutex reset_lock;
 +};
 +
-+struct gpio_reset_data {
++struct gpio_reset_controller {
 +	struct reset_controller_dev rcdev;
 +	struct device *dev;
 +	int num_lines;
 +	struct gpio_reset_line lines[];
 +};
 +
-+#define to_gpio_reset_data(x) \
-+	container_of((x), struct gpio_reset_data, rcdev)
++#define to_gpio_reset_controller(x) \
++	container_of((x), struct gpio_reset_controller, rcdev)
 +
 +
 +static void gpio_reset_line_set(struct gpio_reset_line *line, int asserted)
@@ -108,15 +108,15 @@ index 0000000..cec692e
 +static int gpio_reset_control_assert(struct reset_controller_dev *rcdev,
 +				     unsigned long id)
 +{
-+	struct gpio_reset_data *data = to_gpio_reset_data(rcdev);
++	struct gpio_reset_controller *rc = to_gpio_reset_controller(rcdev);
 +	struct gpio_reset_line *line;
 +
-+	if (id >= data->num_lines) {
-+		dev_err(data->dev, "illegal reset control id: %d\n", id);
++	if (id >= rc->num_lines) {
++		dev_err(rc->dev, "illegal reset control id: %d\n", id);
 +		return -EINVAL;
 +	}
 +
-+	line = &data->lines[id];
++	line = &rc->lines[id];
 +
 +	gpio_reset_line_set(line, 1);
 +
@@ -126,21 +126,21 @@ index 0000000..cec692e
 +static int gpio_reset_control_reset(struct reset_controller_dev *rcdev,
 +				    unsigned long id)
 +{
-+	struct gpio_reset_data *data = to_gpio_reset_data(rcdev);
++	struct gpio_reset_controller *rc = to_gpio_reset_controller(rcdev);
 +	struct gpio_reset_line *line;
 +
-+	if (id >= data->num_lines) {
-+		dev_err(data->dev, "illegal reset control id: %d\n", id);
++	if (id >= rc->num_lines) {
++		dev_err(rc->dev, "illegal reset control id: %d\n", id);
 +		return -EINVAL;
 +	}
 +
-+	line = &data->lines[id];
++	line = &rc->lines[id];
 +
 +	if (line->max_resets) {
 +		mutex_lock(&line->reset_lock);
 +
 +		if (line->reset_count >= line->max_resets) {
-+			dev_warn(data->dev, "max resets exceeded\n");
++			dev_warn(rc->dev, "max resets exceeded\n");
 +			mutex_unlock(&line->reset_lock);
 +			return -EINVAL;
 +		}
@@ -159,15 +159,15 @@ index 0000000..cec692e
 +static int gpio_reset_control_deassert(struct reset_controller_dev *rcdev,
 +				       unsigned long id)
 +{
-+	struct gpio_reset_data *data = to_gpio_reset_data(rcdev);
++	struct gpio_reset_controller *rc = to_gpio_reset_controller(rcdev);
 +	struct gpio_reset_line *line;
 +
-+	if (id >= data->num_lines) {
-+		dev_err(data->dev, "illegal reset control id: %d\n", id);
++	if (id >= rc->num_lines) {
++		dev_err(rc->dev, "illegal reset control id: %d\n", id);
 +		return -EINVAL;
 +	}
 +
-+	line = &data->lines[id];
++	line = &rc->lines[id];
 +
 +	gpio_reset_line_set(line, 0);
 +
@@ -184,7 +184,7 @@ index 0000000..cec692e
 +				struct gpio_reset_line *line)
 +{
 +	int ret;
-+	struct device *dev = line->data->dev;
++	struct device *dev = line->rc->dev;
 +
 +	line->name = np->name;
 +
@@ -206,7 +206,7 @@ index 0000000..cec692e
 +
 +static int gpio_reset_probe(struct platform_device *pdev)
 +{
-+	struct gpio_reset_data *data;
++	struct gpio_reset_controller *rc;
 +	struct device_node *np = pdev->dev.of_node, *child;
 +	struct gpio_reset_line *line;
 +	int num_lines, ret;
@@ -218,33 +218,32 @@ index 0000000..cec692e
 +	if (!num_lines)
 +		return -ENODEV;
 +
-+	data = devm_kzalloc(&pdev->dev, sizeof(*data) +
-+					sizeof(*line) * num_lines,
-+			    GFP_KERNEL);
-+	if (!data)
++	rc = devm_kzalloc(&pdev->dev, sizeof(*rc) + num_lines*sizeof(*line),
++			  GFP_KERNEL);
++	if (!rc)
 +		return -ENOMEM;
 +
-+	data->rcdev.owner = THIS_MODULE;
-+	data->rcdev.nr_resets = num_lines;
-+	data->rcdev.of_node = np;
-+	data->rcdev.ops = &gpio_reset_ops;
-+	data->rcdev.of_reset_n_cells = 1;
-+	data->dev = &pdev->dev;
-+	data->num_lines = num_lines;
++	rc->rcdev.owner = THIS_MODULE;
++	rc->rcdev.nr_resets = num_lines;
++	rc->rcdev.of_node = np;
++	rc->rcdev.ops = &gpio_reset_ops;
++	rc->rcdev.of_reset_n_cells = 1;
++	rc->dev = &pdev->dev;
++	rc->num_lines = num_lines;
 +
-+	platform_set_drvdata(pdev, data);
++	platform_set_drvdata(pdev, rc);
 +
 +	/* parse our reset lines */
-+	line = data->lines;
++	line = rc->lines;
 +	for_each_available_child_of_node(np, child) {
-+		line->data = data;
++		line->rc = rc;
 +		ret = gpio_reset_init_line(child, line);
 +		if (ret)
 +			return ret;
 +		line++;
 +	}
 +
-+	ret = reset_controller_register(&data->rcdev);
++	ret = reset_controller_register(&rc->rcdev);
 +        if (ret) {
 +		dev_err(&pdev->dev, "failed to register reset controller\n");
 +		return ret;
@@ -255,9 +254,9 @@ index 0000000..cec692e
 +
 +static int gpio_reset_remove(struct platform_device *pdev)
 +{
-+	struct gpio_reset_data *data = platform_get_drvdata(pdev);
++	struct gpio_reset_controller *rc = platform_get_drvdata(pdev);
 +
-+	reset_controller_unregister(&data->rcdev);
++	reset_controller_unregister(&rc->rcdev);
 +
 +	return 0;
 +}

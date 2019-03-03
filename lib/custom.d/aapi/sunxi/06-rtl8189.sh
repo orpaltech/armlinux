@@ -2,8 +2,8 @@
 # Build kernel module for RTL8189-series Ethernet adapter (sunxi)
 #
 
-# RTL8189_URL="https://github.com/jwrdegoede/rtl8189ES_linux.git"
 RTL8189_URL="https://github.com/sergey-suloev/rtl8189ES_linux.git"
+# RTL8189_URL="https://github.com/jwrdegoede/rtl8189ES_linux.git"
 # Will be selected later on
 RTL8189_BRANCH=""
 
