@@ -27,7 +27,7 @@ install_readonly "${FILES_DIR}/network/interfaces" "${ETC_DIR}/network/interface
 # Install configuration for interfaces
 install_readonly "${FILES_DIR}/network/eth.network" "${ETC_DIR}/systemd/network/eth.network"
 
-if [ "${ENABLE_WIRELESS}" = yes ] ; then
+if [ "${ENABLE_WLAN}" = yes ] ; then
   # Install configuration for interface wlan0
   install_readonly "${FILES_DIR}/network/wireless.network" "${ETC_DIR}/systemd/network/wireless.network"
 
@@ -35,10 +35,10 @@ cat << EOF > ${ETC_DIR}/wpa_supplicant/wpa_supplicant-wlan0.conf
 ctrl_interface=/var/run/wpa-supplicant
 ap_scan=1
 network={
-	ssid="${WIRELESS_SSID}"
+	ssid="${WLAN_SSID}"
 	scan_ssid=1
 	key_mgmt=WPA-PSK
-	psk="${WIRELESS_PASSWD}"
+	psk="${WLAN_PASSWD}"
 }
 EOF
 

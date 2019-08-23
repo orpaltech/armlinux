@@ -24,7 +24,10 @@ debootstrap debian-archive-keyring device-tree-compiler dialog dosfstools \
 git \
 libssl-dev \
 qemu-user-static quilt \
-patch python-dev python-mako python-minimal \
+patch \
+python-dev python-mako python-minimal \
+python3 python3-pip python3-mako \
+ninja-build \
 rsync \
 sunxi-tools swig \
 texi2html texinfo \
@@ -52,6 +55,7 @@ get_host_pkgs()
 		echo "The following packages needed by build scripts are not installed:"
 		echo "${MISSING_PACKAGES}"
 
+		sudo apt-get update
 		# Make sure all required packages are installed
 		sudo apt-get install -qq -y $MISSING_PACKAGES
 		[ $? -eq 0 ] || exit $?;
@@ -62,24 +66,30 @@ get_host_pkgs()
 
 #-----------------------------------------------------------------------
 
-update_toolchains()
+get_toolchains()
 {
         display_alert "Prepare toolchains..." "" "info"
 
 	local LINARO_BASE_URL="https://releases.linaro.org/components/toolchain/binaries"
 
 	declare -A TOOLCHAIN_VERSIONS
-	TOOLCHAIN_VERSIONS["7.3-2018.05"]="7_3"
-	TOOLCHAIN_VERSIONS["6.4-2018.05"]="6_4"
+	TOOLCHAIN_VERSIONS["7.4-2019.02"]="7"
+	TOOLCHAIN_VERSIONS["6.5-2018.12"]="6"
+	TOOLCHAIN_VERSIONS["5.5-2017.10"]="5"
+	TOOLCHAIN_VERSIONS["4.9-2017.01"]="4"
 	TOOLCHAIN_ARCHS=("arm-linux-gnueabihf" "aarch64-linux-gnu")
 
-	local TOOLCHAIN_7_3_VER="7.3.1-2018.05-x86_64"
-	local TOOLCHAIN_7_3_FILES=("gcc-linaro-${TOOLCHAIN_7_3_VER}_arm-linux-gnueabihf" 
-				"gcc-linaro-${TOOLCHAIN_7_3_VER}_aarch64-linux-gnu")
+	local TOOLCHAIN_7_VER="7.4.1-2019.02-x86_64"
+	local TOOLCHAIN_7_FILES=("gcc-linaro-${TOOLCHAIN_7_VER}_arm-linux-gnueabihf" "gcc-linaro-${TOOLCHAIN_7_VER}_aarch64-linux-gnu")
 
-	local TOOLCHAIN_6_4_VER="6.4.1-2018.05-x86_64"
-	local TOOLCHAIN_6_4_FILES=("gcc-linaro-${TOOLCHAIN_6_4_VER}_arm-linux-gnueabihf" 
-				"gcc-linaro-${TOOLCHAIN_6_4_VER}_aarch64-linux-gnu")
+	local TOOLCHAIN_6_VER="6.5.0-2018.12-x86_64"
+	local TOOLCHAIN_6_FILES=("gcc-linaro-${TOOLCHAIN_6_VER}_arm-linux-gnueabihf" "gcc-linaro-${TOOLCHAIN_6_VER}_aarch64-linux-gnu")
+
+	local TOOLCHAIN_5_VER="5.5.0-2017.10-x86_64"
+	local TOOLCHAIN_5_FILES=("gcc-linaro-${TOOLCHAIN_5_VER}_arm-linux-gnueabihf" "gcc-linaro-${TOOLCHAIN_5_VER}_aarch64-linux-gnu")
+
+	local TOOLCHAIN_4_VER="4.9.4-2017.01-x86_64"
+        local TOOLCHAIN_4_FILES=("gcc-linaro-${TOOLCHAIN_4_VER}_arm-linux-gnueabihf" "gcc-linaro-${TOOLCHAIN_4_VER}_aarch64-linux-gnu")
 
 
 	for TOOLCHAIN_VER in "${!TOOLCHAIN_VERSIONS[@]}" ; do
@@ -98,27 +108,27 @@ update_toolchains()
 
 			if [ -f "./${TOOLCHAIN}.tar.xz" ] ; then
                 		# file was not removed, i.e. extraction failed
-	                	rm -rf "./${TOOLCHAIN}"
+	                	rm -f "./${TOOLCHAIN_VER}"
         		fi
+			if [ "${TOOLCHAIN_FORCE_UPDATE}" = yes ] ; then
+				rm -f "./${TOOLCHAIN_VER}"
+			fi
 
-			[[ "${TOOLCHAIN_FORCE_UPDATE}" = yes ]] && rm -rf ./${TOOLCHAIN}
-
-			if [ ! -d "./${TOOLCHAIN}" ] ; then
+			if [ ! -f "./${TOOLCHAIN_VER}" ] ; then
 				if [ ! -f "./${TOOLCHAIN}.tar.xz" ] ; then
                         		wget "${LINARO_BASE_URL}/${TOOLCHAIN_VER}/${TOOLCHAIN_ARCH}/${TOOLCHAIN}.tar.xz"
                 		fi
 
 				cat "./${TOOLCHAIN}.tar.xz" | tar -ixJv
 	                	rm -f "./${TOOLCHAIN}.tar.xz"
+				cp -rf ./$TOOLCHAIN/* ./
+				rm -rf ./$TOOLCHAIN
+				echo $TOOLCHAIN_VER > ./$TOOLCHAIN_VER
 			fi
 			TOOLCHAIN_INDEX=$(expr ${TOOLCHAIN_INDEX} + 1)
 		done
 	done
 
-        if [ ! -f "${CROSS_COMPILE}gcc" ] ; then
-                echo "ERROR: toolchain not found [${CROSS_COMPILE}] !"
-                exit 1
-        fi
 
         echo "Done."
 }

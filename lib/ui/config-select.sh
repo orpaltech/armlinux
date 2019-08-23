@@ -20,7 +20,7 @@ CONFIG=$(dialog	--clear \
 		--shadow \
 		--backtitle "${LABEL_BACKTITLE}" \
 		--title "${LABEL_TITLE}" \
-		--menu "${LABEL_MENU}" 24 72 16 \
+		--menu "${LABEL_MENU}" 24 80 16 \
 		"${config_options[@]}" \
 		2>&1 >/dev/tty)
 

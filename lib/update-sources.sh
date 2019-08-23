@@ -20,7 +20,6 @@
 
 update_uboot()
 {
-#	local BRANCH_FIXED=$(echo $UBOOT_REPO_BRANCH | sed -e 's/\//-/g')
         UBOOT_SOURCE_DIR="${UBOOT_BASE_DIR}"
 
 	mkdir -p $UBOOT_BASE_DIR
@@ -36,12 +35,18 @@ update_uboot()
 	if [ -d "${UBOOT_SOURCE_DIR}" ] && [ -d "${UBOOT_SOURCE_DIR}/.git" ] ; then
 		display_alert "Updating U-Boot from" "${UBOOT_REPO_NAME} | ${UBOOT_REPO_URL} | ${UBOOT_REPO_BRANCH}" "info"
 
+		sudo chown -R ${CURRENT_USER}:${CURRENT_USER} $UBOOT_SOURCE_DIR
+
                 # update sources
 		git -C $UBOOT_SOURCE_DIR fetch origin --tags --depth=1
 		[ $? -eq 0 ] || exit $?;
 
 		git -C $UBOOT_SOURCE_DIR reset --hard
-		git -C $UBOOT_SOURCE_DIR clean -fd
+		if [[ $CLEAN =~ (^|,)"uboot"(,|$) ]] ; then
+			git -C $UBOOT_SOURCE_DIR clean -fdx
+		else
+			git -C $UBOOT_SOURCE_DIR clean -fd
+		fi
 
                 echo "Checking out branch: ${UBOOT_REPO_BRANCH}"
                 git -C $UBOOT_SOURCE_DIR checkout -B $UBOOT_REPO_BRANCH origin/$UBOOT_REPO_BRANCH
@@ -55,6 +60,9 @@ update_uboot()
 
                 git clone $UBOOT_REPO_URL -b $UBOOT_REPO_BRANCH --depth=1 $UBOOT_SOURCE_DIR
 		[ $? -eq 0 ] || exit $?;
+
+		git -C $UBOOT_SOURCE_DIR fetch origin --tags --depth=1
+		[ $? -eq 0 ] || exit $?;
         fi
 
         if [ -n "${UBOOT_REPO_TAG}" ] ; then
@@ -62,6 +70,8 @@ update_uboot()
 		git -C $UBOOT_SOURCE_DIR checkout tags/$UBOOT_REPO_TAG
 		[ $? -eq 0 ] || exit $?;
 	fi
+
+	UBOOT_SOURCE_DIR="${UBOOT_BASE_DIR}${UBOOT_REPO_SUBDIR}"
 
 	echo "Done."
 }
@@ -150,6 +160,10 @@ patch_uboot()
 			for PATCHFILE in $PATCH_TMP_DIR/*.patch; do
 				echo "Applying patch '${PATCHFILE}' to U-Boot..."
 				patch -d $UBOOT_SOURCE_DIR --batch -p1 -N < $PATCHFILE
+# TODO: An alternative way to apply patches, needs to be investigated
+#				git -C $UBOOT_SOURCE_DIR apply $PATCHFILE
+#				git -C $UBOOT_SOURCE_DIR add --patch
+#				git -C $UBOOT_SOURCE_DIR commit
 				[ $? -eq 0 ] || exit $?;
 				echo "Patched."
 			done
@@ -178,12 +192,18 @@ update_kernel()
 	if [ -d "${KERNEL_SOURCE_DIR}" ] && [ -d "${KERNEL_SOURCE_DIR}/.git" ] ; then
 		display_alert "Updating kernel from" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_URL} | ${KERNEL_REPO_BRANCH}" "info"
 
+		sudo chown -R ${CURRENT_USER}:${CURRENT_USER} $KERNEL_SOURCE_DIR
+
 		# update sources
 		git -C $KERNEL_SOURCE_DIR fetch origin --tags --depth=1
 		[ $? -eq 0 ] || exit $?;
 
 		git -C $KERNEL_SOURCE_DIR reset --hard
-		git -C $KERNEL_SOURCE_DIR clean -fd
+		if [[ $CLEAN =~ (^|,)"kernel"(,|$) ]] ; then
+			git -C $KERNEL_SOURCE_DIR clean -fdx
+		else
+			git -C $KERNEL_SOURCE_DIR clean -fd
+		fi
 
 		echo "Checking out branch: ${KERNEL_REPO_BRANCH}"
                 git -C $KERNEL_SOURCE_DIR checkout -B $KERNEL_REPO_BRANCH origin/$KERNEL_REPO_BRANCH
@@ -195,6 +215,9 @@ update_kernel()
 
 		git clone $KERNEL_REPO_URL -b $KERNEL_REPO_BRANCH --depth=1 $KERNEL_SOURCE_DIR
 		[ $? -eq 0 ] || exit $?;
+
+		git -C $KERNEL_SOURCE_DIR fetch origin --tags --depth=1
+		[ $? -eq 0 ] || exit $?;
 	fi
 
 	if [ -n "${KERNEL_REPO_TAG}" ] ; then
@@ -202,6 +225,8 @@ update_kernel()
 		git -C $KERNEL_SOURCE_DIR checkout tags/$KERNEL_REPO_TAG
 		[ $? -eq 0 ] || exit $?;
 	fi
+
+	KERNEL_SOURCE_DIR="${KERNEL_SOURCE_DIR}${KERNEL_REPO_SUBDIR}"
 
 	echo "Done."
 }
@@ -273,11 +298,15 @@ update_firmware()
 			display_alert "Updating Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"
 
 			 # update sources
-			git -C $FIRMWARE_SOURCE_DIR fetch origin --tags --depth=1
+			git -C $FIRMWARE_SOURCE_DIR fetch origin --depth=1
 			[ $? -eq 0 ] || exit $?;
 
 			git -C $FIRMWARE_SOURCE_DIR reset --hard
-			git -C $FIRMWARE_SOURCE_DIR clean -fd
+			if [[ $CLEAN =~ (^|,)"firmware"(,|$) ]] ; then
+				git -C $FIRMWARE_SOURCE_DIR clean -fdx
+			else
+				git -C $FIRMWARE_SOURCE_DIR clean -fd
+			fi
 
 			echo "Checking out branch: ${FIRMWARE_BRANCH}"
 			git -C $FIRMWARE_SOURCE_DIR checkout -B $FIRMWARE_BRANCH origin/$FIRMWARE_BRANCH

@@ -57,7 +57,7 @@ create_image()
 
 	if [ "${DEST_DEV_TYPE}" = img ] ; then
 
-		local img_name="${DEST_IMG_PREFIX}-${DEST_VERSION}-${BOARD}-${KERNEL_VERSION}-${DEBIAN_RELEASE}"
+		local img_name="${DEST_IMG_PREFIX}-${DEST_VERSION}-${BOARD}-${KERNEL_REPO_NAME}-${KERNEL_VERSION}-${DEBIAN_RELEASE}"
 		local img_file="${OUTPUTDIR}/images/${img_name}.img"
 
 		# calculate directory size

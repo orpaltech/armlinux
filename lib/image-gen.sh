@@ -79,10 +79,9 @@ fi
 # Apply board configuration
 . $BOARD_CONF
 
-[[ "${SUPPORT_WIRELESS}" != "yes" ]] && ENABLE_WIRELESS="no"
+set_cross_compile
 
-CPUINFO_NUM_CORES=$(grep -c ^processor /proc/cpuinfo)
-[ $SUDO_USER ] && CURRENT_USER=$SUDO_USER || CURRENT_USER=$(whoami)
+[[ "${SUPPORT_WLAN}" != "yes" ]] && ENABLE_WLAN="no"
 
 # Introduce settings
 set -e
@@ -144,13 +143,15 @@ ENABLE_USER=${ENABLE_USER:="no"}
 USER_NAME=${USER_NAME:="pi"}
 ENABLE_ROOT=${ENABLE_ROOT:="yes"}
 ENABLE_ROOT_SSH=${ENABLE_ROOT_SSH:="yes"}
-ENABLE_WIRELESS=${ENABLE_WIRELESS:="no"}
+ENABLE_WLAN=${ENABLE_WLAN:="no"}
 
 # Advanced settings
 ENABLE_MINBASE=${ENABLE_MINBASE:="no"}
 ENABLE_REDUCE=${ENABLE_REDUCE:="no"}
 ENABLE_HARDNET=${ENABLE_HARDNET:="no"}
 ENABLE_IPTABLES=${ENABLE_IPTABLES:="no"}
+
+DRM_DEBUG=${DRM_DEBUG:=""}
 
 # Kernel installation settings
 KERNEL_INSTALL_HEADERS=${KERNEL_INSTALL_HEADERS:="yes"}
@@ -277,7 +278,7 @@ if [ "${ENABLE_DBUS}" = yes ] ; then
 fi
 
 if [ "${ENABLE_X11}" = yes ] ; then
-  APT_INCLUDES="${APT_INCLUDES},libx11-dev,libxshmfence-dev"
+  APT_INCLUDES="${APT_INCLUDES},libx11-dev,libxshmfence-dev,libxext-dev,libxrender-dev,libxfixes-dev,libxi-dev,libxcb1-dev,libx11-xcb-dev,libxkbcommon-dev,libxkbcommon-x11-dev"
 fi
 
 # Add iptables IPv4/IPv6 package
@@ -294,7 +295,7 @@ if [ "${ENABLE_SSHD}" = yes ] ; then
   APT_INCLUDES="${APT_INCLUDES},openssh-server"
 fi
 
-if [ "${ENABLE_WIRELESS}" = yes ] ; then
+if [ "${ENABLE_WLAN}" = yes ] ; then
   APT_INCLUDES="${APT_INCLUDES},wpasupplicant"
 fi
 

@@ -1,0 +1,515 @@
+From 951a76bf3e4808faa7dde257c3a8eebe5ae52d8b Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Fri, 2 Aug 2019 23:51:41 +0300
+Subject: [PATCH] drm/panel: Add support for Himax HX8379A-based panels
+
+---
+ drivers/gpu/drm/panel/Kconfig               |  11 +
+ drivers/gpu/drm/panel/Makefile              |   1 +
+ drivers/gpu/drm/panel/panel-himax-hx8379a.c | 465 ++++++++++++++++++++
+ 3 files changed, 477 insertions(+)
+ create mode 100644 drivers/gpu/drm/panel/panel-himax-hx8379a.c
+
+diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
+index d9d931a..a321813 100644
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -291,4 +291,15 @@ config DRM_PANEL_TRULY_NT35597_WQXGA
+ 	help
+ 	  Say Y here if you want to enable support for Truly NT35597 WQXGA Dual DSI
+ 	  Video Mode panel
++
++config DRM_PANEL_HIMAX_HX8379A
++	tristate "Himax HX8379A-based MIPI-DSI panels"
++	depends on OF
++	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for Himax HX8379A-based
++	  MIPI-DSI panels.
++	  To compile this driver as a module, choose M here.
++
+ endmenu
+diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
+index fb0cb3a..8f1e668 100644
+--- a/drivers/gpu/drm/panel/Makefile
++++ b/drivers/gpu/drm/panel/Makefile
+@@ -30,3 +30,4 @@ obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7701) += panel-sitronix-st7701.o
+ obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7789V) += panel-sitronix-st7789v.o
+ obj-$(CONFIG_DRM_PANEL_TPO_TPG110) += panel-tpo-tpg110.o
+ obj-$(CONFIG_DRM_PANEL_TRULY_NT35597_WQXGA) += panel-truly-nt35597.o
++obj-$(CONFIG_DRM_PANEL_HIMAX_HX8379A) += panel-himax-hx8379a.o
+diff --git a/drivers/gpu/drm/panel/panel-himax-hx8379a.c b/drivers/gpu/drm/panel/panel-himax-hx8379a.c
+new file mode 100644
+index 0000000..03f552d
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-himax-hx8379a.c
+@@ -0,0 +1,465 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * The driver for Himax HX8379A-based MIPI-DSI panels
++ *
++ * Copyright 2018 Sergey Suloev <ssuloev@orpaltech.com>
++ */
++
++#define DEBUG
++
++#include <linux/backlight.h>
++#include <linux/delay.h>
++#include <linux/device.h>
++#include <linux/err.h>
++#include <linux/errno.h>
++#include <linux/fb.h>
++#include <linux/gpio.h>
++#include <linux/gpio/consumer.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/of_device.h>
++#include <linux/regulator/consumer.h>
++#include <linux/reset.h>
++
++#include <drm/drm_crtc.h>
++#include <drm/drm_mipi_dsi.h>
++#include <drm/drm_modes.h>
++#include <drm/drmP.h>
++#include <drm/drm_panel.h>
++
++#include <video/mipi_display.h>
++
++
++enum hx8379a_init_type {
++	INIT_CMD = 1,
++	INIT_DELAY,
++};
++
++struct hx8379a_init_instr {
++	int type;
++	size_t len;
++	const char *data;
++};
++
++#define _INIT_CMD(...) { \
++	.type = INIT_CMD, \
++	.len = sizeof((char[]){__VA_ARGS__}), \
++	.data = (char[]){__VA_ARGS__} \
++}
++#define _INIT_DELAY(ms) { \
++	.type = INIT_DELAY, \
++	.len = (ms), \
++}
++
++struct hx8379a_panel_desc {
++	unsigned long flags;
++	enum mipi_dsi_pixel_format format;
++	unsigned int lanes;
++	unsigned int bpc;
++
++	const struct drm_display_mode *mode;
++	const struct hx8379a_init_instr *init_cmds;
++
++	/**
++	 * @width: width (in mm) of the panel's active display area
++	 * @height: height (in mm) of the panel's active display area
++	 */
++	struct {
++		u32	width;
++		u32	height;
++	} size;
++};
++
++struct hx8379a_panel {
++	struct device *dev;
++	struct drm_panel base;
++
++	struct reset_control *rstc;
++	struct backlight_device *bl_dev;
++	struct regulator *power;
++
++	const struct hx8379a_panel_desc *desc;
++
++	bool prepared;
++	bool enabled;
++};
++
++static const struct hx8379a_init_instr truly_tda_fwvga0500g50008_init[] = {
++	// Set EXTC
++	_INIT_CMD(0xB9, 0xFF,0x83,0x79),
++
++	_INIT_CMD(0xBA,	0x51,0x93),
++
++	// Set POWER
++	_INIT_CMD(0xB1,	0x00,0x50,0x24,0xEA,0x51,0x08,0x11,0x10,0xF0,0x27,
++			0x2F,0x9A,0x1A,0x42,0x0B,0x7A,0xF1,0x00,0xE6),
++
++	// Set DISP
++	_INIT_CMD(0xB2,	0x00,0x00,0xFE,0x07,0x03,0x19,0x44,0x00,0xFF,0x07,
++			0x03,0x19,0x20),
++
++	// Set CYC
++	_INIT_CMD(0xB4,	0x82,0x08,0x00,0x32,0x10,0x03,0x32,0x13,0x70,0x32,
++			0x10,0x08,0x37,0x01,0x28,0x07,0x37,0x08,0x3C,0x08,
++			0x3E,0x3E,0x08,0x00,0x40,0x08,0x28,0x08,0x30,0x30,
++			0x04),
++
++	// Set GIP
++	_INIT_CMD(0xD5,	0x00,0x00,0x0A,0x00,0x01,0x05,0x00,0x03,0x00,0x88,
++			0x88,0x88,0x88,0x23,0x01,0x67,0x45,0x02,0x13,0x88,
++			0x88,0x88,0x88,0x88,0x88,0x88,0x88,0x88,0x88,0x54,
++			0x76,0x10,0x32,0x31,0x20,0x88,0x88,0x88,0x88,0x88,
++			0x88,0x00,0x00,0x00,0x00,0x00,0x00),
++
++	// Set GAMMA
++	_INIT_CMD(0xE0,	0x79,0x00,0x08,0x0F,0x3C,0x3E,0x3F,0x22,0x4D,0x07,
++			0x0D,0x0D,0x10,0x11,0x10,0x14,0x11,0x17,0x00,0x09,
++			0x0F,0x3C,0x3D,0x3F,0x22,0x4D,0x07,0x0C,0x0C,0x10,
++			0x11,0x10,0x13,0x12,0x17),
++
++	// Set PANEL
++	_INIT_CMD(0xCC,	0x02),
++
++	// Set VCOM
++	_INIT_CMD(0xB6,	0x00,0x9C,0x00,0x9C),
++
++	_INIT_CMD(0x53, 0x00),
++
++	{ /*EOF*/ },
++};
++
++/*
++ * The horizontal and vertical timings
++ */
++#define HX8379A_HSYNC           40	/* pixels */
++#define HX8379A_HFP             100
++#define HX8379A_HBP             94
++
++#define HX8379A_VSYNC           6	/* lines */
++#define HX8379A_VFP             6
++#define HX8379A_VBP             4
++
++#define HX8379A_HDISP		480
++#define HX8379A_VDISP		854
++
++
++static const struct drm_display_mode truly_tda_fwvga0500g50008_mode = {
++	.clock		= 37271,	/*KHz*/
++	.vrefresh	= 60,		/*Hz*/
++
++	.hdisplay	= HX8379A_HDISP,
++	.hsync_start	= HX8379A_HDISP + HX8379A_HFP,
++	.hsync_end	= HX8379A_HDISP + HX8379A_HFP + HX8379A_HSYNC,
++	.htotal		= HX8379A_HDISP + HX8379A_HFP + HX8379A_HSYNC + HX8379A_HBP,
++
++	.vdisplay	= HX8379A_VDISP,
++	.vsync_start	= HX8379A_VDISP + HX8379A_VFP,
++	.vsync_end	= HX8379A_VDISP + HX8379A_VFP + HX8379A_VSYNC,
++	.vtotal		= HX8379A_VDISP + HX8379A_VFP + HX8379A_VSYNC + HX8379A_VBP,
++};
++
++static const struct hx8379a_panel_desc truly_tda_fwvga0500g50008 = {
++	.init_cmds = truly_tda_fwvga0500g50008_init,
++	.mode	= &truly_tda_fwvga0500g50008_mode,
++	.bpc	= 8,
++	.size	= {
++		.width	= 62,
++		.height	= 110,
++	},
++	.format = MIPI_DSI_FMT_RGB888,
++	.lanes = 2,
++	.flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_CLOCK_NON_CONTINUOUS
++		| MIPI_DSI_MODE_VIDEO_HSE,
++};
++
++static struct hx8379a_panel *panel_to_hxp(struct drm_panel *panel)
++{
++	return container_of(panel, struct hx8379a_panel, base);
++}
++
++static int hx8379a_panel_unprepare(struct drm_panel *panel)
++{
++	struct hx8379a_panel *hxp = panel_to_hxp(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(hxp->dev);
++	int ret;
++
++	if (!hxp->prepared)
++		return 0;
++
++	dev_dbg(&dsi->dev, "panel unprepare\n");
++
++	ret = mipi_dsi_dcs_set_display_off(dsi);
++	if (ret) {
++		DRM_WARN("failed to set display OFF: %d\n", ret);
++		return ret;
++	}
++
++	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
++	if (ret) {
++		DRM_WARN("failed to enter sleep mode: %d\n", ret);
++		return ret;
++	}
++
++	/* wait for entering sleep mode*/
++	msleep(150);
++
++	/* power down the panel */
++	regulator_disable(hxp->power);
++
++	hxp->prepared = false;
++
++	return 0;
++}
++
++static int hx8379a_panel_prepare(struct drm_panel *panel)
++{
++	struct hx8379a_panel *hxp = panel_to_hxp(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(hxp->dev);
++	int ret;
++
++	if (hxp->prepared)
++		return 0;
++
++	dev_dbg(&dsi->dev, "panel prepare\n");
++
++	/* power up the panel */
++	ret = regulator_enable(hxp->power);
++	if (ret) {
++		DRM_ERROR("failed to enable regulator: %d\n", ret);
++		return ret;
++	}
++
++	/* reset the panel*/
++	reset_control_reset(hxp->rstc);
++
++	if (hxp->desc->init_cmds) {
++		const struct hx8379a_init_instr *cmds = hxp->desc->init_cmds;
++		unsigned int i;
++
++		/* execute panel init sequence */
++		for (i = 0; cmds[i].type != 0; i++) {
++			const struct  hx8379a_init_instr *cmd = &cmds[i];
++
++			if (cmd->type == INIT_CMD) {
++				dev_dbg(&dsi->dev, "panel write, len = %d\n", cmd->len);
++
++				ret = mipi_dsi_dcs_write_buffer(dsi, cmd->data, cmd->len);
++			        if (ret < 0) {
++					DRM_ERROR("panel write failed: %d\n", ret);
++					goto err_quit;
++				}
++			} else if (cmd->type == INIT_DELAY) {
++				msleep(cmd->len);
++			}
++		}
++	}
++
++	ret = mipi_dsi_dcs_set_tear_on(dsi,
++				MIPI_DSI_DCS_TEAR_MODE_VBLANK);
++	if (ret) {
++		DRM_WARN("failed to set tear on: %d\n", ret);
++		goto err_quit;
++	}
++
++	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
++	if (ret) {
++		DRM_ERROR("failed to exit sleep mode: %d\n", ret);
++		goto err_quit;
++	}
++
++	/* wait for exit sleep mode */
++	msleep(150);
++
++	ret = mipi_dsi_dcs_set_display_on(dsi);
++	if (ret) {
++		DRM_ERROR("couldn't set display ON: %d\n", ret);
++		goto err_quit;
++	}
++
++	hxp->prepared = true;
++
++	return 0;
++
++err_quit:
++	/* power down the panel */
++        regulator_disable(hxp->power);
++
++	return ret;
++}
++
++static int hx8379a_panel_disable(struct drm_panel *panel)
++{
++	struct hx8379a_panel *hxp = panel_to_hxp(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(hxp->dev);
++	int ret;
++
++	if (!hxp->enabled)
++		return 0;
++
++	dev_dbg(&dsi->dev, "panel disable\n");
++
++	backlight_disable(hxp->bl_dev);
++
++	hxp->enabled = false;
++
++	return 0;
++}
++
++static int hx8379a_panel_enable(struct drm_panel *panel)
++{
++	struct hx8379a_panel *hxp = panel_to_hxp(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(hxp->dev);
++	int ret;
++
++	if (hxp->enabled)
++		return 0;
++
++	dev_dbg(&dsi->dev, "panel enable\n");
++
++	ret = backlight_enable(hxp->bl_dev);
++	if (ret) {
++		DRM_ERROR("failed to enable backlight: %d\n",ret);
++		return ret;
++	}
++
++	hxp->enabled = true;
++
++	return 0;
++}
++
++static int hx8379a_panel_get_modes(struct drm_panel *panel)
++{
++	struct hx8379a_panel *hxp = panel_to_hxp(panel);
++	struct drm_connector *connector = panel->connector;
++	const struct drm_display_mode *m = hxp->desc->mode;
++	struct drm_display_mode *mode;
++
++	mode = drm_mode_duplicate(panel->drm, m);
++	if (!mode) {
++		DRM_ERROR("failed to add mode %ux%ux@%u\n",
++			  m->hdisplay, m->vdisplay, m->vrefresh);
++		return -ENOMEM;
++	}
++
++	drm_mode_set_name(mode);
++
++	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
++	drm_mode_probed_add(connector, mode);
++
++	connector->display_info.bpc	= hxp->desc->bpc;
++	connector->display_info.width_mm = hxp->desc->size.width;
++	connector->display_info.height_mm = hxp->desc->size.height;
++
++	return 1;
++}
++
++static const struct drm_panel_funcs hx8379a_panel_funcs = {
++	.disable	= hx8379a_panel_disable,
++	.unprepare	= hx8379a_panel_unprepare,
++	.prepare	= hx8379a_panel_prepare,
++	.enable		= hx8379a_panel_enable,
++	.get_modes	= hx8379a_panel_get_modes,
++};
++
++static int hx8379a_panel_probe(struct mipi_dsi_device *dsi)
++{
++	struct device *dev = &dsi->dev;
++	struct hx8379a_panel *hxp;
++	int ret;
++
++	hxp = devm_kzalloc(dev, sizeof(*hxp), GFP_KERNEL);
++	if (!hxp)
++		return -ENOMEM;
++
++	mipi_dsi_set_drvdata(dsi, hxp);
++	hxp->dev = dev;
++
++	hxp->desc = of_device_get_match_data(dev);
++	if (!hxp->desc) {
++		dev_err(dev, "no device match found\n");
++		return -ENODEV;
++	}
++
++	drm_panel_init(&hxp->base);
++	hxp->base.dev = dev;
++	hxp->base.funcs = &hx8379a_panel_funcs;
++
++	hxp->rstc = devm_reset_control_get(dev, "reset");
++	if (IS_ERR(hxp->rstc)) {
++		ret = PTR_ERR(hxp->rstc);
++		dev_err(dev, "couldn't get our reset line: %d\n", ret);
++		return ret;
++	}
++
++	hxp->power = devm_regulator_get(dev, "power");
++	if (IS_ERR(hxp->power)) {
++		ret = PTR_ERR(hxp->power);
++		dev_err(dev, "couldn't get our regulator: %d\n", ret);
++		return ret;
++	}
++
++	hxp->bl_dev = devm_of_find_backlight(dev);
++	if (IS_ERR(hxp->bl_dev)) {
++		ret = PTR_ERR(hxp->bl_dev);
++		dev_err(dev, "couldn't find backlight: %d\n", ret);
++		return ret;
++	}
++
++	ret = drm_panel_add(&hxp->base);
++	if (ret) {
++		dev_err(dev, "couldn't add drm panel: %d\n", ret);
++		return ret;
++	}
++
++	dsi->lanes  = hxp->desc->lanes;
++	dsi->format = hxp->desc->format;
++	dsi->mode_flags	= hxp->desc->flags;
++
++	ret = mipi_dsi_attach(dsi);
++	if (ret) {
++		dev_err(dev, "failed to attach dsi device: %d\n", ret);
++		drm_panel_remove(&hxp->base);
++		return ret;
++	}
++
++	return 0;
++}
++
++static int hx8379a_panel_remove(struct mipi_dsi_device *dsi)
++{
++	struct hx8379a_panel *hxp = mipi_dsi_get_drvdata(dsi);
++	int ret;
++
++	ret = mipi_dsi_detach(dsi);
++	if (ret) {
++		dev_err(&dsi->dev,"failed to detach DSI host: %d\n", ret);
++	}
++
++	drm_panel_remove(&hxp->base);
++
++	return 0;
++}
++
++static const struct of_device_id hx8379a_panel_dsi_of_match[] = {
++	{
++		.compatible = "truly,tda-fwvga0500g50008",
++		.data       = &truly_tda_fwvga0500g50008,
++	},{
++		/* sentinel */
++	}
++};
++MODULE_DEVICE_TABLE(of, hx8379a_panel_dsi_of_match);
++
++static struct mipi_dsi_driver hx8379a_panel_dsi_driver = {
++	.probe	= hx8379a_panel_probe,
++	.remove	= hx8379a_panel_remove,
++	.driver	= {
++		.name = "panel-himax-hx8379a",
++		.of_match_table = hx8379a_panel_dsi_of_match,
++	},
++};
++module_mipi_dsi_driver(hx8379a_panel_dsi_driver);
++
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
++MODULE_DESCRIPTION("The driver for Himax HX8379A-based MIPI-DSI panels");
++MODULE_LICENSE("GPL v2");
+-- 
+2.17.1
+

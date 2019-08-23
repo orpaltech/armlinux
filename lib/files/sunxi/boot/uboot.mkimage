@@ -5,7 +5,7 @@
 
 # default values
 setenv video_mode "EDID:1280x1024p60"
-setenv load_addr "0x44000000"
+setenv load_addr "0x48000000"
 setenv fdt_addr "0x43000000"
 setenv overlay_error "false"
 setenv kernel_file "kernel.img"

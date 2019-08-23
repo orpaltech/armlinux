@@ -9,16 +9,31 @@ BOOT_DIR="/boot"
 
 DEBIAN_RELEASE_ARCH=armhf
 KERNEL_ARCH="${SOC_ARCH}"
+UBOOT_ARCH="${SOC_ARCH}"
 LINUX_PLATFORM="arm-linux-gnueabihf"
 
-CROSS_COMPILE="${TOOLCHAINDIR}/${DEFAULT_TOOLCHAIN_ARMHF}"
+# Meson build tool parameters
+MESON_CPU_FAMILY="arm"
+MESON_CPU="armv7hl"
+
+# you can directly specify tolchain paths
+# UBOOT_CROSS_COMPILE=  
+# KERNEL_CROSS_COMPILE=                                           
+# CROSS_COMPILE= 
+
 QEMU_BINARY="/usr/bin/qemu-arm-static"
 
 KERNEL_BUILD_CONFIG="sunxi_defconfig"
 KERNEL_BUILD_USER_CONFIG="linux-mainline-sunxi.config"
 
-KERNEL_IMAGE_SOURCE=zImage
-KERNEL_IMAGE_TARGET=linuz.img
+KERNEL_MKIMAGE_WRAP="no"
+# Use compressed (gzip) or uncompressed (none) kernel image
+KERNEL_MKIMAGE_COMPRESS="none"
+KERNEL_MKIMAGE_LOADADDR="0x40080000"
+# Use compressed (Image.gz) or uncompressed (Image) source file
+KERNEL_IMAGE_SOURCE="zImage"
+# Use wrapped (linux.uImage) or normal (linuz.img) target file
+KERNEL_IMAGE_TARGET="linuz.img"
 
 FELBOOT_KERNEL_ADDR=0x42000000
 FELBOOT_RAMDISK_ADDR=0x43300000
@@ -36,7 +51,7 @@ DRM_CONNECTOR="HDMI-A-1"
 DRM_VIDEO_MODE="1280x1024-24@60"
 
 # Set no wireless support by default
-SUPPORT_WIRELESS=no
+SUPPORT_WLAN="no"
 
 # sunxi-specific clean options
-CLEAN_OPTIONS="${CLEAN_OPTIONS}"
+CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa-lima"

@@ -1,0 +1,28 @@
+From 85dccf0d20a5e38dbe479b55fd00ee0a4f888e61 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Fri, 14 Jun 2019 10:35:57 +0300
+Subject: [PATCH] spi/bcm2835: Add SPI controller pins
+
+---
+ arch/arm/boot/dts/bcm2835-rpi.dtsi | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/arm/boot/dts/bcm2835-rpi.dtsi b/arch/arm/boot/dts/bcm2835-rpi.dtsi
+index 715d50c..77a548c 100644
+--- a/arch/arm/boot/dts/bcm2835-rpi.dtsi
++++ b/arch/arm/boot/dts/bcm2835-rpi.dtsi
+@@ -81,6 +81,11 @@
+ 	bus-width = <4>;
+ };
+ 
++&spi {
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi0_gpio7>;
++};
++
+ &usb {
+ 	power-domains = <&power RPI_POWER_DOMAIN_USB>;
+ };
+-- 
+2.17.1
+

@@ -18,7 +18,7 @@
 ########################################################################
 
 
-NUM_CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
+NUM_CPU_CORES=$CPUINFO_NUM_CORES
 
 [[ "${KBUILD_VERBOSE}" = "yes" ]] && KERNEL_V="V=1"
 
@@ -28,9 +28,9 @@ compile_uboot()
 {
         display_alert "Make u-boot" "${UBOOT_REPO_TAG:=\"${UBOOT_REPO_BRANCH}\"}" "info"
 
-        export USE_PRIVATE_LIBGCC="yes"
-	export ARCH="${SOC_ARCH}"
-	export CROSS_COMPILE="${CROSS_COMPILE}"
+	export ARCH="${UBOOT_ARCH}"
+	export CROSS_COMPILE="${UBOOT_CROSS_COMPILE}"
+	export USE_PRIVATE_LIBGCC="yes"
 
         cd $UBOOT_SOURCE_DIR
 
@@ -61,7 +61,7 @@ compile_kernel()
 	display_alert "Make kernel" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_TAG:=${KERNEL_REPO_BRANCH}}" "info"
 
 	export ARCH="${SOC_ARCH}"
-	export CROSS_COMPILE="${CROSS_COMPILE}"
+	export CROSS_COMPILE="${KERNEL_CROSS_COMPILE}"
 	export LOCALVERSION="-${SOC_FAMILY}"
 
 	cd $KERNEL_SOURCE_DIR
@@ -99,11 +99,11 @@ compile_kernel()
 
 compile_firmware()
 {
-	display_alert "Make firmware" "${SOC_FAMILY} | ${SOC_PLAT}" "info"
+	display_alert "Make firmware" "${SOC_FAMILY} | ${SOC_PLATFORM}" "info"
 
-	export CROSS_COMPILE="${CROSS_COMPILE}"
+	export CROSS_COMPILE="${UBOOT_CROSS_COMPILE}"
 
-	case $SOC_PLAT in
+	case $SOC_PLATFORM in
     	    sun50i*)
 		echo "*** ARM trusted firmware ***"
 		cd $FIRMWARE_SOURCE_DIR
@@ -111,15 +111,15 @@ compile_firmware()
 		if [[ $CLEAN =~ (^|,)"firmware"(,|$) ]] ; then
 			echo "Clean firmware directory"
 			make clean
-			rm -rf ./build/${SOC_PLAT}/*
+			rm -rf ./build/${FIRMWARE_PLATFORM}/*
 		fi
 
-        	make PLAT="${SOC_PLAT}" DEBUG=1 bl31
-		cp ./build/${SOC_PLAT}/debug/bl31.bin $UBOOT_SOURCE_DIR/
+        	make PLAT="${FIRMWARE_PLATFORM}" DEBUG=1 bl31
+		cp ./build/${FIRMWARE_PLATFORM}/debug/bl31.bin $UBOOT_SOURCE_DIR/
 		SUNXI_ATF_USED="yes"
     	  	;;
 	    bcm283*)
-		echo "*** RaspberryPi firmware prebuilt ***"
+		echo "*** RaspberryPi is using prebuilt firmware ***"
 		;;
 	esac
 

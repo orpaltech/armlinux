@@ -19,6 +19,9 @@
 # common clean options, can be overriden in board-specific config files
 CLEAN_OPTIONS="uboot firmware kernel rootfs gdb qt5"
 
+CPUINFO_NUM_CORES=$(grep -c ^processor /proc/cpuinfo)
+[ $SUDO_USER ] && CURRENT_USER=$SUDO_USER || CURRENT_USER=$(whoami)
+
 # ----------------------------------------------------------------------
 # void display_alert(message, outline, type)
 # ----------------------------------------------------------------------
@@ -79,4 +82,26 @@ count_files()
   local FILE_PATH=$1
   local FILE_COUNT=$(ls $FILE_PATH 2> /dev/null | wc -l)
   echo "$FILE_COUNT"
+}
+
+# ----------------------------------------------------------------------
+
+set_cross_compile()
+{
+  if [ -z "${LINUX_PLATFORM}" ] ; then
+    echo "error: variable LINUX_PLATFORM must be set!"
+    exit 1
+  fi
+
+  if [ -z "${UBOOT_CROSS_COMPILE}" ] ; then
+    UBOOT_CROSS_COMPILE="${TOOLCHAINDIR}/${UBOOT_TOOLCHAIN_VER}/${LINUX_PLATFORM}/bin/${LINUX_PLATFORM}-"
+  fi
+
+  if [ -z "${KERNEL_CROSS_COMPILE}" ] ; then
+    KERNEL_CROSS_COMPILE="${TOOLCHAINDIR}/${KERNEL_TOOLCHAIN_VER}/${LINUX_PLATFORM}/bin/${LINUX_PLATFORM}-"
+  fi
+
+  if [ -z "${CROSS_COMPILE}" ] ; then
+    CROSS_COMPILE="${TOOLCHAINDIR}/${DEFAULT_TOOLCHAIN_VER}/${LINUX_PLATFORM}/bin/${LINUX_PLATFORM}-"
+  fi
 }

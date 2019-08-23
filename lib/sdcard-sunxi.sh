@@ -51,10 +51,10 @@ write_image()
         sudo mount ${BLOCK_DEV}${P}1 /mnt/sdcard
         sudo rsync -a --stats $ROOTFS_DIR/ /mnt/sdcard
 
-	local BOOT_PART_ID=$(sudo blkid -o value -s UUID ${BLOCK_DEV}${P}1)
+	local BOOTPARTID=$(sudo blkid -o value -s UUID ${BLOCK_DEV}${P}1)
 
 	# update /etc/fstab with the actual partition UUID
-	sudo sed -i "s/BOOTPARTID/UUID=${BOOT_PART_ID}/g" /mnt/sdcard/etc/fstab
+	sudo sed -i "s/BOOTPARTID/UUID=${BOOTPARTID}/g" /mnt/sdcard/etc/fstab
 
         sudo umount ${BLOCK_DEV}${P}1
 

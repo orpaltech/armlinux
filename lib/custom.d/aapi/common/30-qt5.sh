@@ -3,13 +3,13 @@
 #
 
 # force clone the remote repository
-QT5_UPDATE_SOURCES=${QT5_UPDATE_SOURCES:="no"}
+QT5_REFRESH_SOURCES=${QT5_REFRESH_SOURCES:="no"}
 
 # remove all intermediate files and go for a full rebuild
 QT5_FORCE_REBUILD=${QT5_FORCE_REBUILD:="yes"}
 
 QT5_GIT_ROOT="git://code.qt.io/qt"
-QT5_RELEASE="5.11"
+QT5_RELEASE="5.13"
 QT5_BRANCH="${QT5_RELEASE}"
 QT5_TAG=""
 QT5_MODULES=("qtxmlpatterns" "qtimageformats" "qtgraphicaleffects" "qtsvg" "qtscript" "qtdeclarative" "qtquickcontrols" "qtquickcontrols2" "qtcharts" "qtvirtualkeyboard")
@@ -35,6 +35,10 @@ QT5_DEB_PKG_VER="${QT5_DEB_VER}-${QT5_DEVICE_CONFIG}-${CONFIG}-${VERSION}"
 QT5_DEB_PKG="qt-${QT5_DEB_PKG_VER}"
 QT5_DEB_DIR="${DEBS_DIR}/${QT5_DEB_PKG}-deb"
 
+QT5_CROSS_COMPILE=${QT5_CROSS_COMPILE:="$CROSS_COMPILE"}
+
+[[ "${ENABLE_X11}" = "yes" ]] && QT5_XCB_OPTION="-system-xcb" || QT5_XCB_OPTION="-no-xcb"
+
 # ----------------------------------------------------------------------------
 
 qt5_update()
@@ -44,7 +48,7 @@ qt5_update()
 	# make sure qt5 root directory exists
 	mkdir -p $QT5_ROOT_DIR
 
-	if [ "${QT5_UPDATE_SOURCES}" = yes ] ; then
+	if [ "${QT5_REFRESH_SOURCES}" = yes ] ; then
 		echo "Forcing full source update qtbase"
 		rm -rf $QTBASE_SRC_DIR
 	fi
@@ -60,7 +64,7 @@ qt5_update()
 		git -C $QTBASE_SRC_DIR fetch origin --tags
 
 		git -C $QTBASE_SRC_DIR reset --hard
-		git -C $QTBASE_SRC_DIR clean -fd
+		git -C $QTBASE_SRC_DIR clean -fdx
 
 		echo "Checking out branch: ${QT5_BRANCH}"
 		git -C $QTBASE_SRC_DIR checkout -B $QT5_BRANCH origin/$QT5_BRANCH
@@ -82,7 +86,7 @@ qt5_update()
 		QT5_MODULE_DIR=${QT5_ROOT_DIR}/${MODULE}
 		QT5_MODULE_URL=${QT5_GIT_ROOT}/${MODULE}.git
 
-		if [ "${QT5_UPDATE_SOURCES}" = yes ] ; then
+		if [ "${QT5_REFRESH_SOURCES}" = yes ] ; then
 			echo "Forcing full source update ${MODULE}"
 			rm -rf $QT5_MODULE_DIR
 		fi
@@ -98,7 +102,7 @@ qt5_update()
 			git -C $QT5_MODULE_DIR fetch origin --tags
 
 			git -C $QT5_MODULE_DIR reset --hard
-			git -C $QT5_MODULE_DIR clean -fd
+			git -C $QT5_MODULE_DIR clean -fdx
 
 			echo "Checking out branch: ${QT5_BRANCH}"
 			git -C $QT5_MODULE_DIR checkout -B $QT5_BRANCH origin/$QT5_BRANCH
@@ -170,12 +174,13 @@ qt5_make_qtbase()
 
         echo "Configure qtbase..."
 
+
 	${QTBASE_SRC_DIR}/configure -v \
 			-silent \
                         -release \
                         -opensource -confirm-license \
                         -device $QT5_DEVICE_CONFIG \
-                        -device-option CROSS_COMPILE=$CROSS_COMPILE \
+                        -device-option CROSS_COMPILE=$QT5_CROSS_COMPILE \
                         -sysroot $SYSROOT_DIR \
                         -hostprefix $QT5_HOST_PREFIX \
                         -extprefix $QT5_EXT_PREFIX \
@@ -183,9 +188,12 @@ qt5_make_qtbase()
                         -nomake examples \
 			-nomake tests \
                         -no-pch \
+			-no-rpath \
                         -no-use-gold-linker \
-                        -no-xcb \
+                        -no-openvg \
+			-no-cups \
                         $QT5_OPENGL_OPTION \
+			$QT5_XCB_OPTION \
                         -no-openssl \
                         -system-zlib \
                         -system-libjpeg \

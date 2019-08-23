@@ -79,6 +79,13 @@ else
   CMDLINE="net.ifnames=0 ${CMDLINE}"
 fi
 
+if [ "$DRM_USE_FIRMWARE_EDID" = yes ] ; then
+  EXTRAARGS="drm_kms_helper.edid_firmware=${DRM_CONNECTOR}:${DRM_EDID_BINARY} video=${DRM_CONNECTOR}:${DRM_VIDEO_MODE} ${EXTRAARGS}"
+fi
+if [ -n "${DRM_DEBUG}" ] ; then
+  EXTRAARGS="drm.debug=${DRM_DEBUG} ${EXTRAARGS}"
+fi
+
 # Install and setup fstab
 install_readonly "${FILES_DIR}/mount/fstab" "${ETC_DIR}/fstab"
 

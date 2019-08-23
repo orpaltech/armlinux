@@ -1,0 +1,554 @@
+From c3615c9b8984867d50b5d05d01103d755b1239fb Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Fri, 2 Aug 2019 23:54:31 +0300
+Subject: [PATCH] drm/panel: Add support for Himax HX8394A-based panels
+
+---
+ drivers/gpu/drm/panel/Kconfig               |  11 +
+ drivers/gpu/drm/panel/Makefile              |   3 +-
+ drivers/gpu/drm/panel/panel-himax-hx8394a.c | 488 ++++++++++++++++++++
+ 3 files changed, 500 insertions(+), 2 deletions(-)
+ create mode 100644 drivers/gpu/drm/panel/panel-himax-hx8394a.c
+
+diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
+index d9d931a..19ed4b2 100644
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -291,4 +291,15 @@ config DRM_PANEL_TRULY_NT35597_WQXGA
+ 	help
+ 	  Say Y here if you want to enable support for Truly NT35597 WQXGA Dual DSI
+ 	  Video Mode panel
++
++config DRM_PANEL_HIMAX_HX8394A
++	tristate "Himax HX8394A-based MIPI-DSI panels"
++	depends on OF
++	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for Himax HX8394A-based
++	  MIPI-DSI panels.
++	  To compile this driver as a module, choose M here.
++
+ endmenu
+diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
+index fb0cb3a..ad121a1 100644
+--- a/drivers/gpu/drm/panel/Makefile
++++ b/drivers/gpu/drm/panel/Makefile
+@@ -11,7 +11,6 @@ obj-$(CONFIG_DRM_PANEL_KINGDISPLAY_KD097D04) += panel-kingdisplay-kd097d04.o
+ obj-$(CONFIG_DRM_PANEL_LG_LG4573) += panel-lg-lg4573.o
+ obj-$(CONFIG_DRM_PANEL_OLIMEX_LCD_OLINUXINO) += panel-olimex-lcd-olinuxino.o
+ obj-$(CONFIG_DRM_PANEL_ORISETECH_OTM8009A) += panel-orisetech-otm8009a.o
+-obj-$(CONFIG_DRM_PANEL_OSD_OSD101T2587_53TS) += panel-osd-osd101t2587-53ts.o
+ obj-$(CONFIG_DRM_PANEL_PANASONIC_VVX10F034N00) += panel-panasonic-vvx10f034n00.o
+ obj-$(CONFIG_DRM_PANEL_RASPBERRYPI_TOUCHSCREEN) += panel-raspberrypi-touchscreen.o
+ obj-$(CONFIG_DRM_PANEL_RAYDIUM_RM68200) += panel-raydium-rm68200.o
+@@ -21,7 +20,6 @@ obj-$(CONFIG_DRM_PANEL_SAMSUNG_LD9040) += panel-samsung-ld9040.o
+ obj-$(CONFIG_DRM_PANEL_SAMSUNG_S6D16D0) += panel-samsung-s6d16d0.o
+ obj-$(CONFIG_DRM_PANEL_SAMSUNG_S6E3HA2) += panel-samsung-s6e3ha2.o
+ obj-$(CONFIG_DRM_PANEL_SAMSUNG_S6E63J0X03) += panel-samsung-s6e63j0x03.o
+-obj-$(CONFIG_DRM_PANEL_SAMSUNG_S6E63M0) += panel-samsung-s6e63m0.o
+ obj-$(CONFIG_DRM_PANEL_SAMSUNG_S6E8AA0) += panel-samsung-s6e8aa0.o
+ obj-$(CONFIG_DRM_PANEL_SEIKO_43WVF1G) += panel-seiko-43wvf1g.o
+ obj-$(CONFIG_DRM_PANEL_SHARP_LQ101R1SX01) += panel-sharp-lq101r1sx01.o
+@@ -30,3 +28,4 @@ obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7701) += panel-sitronix-st7701.o
+ obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7789V) += panel-sitronix-st7789v.o
+ obj-$(CONFIG_DRM_PANEL_TPO_TPG110) += panel-tpo-tpg110.o
+ obj-$(CONFIG_DRM_PANEL_TRULY_NT35597_WQXGA) += panel-truly-nt35597.o
++obj-$(CONFIG_DRM_PANEL_HIMAX_HX8394A) += panel-himax-hx8394a.o
+diff --git a/drivers/gpu/drm/panel/panel-himax-hx8394a.c b/drivers/gpu/drm/panel/panel-himax-hx8394a.c
+new file mode 100644
+index 0000000..ab80c98
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-himax-hx8394a.c
+@@ -0,0 +1,488 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * The driver for Himax HX8394A-based MIPI-DSI panels
++ *
++ * Copyright 2018 Sergey Suloev <ssuloev@orpaltech.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#define DEBUG
++
++#include <linux/backlight.h>
++#include <linux/delay.h>
++#include <linux/device.h>
++#include <linux/err.h>
++#include <linux/errno.h>
++#include <linux/fb.h>
++#include <linux/gpio.h>
++#include <linux/gpio/consumer.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/of_device.h>
++#include <linux/regulator/consumer.h>
++#include <linux/reset.h>
++
++#include <drm/drm_crtc.h>
++#include <drm/drm_mipi_dsi.h>
++#include <drm/drm_modes.h>
++#include <drm/drmP.h>
++#include <drm/drm_panel.h>
++
++#include <video/mipi_display.h>
++
++
++enum hx8394a_init_type {
++	INIT_CMD = 1,
++	INIT_DELAY,
++};
++
++struct hx8394a_init_instr {
++	int type;
++	size_t len;
++	const char *data;
++};
++
++#define _INIT_CMD(...) { \
++	.type = INIT_CMD, \
++	.len = sizeof((char[]){__VA_ARGS__}), \
++	.data = (char[]){__VA_ARGS__} \
++}
++#define _INIT_DELAY(ms) { \
++	.type = INIT_DELAY, \
++	.len = (ms), \
++}
++
++struct hx8394a_panel_desc {
++	unsigned long flags;
++	enum mipi_dsi_pixel_format format;
++	unsigned int lanes;
++
++	const struct drm_display_mode *mode;
++	const struct hx8394a_init_instr *init_cmds;
++
++	/**
++	 * @width: width (in mm) of the panel's active display area
++	 * @height: height (in mm) of the panel's active display area
++	 */
++	struct {
++		u32	width;
++		u32	height;
++	} size;
++};
++
++struct hx8394a_panel {
++	struct device *dev;
++	struct drm_panel base;
++
++	struct reset_control *rstc;
++	struct backlight_device *bl_dev;
++	struct regulator *power;
++
++	const struct hx8394a_panel_desc *desc;
++
++	bool prepared;
++	bool enabled;
++};
++
++static const struct hx8394a_init_instr microtech_lcd_mtf0500hdi22_init[] = {
++	// Set EXTC
++	_INIT_CMD(0xB9,	0xFF,0x83,0x94),
++
++	// Set MIPI
++	_INIT_CMD(0xBA,	0x13,0x82,0x00,0x16,0xC5,0x00,0x10,0xFF,0x0F,0x24,
++			0x03,0x21,0x24,0x25,0x20,0x08),
++
++	// Set POWER
++	_INIT_CMD(0xB1,	0x01,0x00,0x54,0x87,0x01,0x11,0x11,0x35,0x3D,0x29,
++			0x29,0x47,0x12,0x01,0xE6,0xE2),
++
++	// Set DISP
++	_INIT_CMD(0xB2,	0x00,0xC8,0x0D,0x05,0x00,0x22),
++
++	// Set CYC
++	_INIT_CMD(0xB4,	0x80,0x08,0x32,0x10,0x06,0x32,0x15,0x08,0x32,0x10,
++			0x08,0x33,0x05,0x55,0x0A,0x37,0x05,0x55,0x0A,0x68,
++			0x68,0x0A),
++
++	// Set GIP
++	_INIT_CMD(0xD5,	0x00,0x00,0x00,0x00,0x0A,0x00,0x01,0x00,0x00,0x33,
++			0x00,0x00,0x99,0x88,0xAA,0xBB,0x45,0x67,0x01,0x23,
++			0x01,0x23,0x88,0x88,0x88,0x88,0x88,0x88,0x88,0x88,
++			0x88,0x88,0x88,0x99,0xAA,0xBB,0x32,0x10,0x76,0x54,
++			0x32,0x10,0x88,0x88,0x88,0x88,0x88,0x88,0x88,0x88,
++			0x88,0x88,0x1E,0x08),
++
++	// Set GAMMA
++	_INIT_CMD(0xE0,	0x00,0x04,0x09,0x3F,0x3F,0x3F,0x17,0x3A,0x06,0x0C,
++			0x0E,0x11,0x13,0x11,0x14,0x0F,0x1B,0x00,0x04,0x09,
++			0x3F,0x3F,0x3F,0x17,0x3A,0x06,0x0C,0x0E,0x11,0x13,
++			0x11,0x14,0x0F,0x1B,0x0B,0x14,0x06,0x0E,0x0B,0x14,
++			0x06,0x0E),
++
++	_INIT_CMD(0xBF,	0x06,0x00,0x10,0x04),
++
++	// Set PANEL
++	_INIT_CMD(0xCC,	0x01),
++
++	// Set VCOM
++	_INIT_CMD(0xB6,	0x00),
++
++	_INIT_CMD(0xC0,	0x0C,0x17),
++
++	_INIT_CMD(0xC7,	0x00,0x10,0x00,0x10),
++
++	_INIT_CMD(0xBC,	0x07),
++
++	_INIT_CMD(0xD4,	0x30),
++
++	{ /*EOF*/ },
++};
++
++/*
++ * Display characteristics
++ * ============================================================================
++ * MTF0500HDI-22	720*1280	65.4*119.3*1.65	62.1*110.4      MIPI    IC:HX8394A 25PIN         IPS
++ */
++
++/*
++ * The horizontal and vertical timings
++ */
++#define MTF0500HDI22_HFP	108	/* pixels */
++#define MTF0500HDI22_HSYNC	36
++#define MTF0500HDI22_HBP	108
++
++#define MTF0500HDI22_VFP	9	/* lines */
++#define MTF0500HDI22_VSYNC	2
++#define MTF0500HDI22_VBP	15
++
++#define MTF0500HDI22_HDISP	720
++#define MTF0500HDI22_VDISP	1280
++
++
++static const struct drm_display_mode microtech_lcd_mtf0500hdi22_mode = {
++	.clock		= 76166,	/*KHz*/
++	.vrefresh	= 60,		/*Hz*/
++
++	.hdisplay	= MTF0500HDI22_HDISP,
++	.hsync_start	= MTF0500HDI22_HDISP + MTF0500HDI22_HFP,
++	.hsync_end	= MTF0500HDI22_HDISP + MTF0500HDI22_HFP + MTF0500HDI22_HSYNC,
++	.htotal		= MTF0500HDI22_HDISP + MTF0500HDI22_HFP + MTF0500HDI22_HSYNC + MTF0500HDI22_HBP,
++
++	.vdisplay	= MTF0500HDI22_VDISP,
++	.vsync_start	= MTF0500HDI22_VDISP + MTF0500HDI22_VFP,
++	.vsync_end	= MTF0500HDI22_VDISP + MTF0500HDI22_VFP + MTF0500HDI22_VSYNC,
++	.vtotal		= MTF0500HDI22_VDISP + MTF0500HDI22_VFP + MTF0500HDI22_VSYNC + MTF0500HDI22_VBP,
++};
++
++static const struct hx8394a_panel_desc microtech_lcd_mtf0500hdi22 = {
++	.init_cmds = microtech_lcd_mtf0500hdi22_init,
++	.mode	= &microtech_lcd_mtf0500hdi22_mode,
++	.size	= {
++		.width	= 62,
++		.height	= 110,
++	},
++	.format = MIPI_DSI_FMT_RGB888,
++	.lanes = 4,
++	.flags = MIPI_DSI_MODE_VIDEO |
++		MIPI_DSI_MODE_VIDEO_BURST |
++		MIPI_DSI_MODE_VIDEO_SYNC_PULSE,
++};
++
++static struct hx8394a_panel *panel_to_hxp(struct drm_panel *panel)
++{
++	return container_of(panel, struct hx8394a_panel, base);
++}
++
++static int hx8394a_panel_unprepare(struct drm_panel *panel)
++{
++	struct hx8394a_panel *hxp = panel_to_hxp(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(hxp->dev);
++	int ret;
++
++	if (!hxp->prepared)
++		return 0;
++
++	dev_dbg(&dsi->dev, "panel unprepare\n");
++
++	ret = mipi_dsi_dcs_set_display_off(dsi);
++	if (ret) {
++		DRM_WARN("failed to set display OFF: %d\n", ret);
++		return ret;
++	}
++	/* wait for display off */
++	msleep(20);
++
++	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
++	if (ret) {
++		DRM_WARN("failed to enter sleep mode: %d\n", ret);
++		return ret;
++	}
++
++	/* wait for entering sleep mode*/
++	msleep(200);
++
++	/* power down the panel */
++	regulator_disable(hxp->power);
++
++	hxp->prepared = false;
++
++	return 0;
++}
++
++static int hx8394a_panel_prepare(struct drm_panel *panel)
++{
++	struct hx8394a_panel *hxp = panel_to_hxp(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(hxp->dev);
++	int ret;
++
++	if (hxp->prepared)
++		return 0;
++
++	dev_dbg(&dsi->dev, "panel prepare\n");
++
++	/* power up the panel */
++	ret = regulator_enable(hxp->power);
++	if (ret) {
++		DRM_ERROR("failed to enable regulator: %d\n", ret);
++		return ret;
++	}
++
++	/* reset the panel*/
++	reset_control_reset(hxp->rstc);
++
++	if (hxp->desc->init_cmds) {
++		const struct hx8394a_init_instr *cmds = hxp->desc->init_cmds;
++		unsigned int i;
++
++		/* execute panel init sequence */
++		for (i = 0; cmds[i].type != 0; i++) {
++			const struct  hx8394a_init_instr *cmd = &cmds[i];
++
++			if (cmd->type == INIT_CMD) {
++				dev_dbg(&dsi->dev, "panel write, len = %d\n", cmd->len);
++
++				ret = mipi_dsi_dcs_write_buffer(dsi, cmd->data, cmd->len);
++			        if (ret < 0) {
++					DRM_ERROR("panel write failed: %d\n", ret);
++					goto err_quit;
++				}
++			} else if (cmd->type == INIT_DELAY) {
++				msleep(cmd->len);
++			}
++		}
++	}
++
++/*	ret = mipi_dsi_dcs_set_tear_on(dsi,
++				MIPI_DSI_DCS_TEAR_MODE_VBLANK);
++	if (ret) {
++		DRM_WARN("failed to set tear on: %d\n", ret);
++		goto err_quit;
++	}*/
++
++	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
++	if (ret) {
++		DRM_ERROR("failed to exit sleep mode: %d\n", ret);
++		return ret;
++	}
++
++	/* wait for exit sleep mode */
++	msleep(200);
++
++	ret = mipi_dsi_dcs_set_display_on(dsi);
++	if (ret) {
++		DRM_ERROR("couldn't set display ON: %d\n", ret);
++		goto err_quit;
++	}
++	/* wait for display on */
++	msleep(20);
++
++	hxp->prepared = true;
++
++	return 0;
++
++err_quit:
++	/* power down the panel */
++        regulator_disable(hxp->power);
++
++	return ret;
++}
++
++static int hx8394a_panel_disable(struct drm_panel *panel)
++{
++	struct hx8394a_panel *hxp = panel_to_hxp(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(hxp->dev);
++	int ret;
++
++	if (!hxp->enabled)
++		return 0;
++
++	dev_dbg(&dsi->dev, "panel disable\n");
++
++	backlight_disable(hxp->bl_dev);
++
++	hxp->enabled = false;
++
++	return 0;
++}
++
++static int hx8394a_panel_enable(struct drm_panel *panel)
++{
++	struct hx8394a_panel *hxp = panel_to_hxp(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(hxp->dev);
++	int ret;
++
++	if (hxp->enabled)
++		return 0;
++
++	dev_dbg(&dsi->dev, "panel enable\n");
++
++	ret = backlight_enable(hxp->bl_dev);
++	if (ret) {
++		DRM_ERROR("failed to enable backlight: %d\n",ret);
++		return ret;
++	}
++
++	hxp->enabled = true;
++
++	return 0;
++}
++
++static int hx8394a_panel_get_modes(struct drm_panel *panel)
++{
++	struct hx8394a_panel *hxp = panel_to_hxp(panel);
++	struct drm_connector *connector = panel->connector;
++	const struct drm_display_mode *m = hxp->desc->mode;
++	struct drm_display_mode *mode;
++
++	mode = drm_mode_duplicate(panel->drm, m);
++	if (!mode) {
++		DRM_ERROR("failed to add mode %ux%ux@%u\n",
++			  m->hdisplay, m->vdisplay, m->vrefresh);
++		return -ENOMEM;
++	}
++
++	drm_mode_set_name(mode);
++	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
++
++	connector->display_info.bpc = 8;
++	connector->display_info.width_mm = hxp->desc->size.width;
++	connector->display_info.height_mm = hxp->desc->size.height;
++
++	drm_mode_probed_add(connector, mode);
++
++	return 1;
++}
++
++static const struct drm_panel_funcs hx8394a_panel_funcs = {
++	.disable	= hx8394a_panel_disable,
++	.unprepare	= hx8394a_panel_unprepare,
++	.prepare	= hx8394a_panel_prepare,
++	.enable		= hx8394a_panel_enable,
++	.get_modes	= hx8394a_panel_get_modes,
++};
++
++static int hx8394a_panel_probe(struct mipi_dsi_device *dsi)
++{
++	struct device *dev = &dsi->dev;
++	struct hx8394a_panel *hxp;
++	int ret;
++
++	hxp = devm_kzalloc(dev, sizeof(*hxp), GFP_KERNEL);
++	if (!hxp)
++		return -ENOMEM;
++
++	mipi_dsi_set_drvdata(dsi, hxp);
++	hxp->dev = dev;
++
++	hxp->desc = of_device_get_match_data(dev);
++	if (!hxp->desc) {
++		dev_err(dev, "no device match found\n");
++		return -ENODEV;
++	}
++
++	hxp->rstc = devm_reset_control_get(dev, "reset");
++	if (IS_ERR(hxp->rstc)) {
++		ret = PTR_ERR(hxp->rstc);
++		dev_err(dev, "couldn't get our reset line: %d\n", ret);
++		return ret;
++	}
++
++	hxp->power = devm_regulator_get(dev, "power");
++	if (IS_ERR(hxp->power)) {
++		ret = PTR_ERR(hxp->power);
++		dev_err(dev, "couldn't get our regulator: %d\n", ret);
++		return ret;
++	}
++
++	hxp->bl_dev = devm_of_find_backlight(dev);
++	if (IS_ERR(hxp->bl_dev)) {
++		ret = PTR_ERR(hxp->bl_dev);
++		dev_err(dev, "couldn't find backlight: %d\n", ret);
++		return ret;
++	}
++
++	drm_panel_init(&hxp->base);
++	hxp->base.dev = dev;
++	hxp->base.funcs = &hx8394a_panel_funcs;
++
++	ret = drm_panel_add(&hxp->base);
++	if (ret) {
++		dev_err(dev, "couldn't add drm panel: %d\n", ret);
++		return ret;
++	}
++
++	dsi->lanes  = hxp->desc->lanes;
++	dsi->format = hxp->desc->format;
++	dsi->mode_flags	= hxp->desc->flags;
++
++	ret = mipi_dsi_attach(dsi);
++	if (ret) {
++		dev_err(dev, "failed to attach dsi device: %d\n", ret);
++		drm_panel_remove(&hxp->base);
++		return ret;
++	}
++
++	return 0;
++}
++
++static int hx8394a_panel_remove(struct mipi_dsi_device *dsi)
++{
++	struct hx8394a_panel *hxp = mipi_dsi_get_drvdata(dsi);
++	int ret;
++
++	ret = mipi_dsi_detach(dsi);
++	if (ret) {
++		dev_err(&dsi->dev,"failed to detach DSI host: %d\n", ret);
++	}
++
++	drm_panel_remove(&hxp->base);
++
++	return 0;
++}
++
++static const struct of_device_id hx8394a_panel_dsi_of_match[] = {
++	{
++		.compatible = "microtech-lcd,mtf0500hdi-22",
++		.data  = &microtech_lcd_mtf0500hdi22,
++	},
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(of, hx8394a_panel_dsi_of_match);
++
++static struct mipi_dsi_driver hx8394a_panel_dsi_driver = {
++	.probe	= hx8394a_panel_probe,
++	.remove	= hx8394a_panel_remove,
++	.driver	= {
++		.name = "panel-himax-hx8394a",
++		.of_match_table = hx8394a_panel_dsi_of_match,
++	},
++};
++module_mipi_dsi_driver(hx8394a_panel_dsi_driver);
++
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
++MODULE_DESCRIPTION("The driver for Himax HX8394A-based MIPI-DSI panels");
++MODULE_LICENSE("GPL v2");
+-- 
+2.17.1
+

@@ -1,0 +1,25 @@
+From 97baffb3e0d542fcb8cda80874e8cfedef6ac19f Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Fri, 14 Jun 2019 10:25:18 +0300
+Subject: [PATCH] i2c/bcm2835: Avoid conflicts on i2c0
+
+---
+ arch/arm/boot/dts/bcm2835-rpi.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/bcm2835-rpi.dtsi b/arch/arm/boot/dts/bcm2835-rpi.dtsi
+index 715d50c..39d779f 100644
+--- a/arch/arm/boot/dts/bcm2835-rpi.dtsi
++++ b/arch/arm/boot/dts/bcm2835-rpi.dtsi
+@@ -53,7 +53,7 @@
+ &i2c0 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&i2c0_gpio0>;
+-	status = "okay";
++	status = "disabled";
+ 	clock-frequency = <100000>;
+ };
+ 
+-- 
+2.17.1
+

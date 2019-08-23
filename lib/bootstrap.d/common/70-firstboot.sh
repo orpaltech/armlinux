@@ -22,11 +22,11 @@ cat ${FILES_DIR}/firstboot/25-create-resolv-symlink.sh >> "${ETC_DIR}/rc.firstbo
 cat ${FILES_DIR}/firstboot/40-resize-rootfs.sh >> "${ETC_DIR}/rc.firstboot"
 
 
-if [ -n "${DISABLE_NETWORK_IFACES}" ] ; then
-  IFS=, read -ra disable_net_ifaces <<< "${DISABLE_NETWORK_IFACES}"
-  for disable_net_iface in "${disable_net_ifaces[@]}"
+if [ ! -z "${SHUTDOWN_NETWORK_IFACES}" ] ; then
+  IFS=, read -ra net_ifaces <<< "${SHUTDOWN_NETWORK_IFACES}"
+  for net_iface in "${net_ifaces[@]}"
   do
-    echo "ip link set ${disable_net_iface} down" >> "${ETC_DIR}/rc.firstboot"
+    echo "ip link set ${net_iface} down" >> "${ETC_DIR}/rc.firstboot"
   done
 fi
 

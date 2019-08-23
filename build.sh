@@ -35,6 +35,8 @@ sudo_init
 # ensure all required packages are installed
 get_host_pkgs
 
+get_toolchains
+
 #-----------------------------------------------------------------------
 
 if [ -z "${CONFIG}" ] ; then
@@ -50,6 +52,16 @@ set -x
 
 set +x
 
+# check image destination
+if ! [[ ${DEST_DEV_TYPE} =~ ^(img|sd)$ ]] ; then
+  echo "error: DEST_DEV_TYPE has unsupported value '${DEST_DEV_TYPE}'!"
+  exit 1
+fi
+if [ "${DEST_DEV_TYPE}" = sd ] && [ -z "${DEST_BLOCK_DEV}" ] ; then
+  echo "error: DEST_BLOCK_DEV must be specified!"
+  exit 1
+fi
+
 if [ ! -d "${BUILD_EXTRA_DIR}" ] ; then
   echo "error: '${BUILD_EXTRA_DIR}' directory not found!"
   exit 1
@@ -63,13 +75,18 @@ if [ -z "${BOARD}" ] ; then
   echo "error: board must be specified!"
   exit 1
 fi
-BOARD_CONF="${LIBDIR}/boards/${BOARD}.conf"
+BOARD_CONF="${LIBDIR}/boards/${CONFIG}/${BOARD}.conf"
+if [ ! -f $BOARD_CONF ] ; then
+  BOARD_CONF="${LIBDIR}/boards/${BOARD}.conf"
+fi
 if [ -f $BOARD_CONF ] ; then
 . $BOARD_CONF
 else
   echo "error: Board ${BOARD} is not supported!"
   exit 1
 fi
+
+set_cross_compile
 
 BUILD_IMAGE=${BUILD_IMAGE:="yes"}
 
@@ -100,7 +117,10 @@ display_alert "Selected platform:" "${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_AR
 TICKS_BEGIN=${SECONDS}
 DATETIME_BEGIN=$(date '+%d/%m/%Y %H:%M:%S')
 
-update_toolchains
+if [ ! -f "${CROSS_COMPILE}gcc" ] ; then
+  echo "error: toolchain not found [${CROSS_COMPILE}] !"
+  exit 1
+fi
 
 update_firmware
 
@@ -113,11 +133,13 @@ update_kernel
 patch_kernel
 
 # build u-boot & kernel & optional firmware
-display_alert "Selected toolchain:" "${CROSS_COMPILE}gcc" "ext"
+display_alert "Selected toolchain:" "${UBOOT_CROSS_COMPILE}gcc" "ext"
 
 compile_firmware
 
 compile_uboot
+
+display_alert "Selected toolchain:" "${KERNEL_CROSS_COMPILE}gcc" "ext"
 
 compile_kernel
 

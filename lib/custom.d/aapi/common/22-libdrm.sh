@@ -1,17 +1,17 @@
-LIBDRM_VER="2.4.96"
+LIBDRM_VER="2.4.98"
 LIBDRM_SRC_DIR=$EXTRADIR/libdrm-$LIBDRM_VER
 LIBDRM_OUT_DIR=$LIBDRM_SRC_DIR/build/$LINUX_PLATFORM
 
 LIBDRM_TAR_URL="https://dri.freedesktop.org/libdrm/libdrm-${LIBDRM_VER}.tar.gz"
 
 LIBDRM_FORCE_UPDATE="no"
-LIBDRM_FORCE_REBUILD="yes"
+LIBDRM_FORCE_REBUILD="no"
 
 LIBDRM_PREFIX=/usr
 
 # ----------------------------------------------------------------------------
 
-libdrm_get_src()
+libdrm_update()
 {
 	if [ ! -d $LIBDRM_SRC_DIR ] || [ "${LIBDRM_FORCE_UPDATE}" = yes ] ; then
 		echo "Download LIBDRM sources..."
@@ -81,7 +81,7 @@ libdrm_deploy()
 
 echo "Building LIBDRM..."
 
-libdrm_get_src
+libdrm_update
 
 libdrm_make
 

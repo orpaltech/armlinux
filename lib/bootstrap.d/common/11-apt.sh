@@ -10,7 +10,7 @@ fi
 
 install_readonly "${FILES_DIR}/apt/sources.list" "${ETC_DIR}/apt/sources.list"
 
-# Use specified APT server and release
+# Use specified debian APT server and debian release
 sed -i "s/\/deb.debian.org\//\/${APT_SERVER}\//" "${ETC_DIR}/apt/sources.list"
 sed -i "s/ stretch/ ${DEBIAN_RELEASE}/" "${ETC_DIR}/apt/sources.list"
 
@@ -34,8 +34,12 @@ fi
 
 chroot_exec apt-get -qq -y -f install $(echo "${APT_INCLUDES}" | sed -e 's/,/ /g')
 
+if [ "${ENABLE_X11}" = yes ] ; then
+  chroot_exec apt-get -qq -y -f install "libxcb-*-dev"
+fi
+
 if [ ! -z "${APT_REMOVE_PACKAGES}" ] ; then
-	chroot_exec apt-get -qq -y remove $(echo "${APT_REMOVE_PACKAGES}" | sed -e 's/,/ /g')
+  chroot_exec apt-get -qq -y remove $(echo "${APT_REMOVE_PACKAGES}" | sed -e 's/,/ /g')
 fi
 
 chroot_exec apt-get -qq -y check
