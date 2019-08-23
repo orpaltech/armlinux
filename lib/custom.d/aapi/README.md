@@ -1,1 +1,1 @@
-This directory contains SD-card image customization scripts for "aapi" configuration.
+This directory contains SD-card image customization scripts for "aapi" configuration. The top-level directories listed here must be "common" containing platform-independednt customization scripts and optional architecture-specific folders. Currently supported architectures are "sunxi" and "rpi".
