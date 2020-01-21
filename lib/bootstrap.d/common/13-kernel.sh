@@ -17,21 +17,28 @@ fi
 # Install kernel modules
 make -C "${KERNEL_DIR}" INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH="${R}" modules_install
 
+# -----------------------------------------------------------------------------
 # Preserve headers from being updated by kernel
+# -----------------------------------------------------------------------------
 if [ -f $USR_DIR/include/linux/i2c-dev.h.kernel ] ; then
   mv $USR_DIR/include/linux/i2c-dev.h	$USR_DIR/include/linux/i2c-dev.h.temp
 fi
+# -----------------------------------------------------------------------------
+
 
 # Install kernel headers
 if [ "${KERNEL_INSTALL_HEADERS}" = yes ] ; then
   make -C "${KERNEL_DIR}" INSTALL_HDR_PATH="${USR_DIR}" headers_install
 fi
 
+# -----------------------------------------------------------------------------
 # Restore headers
+# -----------------------------------------------------------------------------
 if [ -f $USR_DIR/include/linux/i2c-dev.h.temp ] ; then
   mv $USR_DIR/include/linux/i2c-dev.h		$USR_DIR/include/linux/i2c-dev.h.kernel
   mv $USR_DIR/include/linux/i2c-dev.h.temp	$USR_DIR/include/linux/i2c-dev.h
 fi
+# -----------------------------------------------------------------------------
 
 # Prepare boot (firmware) directory
 mkdir -p $BOOT_DIR

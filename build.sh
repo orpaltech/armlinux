@@ -105,7 +105,7 @@ UBOOT_BASE_DIR=${SRCDIR}/u-boot/${UBOOT_REPO_NAME}
 KERNEL_BASE_DIR=${SRCDIR}/linux/${KERNEL_REPO_NAME}
 
 # source library scripts
-. ${LIBDIR}/update-sources.sh
+. ${LIBDIR}/prepare-sources.sh
 . ${LIBDIR}/compile.sh
 . ${LIBDIR}/create-image.sh
 

@@ -1,0 +1,1285 @@
+From e99506d48234af6802e39c05d9c1ed9bcd58bc91 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sat, 11 Jan 2020 23:10:00 +0300
+Subject: [PATCH] sun50i-a64: Add DT-overlays
+
+---
+ arch/arm64/boot/dts/allwinner/Makefile        |   2 +
+ .../boot/dts/allwinner/overlays/Makefile      |  32 +++
+ .../overlays/README.sun50i-a64-overlays       |   1 +
+ .../overlays/sun50i-a64-aapi-ctp.dts          |  52 ++++
+ .../overlays/sun50i-a64-aapi-fgauge.dts       |  22 ++
+ .../overlays/sun50i-a64-aapi-gen.dts          |  47 ++++
+ .../overlays/sun50i-a64-aapi-lcd.dts          |  58 ++++
+ .../overlays/sun50i-a64-aapi-panel.dts        | 118 ++++++++
+ .../overlays/sun50i-a64-aapi-power.dts        |  31 +++
+ .../overlays/sun50i-a64-aapi-sound.dts        |  47 ++++
+ .../overlays/sun50i-a64-aapi-vna.dts          |  39 +++
+ .../allwinner/overlays/sun50i-a64-aapi.dts    | 261 ++++++++++++++++++
+ .../overlays/sun50i-a64-audioinjector-pi.dts  |  44 +++
+ .../overlays/sun50i-a64-ertft0356-drm.dts     | 128 +++++++++
+ .../overlays/sun50i-a64-fixup.scr-cmd         |  71 +++++
+ .../overlays/sun50i-a64-gpio-reset.dts        |  28 ++
+ .../overlays/sun50i-a64-gy-pcm5102-sound.dts  |  34 +++
+ .../allwinner/overlays/sun50i-a64-no-hdmi.dts |  20 ++
+ .../overlays/sun50i-a64-nrf24-spi.dts         |  65 +++++
+ .../allwinner/overlays/sun50i-a64-r_pwm.dts   |  13 +
+ 20 files changed, 1113 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/Makefile
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/README.sun50i-a64-overlays
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-ctp.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-fgauge.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-gen.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-lcd.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-panel.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-power.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-sound.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-vna.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-audioinjector-pi.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-ertft0356-drm.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-fixup.scr-cmd
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gpio-reset.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gy-pcm5102-sound.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-no-hdmi.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-nrf24-spi.dts
+ create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-r_pwm.dts
+
+diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile
+index d241802..cd5bb49 100644
+--- a/arch/arm64/boot/dts/allwinner/Makefile
++++ b/arch/arm64/boot/dts/allwinner/Makefile
+@@ -27,3 +27,5 @@ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-lite2.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-orangepi-one-plus.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-pine-h64.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6.dtb
++
++subdir-y	:= overlays
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/Makefile b/arch/arm64/boot/dts/allwinner/overlays/Makefile
+new file mode 100644
+index 0000000..f893f83
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/Makefile
+@@ -0,0 +1,32 @@
++# SPDX-License-Identifier: GPL-2.0
++ifeq ($(CONFIG_OF_OVERLAY),y)
++
++dtbo-$(CONFIG_ARCH_SUNXI) += \
++	sun50i-a64-aapi-gen.dtbo \
++	sun50i-a64-aapi-ctp.dtbo \
++	sun50i-a64-aapi-fgauge.dtbo \
++	sun50i-a64-aapi-lcd.dtbo \
++	sun50i-a64-aapi-panel.dtbo \
++	sun50i-a64-aapi-power.dtbo \
++	sun50i-a64-aapi-sound.dtbo \
++	sun50i-a64-aapi-vna.dtbo \
++	sun50i-a64-aapi.dtbo \
++	sun50i-a64-audioinjector-pi.dtbo \
++	sun50i-a64-ertft0356-drm.dtbo \
++	sun50i-a64-gpio-reset.dtbo \
++	sun50i-a64-gy-pcm5102-sound.dtbo \
++	sun50i-a64-nrf24-spi.dtbo \
++	sun50i-a64-r_pwm.dtbo \
++	sun50i-a64-no-hdmi.dtbo
++
++scr-$(CONFIG_ARCH_SUNXI) += \
++	sun50i-a64-fixup.scr
++
++dtbotxt-$(CONFIG_ARCH_SUNXI) += \
++	README.sun50i-a64-overlays
++
++targets	+= $(dtbo-y) $(scr-y) $(dtbotxt-y)
++
++endif
++
++extra-y	:= $(dtbo-y) $(scr-y) $(dtbotxt-y)
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/README.sun50i-a64-overlays b/arch/arm64/boot/dts/allwinner/overlays/README.sun50i-a64-overlays
+new file mode 100644
+index 0000000..79dffee
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/README.sun50i-a64-overlays
+@@ -0,0 +1 @@
++# overlays for sun50i-a64 (Allwinner A64)
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-ctp.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-ctp.dts
+new file mode 100644
+index 0000000..c0cf678
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-ctp.dts
+@@ -0,0 +1,52 @@
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target = <&i2c0>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clock-frequency = <100000>;
++			status = "okay";
++
++			aapi_ctp: edt-ft5x06@38 {
++				compatible = "edt,edt-ft5306","edt,edt-ft5x06";
++				reg = <0x38>;
++
++				power-supply = <&reg_vdd_panel>;
++
++				resets = <&rstc_gpio 1>;
++				reset-names = "reset";
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&edt_ft5x06_pins>;
++
++				interrupt-parent = <&r_pio>;
++				interrupts = <0 7 IRQ_TYPE_EDGE_FALLING>;
++
++				touchscreen-size-x = <480>;
++				touchscreen-size-y = <854>;
++				/*touchscreen-inverted-x;*/
++				/*touchscreen-inverted-y;*/
++				/*touchscreen-swapped-x-y;*/
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&r_pio>;
++		__overlay__ {
++			edt_ft5x06_pins: edt-ft5x06-pins {
++				pins = "PL7";
++				function = "gpio_in";
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-fgauge.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-fgauge.dts
+new file mode 100644
+index 0000000..fc8fcbd
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-fgauge.dts
+@@ -0,0 +1,22 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target = <&r_i2c>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clock-frequency = <100000>;
++			status = "okay";
++
++			aapi_fgauge: mcp3422@68 {
++				compatible = "microchip,mcp3422";
++				reg = <0x68>;
++				#io-channel-cells = <1>;
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-gen.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-gen.dts
+new file mode 100644
+index 0000000..f9da6d7
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-gen.dts
+@@ -0,0 +1,47 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++
++			/* 27MHz reference crystal */
++			aapi_xtal: aapi-xtal@27 {
++				compatible = "fixed-clock";
++				#clock-cells = <0>;
++				clock-frequency = <27000000>;
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&r_i2c>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clock-frequency = <100000>;
++			status = "okay";
++
++			aapi_clk: aapi-clk@60 {
++				compatible = "orpaltech,aapi-clk-si5351";
++				reg = <0x60>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++				#clock-cells = <1>;
++
++				/* connect xtal input to 27MHz reference */
++				clocks = <&aapi_xtal>;
++				clock-names = "xtal";
++
++				xtal-frequency = <27000000>;
++				xtal-correction = <0 0>; /*<value,sign>*/
++
++				clock-output-names = "clk0", "clk1";
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-lcd.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-lcd.dts
+new file mode 100644
+index 0000000..5e0e6e5
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-lcd.dts
+@@ -0,0 +1,58 @@
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target = <&dsi>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			aapi_lcd: panel-hx8379a@0 {
++				compatible = "truly,tda-fwvga0500g50008",
++					     "himax,hx8379a";
++				label = "aapi-panel";
++				reg = <0>;
++
++				power-supply = <&reg_vdd_panel>;
++
++				resets = <&rstc_gpio 0>;
++				reset-names = "reset";
++
++				backlight = <&aapi_bl>;
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&dphy>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/";
++		__overlay__ {
++			aapi_bl: backlight {
++				compatible = "pwm-backlight";
++				pwms = <&r_pwm 0 5000000 0>; /*200 Hz*/
++				brightness-levels = <0 4 8 16 32 64 128>;
++				default-brightness-level = <1>;
++			};
++		};
++	};
++
++	fragment@3 {
++		target = <&r_pwm>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-panel.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-panel.dts
+new file mode 100644
+index 0000000..8f0a243
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-panel.dts
+@@ -0,0 +1,118 @@
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pwm/pwm.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target = <&dsi>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			aapi_lcd: panel-hx8379a@0 {
++				compatible = "truly,tda-fwvga0500g50008",
++					     "himax,hx8379a";
++				label = "aapi-lcd";
++				reg = <0>;
++
++				power-supply = <&reg_vdd_panel>;
++
++				resets = <&rstc_gpio 0>;
++				reset-names = "reset";
++
++				backlight = <&aapi_bl>;
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&dphy>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/";
++		__overlay__ {
++			aapi_bl: backlight {
++				compatible = "pwm-backlight";
++				pwms = <&r_pwm 0 2000000 0>; /*500 Hz*/
++                                pwm-names = "backlight";
++				brightness-levels = <0 4 8 16 32 64 128>;
++				default-brightness-level = <1>;
++			};
++		};
++	};
++
++	fragment@3 {
++		target = <&r_pwm>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@4 {
++		target = <&i2c0>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clock-frequency = <100000>;
++			status = "okay";
++
++			aapi_ctp: edt-ft5x06@38 {
++				compatible = "edt,edt-ft5306",
++					     "edt,edt-ft5x06";
++				reg = <0x38>;
++
++				power-supply = <&reg_vdd_panel>;
++
++				resets = <&rstc_gpio 1>;
++				reset-names = "reset";
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&edt_ft5x06_pins>;
++
++				interrupt-parent = <&r_pio>;
++				interrupts = <0 7 IRQ_TYPE_EDGE_FALLING>;
++
++				touchscreen-size-x = <480>;
++				touchscreen-size-y = <854>;
++				/*touchscreen-inverted-x;*/
++				/*touchscreen-inverted-y;*/
++				/*touchscreen-swapped-x-y;*/
++			};
++		};
++	};
++
++	fragment@5 {
++		target = <&r_pio>;
++		__overlay__ {
++			edt_ft5x06_pins: edt-ft5x06-pins {
++				pins = "PL7";
++				function = "gpio_in";
++			};
++		};
++	};
++
++	fragment@6 {
++		target = <&hdmi>;
++		__overlay__ {
++			status = "disabled";
++		};
++	};
++
++	fragment@7 {
++		target = <&tcon1>;
++		__overlay__ {
++			status = "disabled";
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-power.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-power.dts
+new file mode 100644
+index 0000000..6380a41
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-power.dts
+@@ -0,0 +1,31 @@
++#include <dt-bindings/gpio/gpio.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			reg_vdd_panel: vdd-panel {
++				compatible = "regulator-fixed";
++				regulator-name = "vdd-panel";
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++				gpio = <&pio 7 7 GPIO_ACTIVE_HIGH>; /* PANEL_EN: PH7 */
++				enable-active-high;
++			};
++
++			reg_vdd_radio: vdd-radio {
++				compatible = "regulator-fixed";
++				regulator-name = "vdd-radio";
++				regulator-min-microvolt = <5000000>;
++				regulator-max-microvolt = <5000000>;
++				gpio = <&pio 7 6 GPIO_ACTIVE_HIGH>; /* RADIO_EN: PH6 */
++				enable-active-high;
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-sound.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-sound.dts
+new file mode 100644
+index 0000000..213e140
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-sound.dts
+@@ -0,0 +1,47 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			aapi_sound: aapi-sound {
++				compatible = "orpaltech,aapi-wm8731-sound";
++				orpal,i2s-controller = <&i2s0>;
++				orpal,audio-codec = <&aapi_codec>;
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&r_i2c>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clock-frequency = <100000>;
++			status = "okay";
++
++			aapi_codec: wm8731@1a {
++				compatible = "wlf,wm8731";
++				#sound-dai-cells = <0>;
++				reg = <0x1a>;
++
++				/*---------------REMOVE THIS----------------------------*/
++				/*clocks = <&aapi_clk 0>;*/
++				/*clock-names = "dummy-clk";*/
++				/*------------------------------------------------------*/
++			};
++		};
++	};
++
++	fragment@2 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_di>;
++			pinctrl-names = "default";
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-vna.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-vna.dts
+new file mode 100644
+index 0000000..fcecaa6
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi-vna.dts
+@@ -0,0 +1,39 @@
++#include <dt-bindings/gpio/gpio.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			aapi_vna: aapi-vna {
++				compatible = "orpaltech,aapi-160";
++
++				clocks = <&aapi_clk 0>,
++					 <&aapi_clk 1>;
++				clock-names = "clk0", "clk1";
++
++				intermediate-freq = <10031>;
++				initial-freq = <14000000>;
++
++				shutdown-ctrl-gpios = <&pio 7 10 GPIO_ACTIVE_LOW>; /*PH10*/
++				shutdown-timeout-ms = <5000>;
++				shutdown-req-gpios = <&pio 7 11 0>;	/*PH11*/
++
++				charger-pg-gpios = <&pio 7 3 0>;	/*PH3*/
++				charger-stat1-gpios = <&pio 7 4 0>;	/*PH4*/
++				charger-stat2-gpios = <&pio 7 5 0>;	/*PH5*/
++
++				io-channels = <&aapi_fgauge 0>,
++					      <&aapi_fgauge 1>;
++				io-channel-names = "v_battery", "v_sensor";
++				#io-channel-cells = <1>;
++
++				radio-supply = <&reg_vdd_radio>;
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi.dts
+new file mode 100644
+index 0000000..2cd4805
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-aapi.dts
+@@ -0,0 +1,261 @@
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			rstc_gpio: rstc-gpio@0 {
++				compatible = "linux,gpio-reset-controller";
++				#reset-cells = <1>;
++
++				lcd {
++					gpios = <&r_pio 0 12 GPIO_ACTIVE_LOW>; /*PL12*/
++					duration-ms = <10 2 10>;
++				};
++
++				ts {
++					gpios = <&pio 1 2 GPIO_ACTIVE_LOW>; /*PB2*/
++					duration-ms = <10 2 10>;
++				};
++
++				/* Add more reset lines below this line */
++			};
++
++			reg_vdd_5v: aapi-vdd-5v0 {
++				compatible = "regulator-fixed";
++				regulator-name = "aapi-vdd-5v0";
++				regulator-always-on;
++				regulator-boot-on;
++			};
++
++			reg_vdd_panel: aapi-vdd-panel {
++				compatible = "regulator-fixed";
++				regulator-name = "aapi-vdd-panel";
++				regulator-min-microvolt = <3300000>;
++				regulator-max-microvolt = <3300000>;
++				gpios = <&pio 3 3 GPIO_ACTIVE_HIGH>;	/* PANEL_EN: PD3 */
++				enable-active-high;
++				startup-delay-us = <50000>;
++				vin-supply = <&reg_vdd_5v>;
++			};
++
++			reg_vdd_radio: aapi-vdd-radio {
++				compatible = "regulator-fixed";
++				regulator-name = "aapi-vdd-radio";
++				regulator-min-microvolt = <5000000>;
++				regulator-max-microvolt = <5000000>;
++				gpios = <&pio 3 5 GPIO_ACTIVE_HIGH>;	/* RADIO_EN: PD5 */
++				enable-active-high;
++				startup-delay-us = <50000>;
++				vin-supply = <&reg_vdd_5v>;
++			};
++
++			/* 27MHz reference crystal */
++			aapi_xtal: aapi-xtal@27 {
++				compatible = "fixed-clock";
++				#clock-cells = <0>;
++				clock-frequency = <27000000>;
++			};
++
++			aapi_vna: aapi-vna {
++				compatible = "orpaltech,aapi-160";
++
++				clocks = <&aapi_gen 0>,
++					 <&aapi_gen 1>;
++				clock-names = "clk0", "clk1";
++
++				intermediate-freq = <10031>;
++				initial-freq = <14000000>;
++
++				shutdown-ctrl-gpios = <&pio 3 6 GPIO_ACTIVE_LOW>; /*PD6*/
++				shutdown-timeout-ms = <3000>;
++				shutdown-req-gpios = <&pio 7 11 0>;	/*PH11*/
++
++				charger-en-gpios = <&pio 3 4 GPIO_ACTIVE_LOW>;	/*PD4*/
++				charger-pg-gpios = <&pio 7 10 0>;	/*PH10*/
++				charger-stat1-gpios = <&pio 7 4 0>;	/*PH4*/
++				charger-stat2-gpios = <&pio 7 5 0>;	/*PH5*/
++
++				radio-supply = <&reg_vdd_radio>;
++			};
++
++			aapi_sound: aapi-sound {
++				compatible = "orpaltech,aapi-wm8731-sound";
++				orpal,i2s-controller = <&i2s0>;
++				orpal,audio-codec = <&aapi_codec>;
++			};
++
++			aapi_bl: backlight {
++				compatible = "pwm-backlight";
++				pwms = <&r_pwm 0 5000000 0>; /*200 Hz*/
++				brightness-levels = <0 4 8 16 32 64 128 255>;
++				default-brightness-level = <6>;
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&i2c0>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clock-frequency = <400000>;
++			status = "okay";
++
++			aapi_ctp_0: ts-gsl3670@40 {
++				compatible = "microtech-lcd,mtp050gg-14a","silead,gsl3670";
++				reg = <0x40>;
++				status = "okay";
++
++				interrupt-parent = <&r_pio>;
++				interrupts = <0 7 IRQ_TYPE_EDGE_FALLING>;  /*PL7*/
++
++				resets = <&rstc_gpio 1>;
++				reset-names = "reset";
++
++				avdd-supply = <&reg_vdd_panel>;
++				/*no separate vddio-supply, use dummy */
++
++				firmware-name = "gsl3670-mtp050gg-14a.fw";
++				silead,max-fingers = <5>;
++			};
++
++			aapi_ctp_1: ts-edt-ft5x06@38 {
++				compatible = "edt,edt-ft5306","edt,edt-ft5x06";
++				reg = <0x38>;
++				status = "disabled";
++
++				interrupt-parent = <&r_pio>;
++				interrupts = <0 7 IRQ_TYPE_EDGE_FALLING>;  /*PL7*/
++
++				resets = <&rstc_gpio 1>;
++				reset-names = "reset";
++
++				power-supply = <&reg_vdd_panel>;
++
++				touchscreen-size-x = <720>;
++				touchscreen-size-y = <1280>;
++				touchscreen-inverted-x;
++				touchscreen-swapped-x-y;
++			};
++		};
++	};
++
++	fragment@2 {
++		target = <&i2c2>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clock-frequency = <100000>;
++			status = "okay";
++
++			aapi_gen: aapi-clkgen@60 {
++				compatible = "orpaltech,aapi-clk-si5351";
++				reg = <0x60>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++				#clock-cells = <1>;
++
++				power-supply = <&reg_vdd_radio>;
++
++				/* connect xtal input to 27MHz reference */
++				clocks = <&aapi_xtal>;
++				clock-names = "xtal";
++
++				xtal-frequency = <27000000>;
++				xtal-correction = <0 0>; /*<value,sign>*/
++
++				clock-output-names = "clk0", "clk1";
++			};
++
++			aapi_codec: wm8731@1a {
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				#sound-dai-cells = <0>;
++				power-supply = <&reg_vdd_radio>;
++			};
++
++			aapi_fgauge: bq34z100-g1@55 {
++				compatible = "ti,bq34z100-g1";
++				reg = <0x55>;
++
++				interrupt-parent = <&pio>;
++				interrupts = <7 3 IRQ_TYPE_EDGE_FALLING>;  /*PH3*/
++
++				/* Structure below allows setting up the gauge's flash memory in run-time */
++				/* TODO: implement on the driver side */
++				monitored-battery {
++					energy-full-design-microwatt-hours = <0>;
++					charge-full-design-microamp-hours = <0>;
++					voltage-min-design-microvolt = <0>;
++				};
++			};
++		};
++	};
++
++	fragment@3 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_di>;
++			pinctrl-names = "default";
++			status = "okay";
++		};
++	};
++
++	fragment@4 {
++		target = <&dsi>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			aapi_lcd_0: panel-hx8394a@0 {
++				compatible = "microtech-lcd,mtf0500hdi-22","himax,hx8394a";
++				label = "aapi-lcd";
++				reg = <0>;
++				status = "okay";
++
++				resets = <&rstc_gpio 0>;
++				reset-names = "reset";
++
++				backlight = <&aapi_bl>;
++				power-supply = <&reg_vdd_panel>;
++			};
++
++			aapi_lcd_1: panel-hx8379a@0 {
++				compatible = "truly,tda-fwvga0500g50008","himax,hx8379a";
++				label = "aapi-lcd";
++				reg = <0>;
++				status = "disabled";
++
++				resets = <&rstc_gpio 0>;
++				reset-names = "reset";
++
++				backlight = <&aapi_bl>;
++				power-supply = <&reg_vdd_panel>;
++			};
++		};
++	};
++
++	fragment@5 {
++		target = <&dphy>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@6 {
++		target = <&r_pwm>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-audioinjector-pi.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-audioinjector-pi.dts
+new file mode 100644
+index 0000000..faa90ec
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-audioinjector-pi.dts
+@@ -0,0 +1,44 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
++				    <&i2s0_pins_do0>, <&i2s0_pins_di>;
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&r_i2c>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			wm8731: wm8731@1a {
++				#sound-dai-cells = <0>;
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/";
++		__overlay__ {
++			sound-ai {
++				compatible = "flatmax,audioinjector-pi";
++				cpu-node = <&i2s0>;
++				codec-node = <&wm8731>;
++				status = "okay";
++                        };
++                };
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-ertft0356-drm.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-ertft0356-drm.dts
+new file mode 100644
+index 0000000..c11c56c
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-ertft0356-drm.dts
+@@ -0,0 +1,128 @@
++/*
++ * Device Tree overlay for EastRising 3.5inch TFT LCD 
++ * on SPI bus via TinyDRM
++ */
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target = <&pio>;
++		__overlay__ {
++			ertft_tp_pins: ertft_tp@10 {
++                                pins = "PB0";		/* pin 11 */
++                                function = "gpio_in";
++                        };
++
++			ertft_pins_rst: ertft@11 {
++                                pins = "PB1";		/* pin 22 */
++                                function = "gpio_out";
++                        };
++
++			ertft_pins_dc: ertft@77 {
++                                pins = "PH7";		/* pin 18 */
++                                function = "gpio_out";
++                        };
++
++			ertft_pins_bl: ertft@76 {
++				pins = "PH6";		/* pin 16 */
++				function = "gpio_out";
++			};
++		};
++	};
++
++	fragment@1 {
++		target-path = "/soc/";
++		__overlay__ {
++			ertft_backlight: backlight@76 {
++				compatible = "gpio-backlight";
++				pinctrl-names = "default";
++				pinctrl-0 = <&ertft_pins_bl>;
++				gpios = <&pio 7 6 GPIO_ACTIVE_HIGH>;	/* PH6 */
++			};
++		};
++	};
++
++	fragment@2 {
++		target = <&spi0>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			ertft {
++				compatible = "eastrising,er-tft035-6",
++					     "ilitek,ili9488";
++				reg = <0>;
++				spi-max-frequency = <20000000>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&ertft_pins_rst>, <&ertft_pins_dc>;
++
++				reset-gpios = <&pio 1 1 GPIO_ACTIVE_HIGH>;	/* PB1 */
++				dc-gpios = <&pio 7 7 GPIO_ACTIVE_HIGH>;		/* PH7 */
++				rotation = <90>;
++				backlight = <&ertft_backlight>;
++				status = "disabled";
++			};
++		};
++	};
++
++	fragment@3 {
++		target = <&spi1>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			ertft {
++				compatible = "eastrising,er-tft035-6",
++					     "ilitek,ili9488";
++				reg = <0>;
++				spi-max-frequency = <20000000>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&ertft_pins_rst>, <&ertft_pins_dc>;
++
++				reset-gpios = <&pio 1 1 GPIO_ACTIVE_HIGH>;	/* PB1 */
++				dc-gpios = <&pio 7 7 GPIO_ACTIVE_HIGH>;		/* PH7 */
++				rotation = <90>;
++				backlight = <&ertft_bl>;
++				status = "disabled";
++			};
++		};
++	};
++
++	fragment@4 {
++		target = <&i2c2>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			ertft_tp {
++				compatible = "focaltech,ft6236";
++				reg = <0x38>;
++
++				pinctrl-names = "default";
++                                pinctrl-0 = <&ertft_tp_pins>;
++
++				interrupt-parent = <&pio>;
++				interrupts = <1 0 IRQ_TYPE_EDGE_FALLING>; /* PB0 */
++
++				touchscreen-size-x = <320>;
++				touchscreen-size-y = <480>;
++				/*touchscreen-inverted-x;*/
++				/*touchscreen-inverted-y;*/
++				touchscreen-swapped-x-y;
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-fixup.scr-cmd b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-fixup.scr-cmd
+new file mode 100644
+index 0000000..f4fca3b
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-fixup.scr-cmd
+@@ -0,0 +1,71 @@
++# overlays fixup script
++# implements (or rather substitutes) overlay arguments functionality
++# using u-boot scripting, environment variables and "fdt" command
++
++setenv tmp_soc_path "soc"
++
++if test -n "${param_nrf24_spi_bus}"; then
++	test "${param_nrf24_spi_bus}" = "0" && setenv tmp_spi_path "spi@1c68000"
++	test "${param_nrf24_spi_bus}" = "1" && setenv tmp_spi_path "spi@1c69000"
++
++	fdt set /${tmp_soc_path}/${tmp_spi_path} status "okay"
++	fdt set /${tmp_soc_path}/${tmp_spi_path}/nrf24 status "okay"
++
++	if test -n "${param_nrf24_max_freq}"; then
++		fdt set /${tmp_soc_path}/${tmp_spi_path}/nrf24 spi-max-frequency "<${param_nrf24_max_freq}>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test "${param_waveshare35_spi_bus}" = "0"; then
++	setenv tmp_spi_path "spi@1c68000"
++
++	fdt set /${tmp_soc_path}/${tmp_spi_path} status "okay"
++	fdt set /${tmp_soc_path}/${tmp_spi_path}/waveshare35 status "okay"
++	fdt set /${tmp_soc_path}/${tmp_spi_path}/waveshare35_tp status "okay"
++
++	if test -n "${param_waveshare35_max_freq}"; then
++		fdt set /${tmp_soc_path}/${tmp_spi_path}/waveshare35 spi-max-frequency "<${param_waveshare35_max_freq}>"
++	fi
++
++	if test -n "${param_waveshare35_rotation}"; then
++		fdt set /${tmp_soc_path}/${tmp_spi_path}/waveshare35 rotation "<${param_waveshare35_rotation}>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test -n "${param_ertft_spi_bus}"; then
++	test "${param_ertft_spi_bus}" = "0" && setenv tmp_spi_path "spi@1c68000"
++	test "${param_ertft_spi_bus}" = "1" && setenv tmp_spi_path "spi@1c69000"
++
++	setenv tmp_i2c_path "i2c@1c2b400"
++
++	fdt set /${tmp_soc_path}/${tmp_spi_path} status "okay"
++	fdt set /${tmp_soc_path}/${tmp_spi_path}/ertft status "okay"
++	fdt set /${tmp_soc_path}/${tmp_i2c_path} status "okay"
++	fdt set /${tmp_soc_path}/${tmp_i2c_path}/ertft_tp status "okay"
++
++	if test -n "${param_ertft_max_freq}"; then
++		fdt set /${tmp_soc_path}/${tmp_spi_path}/ertft spi-max-frequency "<${param_ertft_max_freq}>"
++	fi
++	if test -n "${param_ertft_rotation}"; then
++		fdt set /${tmp_soc_path}/${tmp_spi_path}/ertft rotation "<${param_ertft_rotation}>"
++	fi
++
++	if test "${param_ertft_tp_inverted_x}" = "1"; then
++		fdt set /${tmp_soc_path}/${tmp_i2c_path}/ertft_tp touchscreen-inverted-x
++	fi
++	if test "${param_ertft_tp_inverted_y}" = "1"; then
++		fdt set /${tmp_soc_path}/${tmp_i2c_path}/ertft_tp touchscreen-inverted-y
++	fi
++	if test "${param_ertft_tp_swapped_x_y}" = "1"; then
++		fdt set /${tmp_soc_path}/${tmp_i2c_path}/ertft_tp touchscreen-swapped-x-y
++	fi
++
++	env delete tmp_spi_path
++	env delete tmp_i2c_path
++fi
++
++env delete tmp_soc_path
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gpio-reset.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gpio-reset.dts
+new file mode 100644
+index 0000000..8d68969
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gpio-reset.dts
+@@ -0,0 +1,28 @@
++#include <dt-bindings/gpio/gpio.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			rstc_gpio: rstc-gpio@0 {
++				compatible = "linux,gpio-reset-controller";
++				#reset-cells = <1>;
++
++				lcd {
++					gpios = <&r_pio 0 12 GPIO_ACTIVE_LOW>; /*PL12*/
++					duration-ms = <20 2 10>;
++				};
++
++				ctp {
++					gpios = <&pio 1 2 GPIO_ACTIVE_LOW>; /*PB2*/
++					duration-ms = <20 2 10>;
++				};
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gy-pcm5102-sound.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gy-pcm5102-sound.dts
+new file mode 100644
+index 0000000..dfe257d
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-gy-pcm5102-sound.dts
+@@ -0,0 +1,34 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-names = "default", "default";
++			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
++				    <&i2s0_pins_do0>;
++			pinctrl-1 = <&i2s0_pins_mclk>;
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target-path = "/soc/";
++		__overlay__ {
++			pcm5102: pcm5102a-i2s@0 {
++				compatible = "ti,pcm5102a";
++				status = "okay";
++			};
++
++			sound-pcm5102 {
++				compatible = "orpaltech,gy-pcm5102-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&pcm5102>;
++				status = "okay";
++                        };
++                };
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-no-hdmi.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-no-hdmi.dts
+new file mode 100644
+index 0000000..981fce9
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-no-hdmi.dts
+@@ -0,0 +1,20 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target = <&hdmi>;
++		__overlay__ {
++			status = "disabled";
++		};
++	};
++
++	fragment@1 {
++		target = <&tcon1>;
++		__overlay__ {
++			status = "disabled";
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-nrf24-spi.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-nrf24-spi.dts
+new file mode 100644
+index 0000000..effb9ca
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-nrf24-spi.dts
+@@ -0,0 +1,65 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target = <&pio>;
++		__overlay__ {
++			nrf24_pins_irq: nrf24_pins_irq {
++				pins = "PH10";		/*pin 29 on 40-pin GPIO connector*/
++				function = "gpio_in";
++			};
++
++			nrf24_pins_ce: nrf24_pins_ce {
++				pins = "PH11";		/*pin 31 on 40-pin GPIO connector */
++				function = "gpio_out";
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&spi0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			nrf24 {
++				compatible = "nordic,nrf24";
++				reg = <0>;
++				spi-max-frequency = <5000000>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_pins_irq>,
++					    <&nrf24_pins_ce>;
++				interrupt-parent = <&pio>;
++				interrupts = <4 5 2>;
++				irq-gpios = <&pio 4 5 0>;
++				ce-gpios = <&pio 6 6 0>;
++				status = "disabled";
++			};
++		};
++	};
++
++	fragment@2 {
++		target = <&spi1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			nrf24 {
++				compatible = "nordic,nrf24";
++				reg = <0>;
++				spi-max-frequency = <5000000>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_pins_irq>,
++					    <&nrf24_pins_ce>;
++				interrupt-parent = <&pio>;
++				interrupts = <4 5 2>;
++				irq-gpios = <&pio 4 5 0>;
++				ce-gpios = <&pio 6 6 0>;
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-r_pwm.dts b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-r_pwm.dts
+new file mode 100644
+index 0000000..efa0fce
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-r_pwm.dts
+@@ -0,0 +1,13 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun50i-a64";
++
++	fragment@0 {
++		target = <&r_pwm>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++};
+-- 
+2.17.1
+

@@ -1,0 +1,54 @@
+From fe153cb912552798984e49039139d3baf4b580ad Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sat, 4 Jan 2020 13:30:27 +0300
+Subject: [PATCH] sun8i-h3: Device tree updates for H3 SoC boards
+
+---
+ arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts |  2 +-
+ arch/arm/boot/dts/sun8i-h3.dtsi            | 17 +++++++++++++++++
+ 2 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts b/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts
+index 5aff8ec..06ec4a6 100644
+--- a/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts
++++ b/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts
+@@ -149,7 +149,7 @@
+ &ir {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&r_ir_rx_pin>;
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &mmc0 {
+diff --git a/arch/arm/boot/dts/sun8i-h3.dtsi b/arch/arm/boot/dts/sun8i-h3.dtsi
+index fe773c7..6864f31 100644
+--- a/arch/arm/boot/dts/sun8i-h3.dtsi
++++ b/arch/arm/boot/dts/sun8i-h3.dtsi
+@@ -248,6 +248,23 @@
+ 
+ &pio {
+ 	compatible = "allwinner,sun8i-h3-pinctrl";
++
++	i2s0_pins_bclk: i2s0@0 {
++		pins = "PA19";
++		function = "i2s0";
++	};
++	i2s0_pins_lrck: i2s0@1 {
++		pins = "PA18";
++		function = "i2s0";
++	};
++	i2s0_pins_do0: i2s0@2 {
++		pins = "PA20";
++		function = "i2s0";
++	};
++	i2s0_pins_di: i2s0@3 {
++		pins = "PA21";
++		function = "i2s0";
++	};
+ };
+ 
+ &rtc {
+-- 
+2.17.1
+
