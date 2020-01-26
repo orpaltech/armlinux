@@ -1,14 +1,14 @@
-From 329b8a34830de17f5e4bc965a83d0cb829d23d48 Mon Sep 17 00:00:00 2001
+From 396997b74e3ebdd708b1506ae6f2489a0f890b6d Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Wed, 22 Jan 2020 02:50:47 +0300
+Date: Sun, 26 Jan 2020 10:34:27 +0300
 Subject: [PATCH] tinydrm: Add support for ILI9486 display panels
 
 ---
  drivers/gpu/drm/tiny/Kconfig   |  13 ++
  drivers/gpu/drm/tiny/Makefile  |   1 +
- drivers/gpu/drm/tiny/ili9486.c | 310 +++++++++++++++++++++++++++++++++
+ drivers/gpu/drm/tiny/ili9486.c | 311 +++++++++++++++++++++++++++++++++
  drivers/gpu/drm/tiny/ili9486.h |  95 ++++++++++
- 4 files changed, 419 insertions(+)
+ 4 files changed, 420 insertions(+)
  create mode 100644 drivers/gpu/drm/tiny/ili9486.c
  create mode 100644 drivers/gpu/drm/tiny/ili9486.h
 
@@ -50,10 +50,10 @@ index 896cf31..c96ceee 100644
  obj-$(CONFIG_TINYDRM_ST7586)		+= st7586.o
 diff --git a/drivers/gpu/drm/tiny/ili9486.c b/drivers/gpu/drm/tiny/ili9486.c
 new file mode 100644
-index 0000000..8f0d6a7
+index 0000000..4c2c1e1
 --- /dev/null
 +++ b/drivers/gpu/drm/tiny/ili9486.c
-@@ -0,0 +1,310 @@
+@@ -0,0 +1,311 @@
 +/*
 + * DRM driver for ILI9486 LCD display panels
 + *
@@ -95,12 +95,13 @@ index 0000000..8f0d6a7
 + * display controller. This means that 8-bit values has to be transferred
 + * as 16-bit.
 + */
-+static int waveshare35_command(struct mipi_dbi *dbi, u8 *cmd, u8 *par, size_t num)
++static int waveshare35_command(struct mipi_dbi *dbi, u8 *cmdbuf, u8 *par, size_t num)
 +{
 +	struct spi_device *spi = dbi->spi;
 +	void *data = par;
 +	u32 speed_hz = 0;
 +	int i, ret;
++	u8 cmd = cmdbuf[0];
 +	u16 *buf;
 +
 +	buf = kmalloc(32 * sizeof(u16), GFP_KERNEL);
@@ -122,7 +123,7 @@ index 0000000..8f0d6a7
 +	gpiod_set_value_cansleep(dbi->dc, 0);
 +
 +	/*
-+	 * Many controllers have a max speed of 10MHz, but can be pushed way beyond
++	 * Many controllers have max speed of 10MHz, but can be pushed way beyond
 +	 * that. Increase reliability by running pixel data at max speed and the rest
 +	 * at a lower one, preventing transfer glitches from messing up the init settings.
 +	 */
