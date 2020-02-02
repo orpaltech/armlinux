@@ -295,8 +295,16 @@ update_firmware()
 		fi
 
 		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
-			display_alert "Updating Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"
 
+			# see if branch has changed
+			local cur_branch=$(git -C $FIRMWARE_SOURCE_DIR symbolic-ref --short -q HEAD)
+			if [ $cur_branch != $FIRMWARE_BRANCH ] ; then
+				rm -rf $FIRMWARE_SOURCE_DIR
+			fi
+		fi
+
+		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
+			display_alert "Updating Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"
 			 # update sources
 			git -C $FIRMWARE_SOURCE_DIR fetch origin --depth=1
 			[ $? -eq 0 ] || exit $?;
@@ -309,7 +317,7 @@ update_firmware()
 			fi
 
 			echo "Checking out branch: ${FIRMWARE_BRANCH}"
-			git -C $FIRMWARE_SOURCE_DIR checkout -B $FIRMWARE_BRANCH origin/$FIRMWARE_BRANCH
+			git -C $FIRMWARE_SOURCE_DIR checkout -B $FIRMWARE_BRANCH
 			git -C $FIRMWARE_SOURCE_DIR pull
 	        else
 			display_alert "Cloning Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"

@@ -36,11 +36,20 @@ compile_uboot()
 
 	if [[ $CLEAN =~ (^|,)"uboot"(,|$) ]] ; then
 		echo "Clean u-boot directory"
-		make clean
+		make mrproper
 	fi
 
-        make $UBOOT_CONFIG
+	local CONFIG_BASE_DIR="${BASEDIR}/config/u-boot/${CONFIG}"
+	local CONFIG_DIR="${CONFIG_BASE_DIR}/${UBOOT_REPO_NAME}"
+	local USER_CONFIG="${CONFIG_DIR}/${UBOOT_RELEASE}/${UBOOT_USER_CONFIG}"
+	if [ -f $USER_CONFIG ] ; then
+		cp $USER_CONFIG "${UBOOT_SOURCE_DIR}/.config"
+		make olddefconfig
+	else
+		make $UBOOT_CONFIG
+	fi
 	[ $? -eq 0 ] || exit $?;
+
 
         chrt -i 0 make -j${NUM_CPU_CORES}
 	[ $? -eq 0 ] || exit $?;

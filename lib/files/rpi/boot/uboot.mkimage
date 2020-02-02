@@ -6,9 +6,8 @@
 setenv overlay_error "false"
 setenv kernel_file "linuz.img"
 
-setenv load_addr "0x1FFEBC00"
-# Load our device tree below CMA range
-setenv fdt_addr "0x1FFEFC00"
+setenv load_addr "0x2000000"
+setenv fdt_addr "0x2600000"
 
 # Set device tree file
 setenv dtb_file "board.dtb"
@@ -27,7 +26,7 @@ setenv bootargs "${extraargs}"
 # Load the existing Linux kernel into RAM
 fatload mmc 0:1 ${kernel_addr_r} ${prefix}${kernel_file}
 fatload mmc 0:1 ${fdt_addr} ${prefix}${dtb_file}
-fatload mmc 0:1 ${ramdisk_addr_r} ${initramfs}
+# fatload mmc 0:1 ${ramdisk_addr_r} ${initramfs}
 
 fdt addr ${fdt_addr}
 fdt resize 65536

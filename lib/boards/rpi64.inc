@@ -14,7 +14,7 @@ MESON_CPU="armv8-a"
 
 BOOT_DIR="/boot/firmware"
 
-FIRMWARE_URL="git://github.com/raspberrypi/firmware.git"
+FIRMWARE_URL="https://github.com/raspberrypi/firmware.git"
 FIRMWARE_BRANCH="next"
 FIRMWARE_NAME="raspberrypi"
 
@@ -25,9 +25,16 @@ FIRMWARE_NAME="raspberrypi"
 
 QEMU_BINARY="/usr/bin/qemu-aarch64-static"
 
-BOOTSCR_LOAD_ADDR=0x1FFEBC00
-# Load our device tree below CMA range
-BOOTSCR_FDT_ADDR=0x1FFEFC00
+BOOTSCR_LOAD_ADDR=0x2000000
+BOOTSCR_FDT_ADDR=0x2600000
+
+KERNEL_MKIMAGE_WRAP="yes"
+# Use compressed (gzip) or uncompressed (none) kernel image for ARM64
+KERNEL_MKIMAGE_COMPRESS="none"
+KERNEL_MKIMAGE_LOADADDR="0x00080000"
+# Can be compressed source (Image.gz) or uncompressed (Image)
+KERNEL_IMAGE_SOURCE="Image"
+KERNEL_IMAGE_TARGET="linux.uImage"
 
 # The option should be overriden to change GPU support in QT5
 QT5_OPENGL_OPTION="-opengl es2"

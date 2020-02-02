@@ -1,6 +1,6 @@
-From 3d631c3604d7607301a8db85ab0c274c346c5ecc Mon Sep 17 00:00:00 2001
+From 319a0ea7c43e828b9716c4f0bb622083a7bd9eee Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 25 May 2019 17:01:06 +0300
+Date: Sat, 1 Feb 2020 23:31:37 +0300
 Subject: [PATCH] bcm2835: add DT-overlays
 
 ---
@@ -20,7 +20,7 @@ Subject: [PATCH] bcm2835: add DT-overlays
  .../arm/boot/dts/overlays/bcm2835-no-hdmi.dts |  13 +++
  .../boot/dts/overlays/bcm2835-nrf24-spi.dts   |  83 +++++++++++++
  arch/arm/boot/dts/overlays/bcm2835-spidev.dts |  68 +++++++++++
- .../dts/overlays/bcm2835-waveshare35-drm.dts  |  71 +++++++++++
+ .../dts/overlays/bcm2835-waveshare35-drm.dts  |  63 ++++++++++
  .../overlays/bcm2835-waveshare35-fbtft.dts    |  89 ++++++++++++++
  arch/arm64/boot/dts/broadcom/Makefile         |   1 +
  .../arm64/boot/dts/broadcom/overlays/Makefile |  28 +++++
@@ -38,9 +38,9 @@ Subject: [PATCH] bcm2835: add DT-overlays
  .../dts/broadcom/overlays/bcm2835-no-hdmi.dts |  13 +++
  .../broadcom/overlays/bcm2835-nrf24-spi.dts   |  83 +++++++++++++
  .../dts/broadcom/overlays/bcm2835-spidev.dts  |  68 +++++++++++
- .../overlays/bcm2835-waveshare35-drm.dts      |  71 +++++++++++
+ .../overlays/bcm2835-waveshare35-drm.dts      |  63 ++++++++++
  .../overlays/bcm2835-waveshare35-fbtft.dts    |  89 ++++++++++++++
- 36 files changed, 1893 insertions(+)
+ 36 files changed, 1877 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.bcm2835-overlays
  create mode 100644 arch/arm/boot/dts/overlays/bcm2835-aapi-clk.dts
@@ -77,10 +77,10 @@ Subject: [PATCH] bcm2835: add DT-overlays
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-fbtft.dts
 
 diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
-index dab2914..8c78e4d 100644
+index 08011dc..e0c28e7 100644
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -1276,3 +1276,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+@@ -1316,3 +1316,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
  	aspeed-bmc-opp-zaius.dtb \
  	aspeed-bmc-portwell-neptune.dtb \
  	aspeed-bmc-quanta-q71l.dtb
@@ -963,10 +963,10 @@ index 0000000..abd098c
 +};
 diff --git a/arch/arm/boot/dts/overlays/bcm2835-waveshare35-drm.dts b/arch/arm/boot/dts/overlays/bcm2835-waveshare35-drm.dts
 new file mode 100644
-index 0000000..d13bed8
+index 0000000..620633f
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/bcm2835-waveshare35-drm.dts
-@@ -0,0 +1,71 @@
+@@ -0,0 +1,63 @@
 +#include <dt-bindings/interrupt-controller/irq.h>
 +#include <dt-bindings/pinctrl/bcm2835.h>
 +
@@ -986,19 +986,9 @@ index 0000000..d13bed8
 +	fragment@1 {
 +		target = <&gpio>;
 +		__overlay__ {
-+			waveshare35_int: waveshare35@17 {
-+				brcm,pins = <17>;
-+				brcm,function = <BCM2835_FSEL_GPIO_IN>;
-+			};
-+
-+			waveshare35_rst: waveshare35@25 {
-+				brcm,pins = <25>;
-+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
-+                        };
-+
-+			waveshare35_dc: waveshare35@24 {
-+				brcm,pins = <24>;
-+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			ws35_pins: ws35_pins {
++				brcm,pins = <17 25 24>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN BCM2835_FSEL_GPIO_OUT BCM2835_FSEL_GPIO_OUT>;
 +			};
 +		};
 +	};
@@ -1009,31 +999,33 @@ index 0000000..d13bed8
 +			/* needed to avoid dtc warning */
 +			#address-cells = <1>;
 +			#size-cells = <0>;
++			status = "okay";
 +
-+			waveshare35_lcd: waveshare35@0 {
-+				compatible = "waveshare,rpi-lcd-35",
-+					     "ilitek,ili9486";
++			ws35_lcd: ws35-lcd@0 {
++				compatible = "waveshare,rpi-lcd-35","ilitek,ili9486";
 +				reg = <0>;
++
 +				spi-max-frequency = <16000000>;
++
 +				pinctrl-names = "default";
-+				pinctrl-0 = <&waveshare35_int &waveshare35_rst &waveshare35_dc>;
++				pinctrl-0 = <&ws35_pins>;
++
 +				reset-gpios = <&gpio 25 0>;
 +				dc-gpios = <&gpio 24 0>;
 +				rotation = <0>;
-+				bgr = <0>;
-+				status = "disabled";
 +			};
 +
-+			waveshare35_ts: waveshare35@1 {
++			ws35_ts: ws35-ts@1 {
 +				compatible = "ti,ads7846";
 +				reg = <1>;
++
 +				spi-max-frequency = <2000000>;
 +				interrupt-parent = <&gpio>;
 +				interrupts = <17 IRQ_TYPE_EDGE_FALLING>;
-+				pendown-gpio = <&gpio 17 0>;
++				pendown-gpios = <&gpio 17 0>;
++
 +				ti,x-plate-ohms = /bits/ 16 <60>;
 +				ti,pressure-max = /bits/ 16 <255>;
-+				status = "disabled";
 +			};
 +		};
 +	};
@@ -1134,10 +1126,10 @@ index 0000000..eba0984
 +	};
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/Makefile b/arch/arm64/boot/dts/broadcom/Makefile
-index d1d31cc..d3c0e2a 100644
+index cb7de8d..13bd499 100644
 --- a/arch/arm64/boot/dts/broadcom/Makefile
 +++ b/arch/arm64/boot/dts/broadcom/Makefile
-@@ -6,3 +6,4 @@ dtb-$(CONFIG_ARCH_BCM2835) += bcm2837-rpi-3-a-plus.dtb \
+@@ -7,3 +7,4 @@ dtb-$(CONFIG_ARCH_BCM2835) += bcm2711-rpi-4-b.dtb \
  
  subdir-y	+= northstar2
  subdir-y	+= stingray
@@ -2019,10 +2011,10 @@ index 0000000..abd098c
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dts
 new file mode 100644
-index 0000000..d13bed8
+index 0000000..620633f
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dts
-@@ -0,0 +1,71 @@
+@@ -0,0 +1,63 @@
 +#include <dt-bindings/interrupt-controller/irq.h>
 +#include <dt-bindings/pinctrl/bcm2835.h>
 +
@@ -2042,19 +2034,9 @@ index 0000000..d13bed8
 +	fragment@1 {
 +		target = <&gpio>;
 +		__overlay__ {
-+			waveshare35_int: waveshare35@17 {
-+				brcm,pins = <17>;
-+				brcm,function = <BCM2835_FSEL_GPIO_IN>;
-+			};
-+
-+			waveshare35_rst: waveshare35@25 {
-+				brcm,pins = <25>;
-+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
-+                        };
-+
-+			waveshare35_dc: waveshare35@24 {
-+				brcm,pins = <24>;
-+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			ws35_pins: ws35_pins {
++				brcm,pins = <17 25 24>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN BCM2835_FSEL_GPIO_OUT BCM2835_FSEL_GPIO_OUT>;
 +			};
 +		};
 +	};
@@ -2065,31 +2047,33 @@ index 0000000..d13bed8
 +			/* needed to avoid dtc warning */
 +			#address-cells = <1>;
 +			#size-cells = <0>;
++			status = "okay";
 +
-+			waveshare35_lcd: waveshare35@0 {
-+				compatible = "waveshare,rpi-lcd-35",
-+					     "ilitek,ili9486";
++			ws35_lcd: ws35-lcd@0 {
++				compatible = "waveshare,rpi-lcd-35","ilitek,ili9486";
 +				reg = <0>;
++
 +				spi-max-frequency = <16000000>;
++
 +				pinctrl-names = "default";
-+				pinctrl-0 = <&waveshare35_int &waveshare35_rst &waveshare35_dc>;
++				pinctrl-0 = <&ws35_pins>;
++
 +				reset-gpios = <&gpio 25 0>;
 +				dc-gpios = <&gpio 24 0>;
 +				rotation = <0>;
-+				bgr = <0>;
-+				status = "disabled";
 +			};
 +
-+			waveshare35_ts: waveshare35@1 {
++			ws35_ts: ws35-ts@1 {
 +				compatible = "ti,ads7846";
 +				reg = <1>;
++
 +				spi-max-frequency = <2000000>;
 +				interrupt-parent = <&gpio>;
 +				interrupts = <17 IRQ_TYPE_EDGE_FALLING>;
-+				pendown-gpio = <&gpio 17 0>;
++				pendown-gpios = <&gpio 17 0>;
++
 +				ti,x-plate-ohms = /bits/ 16 <60>;
 +				ti,pressure-max = /bits/ 16 <255>;
-+				status = "disabled";
 +			};
 +		};
 +	};

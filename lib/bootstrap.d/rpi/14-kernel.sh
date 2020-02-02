@@ -10,8 +10,8 @@ fi
 
 # Copy firmware binaries
 cp ${FIRMWARE_DIR}/boot/bootcode.bin	${BOOT_DIR}/
-cp ${FIRMWARE_DIR}/boot/*.dat		${BOOT_DIR}/
-cp ${FIRMWARE_DIR}/boot/*.elf		${BOOT_DIR}/
+cp ${FIRMWARE_DIR}/boot/fixup*.dat	${BOOT_DIR}/
+cp ${FIRMWARE_DIR}/boot/start*.elf	${BOOT_DIR}/
 
 
 # Setup firmware boot cmdline
@@ -19,7 +19,7 @@ CMDLINE="root=/dev/mmcblk0p2 console=tty1 cma=128M@256M ${CMDLINE}"
 
 # Add serial console support
 if [ "$ENABLE_CONSOLE" = yes ] ; then
-  CMDLINE="console=serial0,115200 ${CMDLINE}"
+  CMDLINE="console=serial1:115200 ${CMDLINE}"
 fi
 
 # Install firmware boot cmdline

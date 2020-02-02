@@ -4,6 +4,7 @@
 
 MESA_REPO_URL="https://gitlab.freedesktop.org/mesa/mesa.git"
 MESA_BRANCH="master"
+MESA_TAG="mesa-19.3.3"
 MESA_SRC_DIR=${EXTRADIR}/mesa
 MESA_OUT_DIR=${MESA_SRC_DIR}/build/${LINUX_PLATFORM}-vc4
 MESA_PREFIX=/usr

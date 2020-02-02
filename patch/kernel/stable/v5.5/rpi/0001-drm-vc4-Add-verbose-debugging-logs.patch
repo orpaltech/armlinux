@@ -1,14 +1,14 @@
-From 02f2e908fbf3bc502a687f066aac948f686dec6f Mon Sep 17 00:00:00 2001
+From 69b638aecc3a95f88b4894f430eecbee06f59627 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Thu, 18 Jul 2019 14:38:00 +0300
+Date: Thu, 23 Jan 2020 00:48:17 +0300
 Subject: [PATCH] drm/vc4: Add verbose debugging logs
 
 ---
- drivers/gpu/drm/vc4/vc4_dsi.c | 62 +++++++++++++++++++++++++++++++----
- 1 file changed, 56 insertions(+), 6 deletions(-)
+ drivers/gpu/drm/vc4/vc4_dsi.c | 55 ++++++++++++++++++++++++++++++++---
+ 1 file changed, 51 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/gpu/drm/vc4/vc4_dsi.c b/drivers/gpu/drm/vc4/vc4_dsi.c
-index 1db39b5..d2e7542 100644
+index c9ba83e..0bae81b 100644
 --- a/drivers/gpu/drm/vc4/vc4_dsi.c
 +++ b/drivers/gpu/drm/vc4/vc4_dsi.c
 @@ -18,6 +18,8 @@
@@ -17,10 +17,10 @@ index 1db39b5..d2e7542 100644
  
 +#define DEBUG
 +
- #include <drm/drm_atomic_helper.h>
- #include <drm/drm_edid.h>
- #include <drm/drm_mipi_dsi.h>
-@@ -549,6 +551,8 @@ dsi_dma_workaround_write(struct vc4_dsi *dsi, u32 offset, u32 val)
+ #include <linux/clk-provider.h>
+ #include <linux/clk.h>
+ #include <linux/completion.h>
+@@ -553,6 +555,8 @@ dsi_dma_workaround_write(struct vc4_dsi *dsi, u32 offset, u32 val)
  	dma_cookie_t cookie;
  	int ret;
  
@@ -29,14 +29,14 @@ index 1db39b5..d2e7542 100644
  	/* DSI0 should be able to write normally. */
  	if (!chan) {
  		writel(val, dsi->regs + offset);
-@@ -806,8 +810,20 @@ static bool vc4_dsi_encoder_mode_fixup(struct drm_encoder *encoder,
+@@ -810,8 +814,20 @@ static bool vc4_dsi_encoder_mode_fixup(struct drm_encoder *encoder,
  	/* Given the new pixel clock, adjust HFP to keep vrefresh the same. */
  	adjusted_mode->htotal = adjusted_mode->clock * mode->htotal /
  				mode->clock;
 -	adjusted_mode->hsync_end += adjusted_mode->htotal - mode->htotal;
 -	adjusted_mode->hsync_start += adjusted_mode->htotal - mode->htotal;
-+	//adjusted_mode->hsync_end += adjusted_mode->htotal - mode->htotal;
-+	//adjusted_mode->hsync_start += adjusted_mode->htotal - mode->htotal;
++//	adjusted_mode->hsync_end += adjusted_mode->htotal - mode->htotal;
++//	adjusted_mode->hsync_start += adjusted_mode->htotal - mode->htotal;
 +	int diff = adjusted_mode->htotal - mode->htotal;
 +	unsigned int hbp = (mode->htotal - mode->hsync_end);
 +	unsigned int hsync = (mode->hsync_end - mode->hsync_start);
@@ -52,7 +52,7 @@ index 1db39b5..d2e7542 100644
  
  	return true;
  }
-@@ -818,7 +834,7 @@ static void vc4_dsi_encoder_enable(struct drm_encoder *encoder)
+@@ -822,7 +838,7 @@ static void vc4_dsi_encoder_enable(struct drm_encoder *encoder)
  	struct vc4_dsi_encoder *vc4_encoder = to_vc4_dsi_encoder(encoder);
  	struct vc4_dsi *dsi = vc4_encoder->dsi;
  	struct device *dev = &dsi->pdev->dev;
@@ -61,36 +61,26 @@ index 1db39b5..d2e7542 100644
  	unsigned long hs_clock;
  	u32 ui_ns;
  	/* Minimum LP state duration in escape clock cycles. */
-@@ -828,6 +844,9 @@ static void vc4_dsi_encoder_enable(struct drm_encoder *encoder)
+@@ -832,6 +848,9 @@ static void vc4_dsi_encoder_enable(struct drm_encoder *encoder)
  	unsigned long phy_clock;
  	int ret;
  
-+	dev_dbg(&dsi->pdev->dev, "%s: pixel_clock_hz = %d, mode->htotal = %d, mode->hsync_start = %d, mode->hsync_end = %d\n",
++	dev_dbg(dev, "%s: pixel_clock_hz = %d, mode->htotal = %d, mode->hsync_start = %d, mode->hsync_end = %d\n",
 +		__func__, pixel_clock_hz, mode->htotal, mode->hsync_start, mode->hsync_end);
 +
  	ret = pm_runtime_get_sync(dev);
  	if (ret) {
  		DRM_ERROR("Failed to runtime PM enable on DSI%d\n", dsi->port);
-@@ -851,6 +870,8 @@ static void vc4_dsi_encoder_enable(struct drm_encoder *encoder)
+@@ -855,6 +874,8 @@ static void vc4_dsi_encoder_enable(struct drm_encoder *encoder)
  			"Failed to set phy clock to %ld: %d\n", phy_clock, ret);
  	}
  
-+	dev_dbg(&dsi->pdev->dev, "%s: phy_clock = %d\n", __func__, phy_clock);
++	dev_dbg(dev, "%s: phy_clock = %d\n", __func__, phy_clock);
 +
  	/* Reset the DSI and all its fifos. */
  	DSI_PORT_WRITE(CTRL,
  		       DSI_CTRL_SOFT_RESET_CFG |
-@@ -1087,6 +1108,9 @@ static ssize_t vc4_dsi_host_transfer(struct mipi_dsi_host *host,
- 	bool is_long = mipi_dsi_packet_format_is_long(msg->type);
- 	u32 cmd_fifo_len = 0, pix_fifo_len = 0;
- 
-+	dev_dbg(&dsi->pdev->dev, "dsi host transfer, %s, type = %d, tx_len = %d, rx_len = %d\n",
-+		(is_long?"long":"short"), msg->type, msg->tx_len, msg->rx_len);
-+
- 	mipi_dsi_create_packet(&packet, msg);
- 
- 	pkth |= VC4_SET_FIELD(packet.header[0], DSI_TXPKT1H_BC_DT);
-@@ -1126,6 +1150,9 @@ static ssize_t vc4_dsi_host_transfer(struct mipi_dsi_host *host,
+@@ -1130,6 +1151,9 @@ static ssize_t vc4_dsi_host_transfer(struct mipi_dsi_host *host,
  				      DSI_TXPKT1C_CMD_CTRL);
  	}
  
@@ -100,7 +90,7 @@ index 1db39b5..d2e7542 100644
  	for (i = 0; i < cmd_fifo_len; i++)
  		DSI_PORT_WRITE(TXPKT_CMD_FIFO, packet.payload[i]);
  	for (i = 0; i < pix_fifo_len; i++) {
-@@ -1217,6 +1244,8 @@ static ssize_t vc4_dsi_host_transfer(struct mipi_dsi_host *host,
+@@ -1221,6 +1245,8 @@ static ssize_t vc4_dsi_host_transfer(struct mipi_dsi_host *host,
  		}
  	}
  
@@ -109,7 +99,7 @@ index 1db39b5..d2e7542 100644
  	return ret;
  
  reset_fifo_and_return:
-@@ -1265,6 +1294,8 @@ static int vc4_dsi_host_attach(struct mipi_dsi_host *host,
+@@ -1269,6 +1295,8 @@ static int vc4_dsi_host_attach(struct mipi_dsi_host *host,
  		return 0;
  	}
  
@@ -118,7 +108,7 @@ index 1db39b5..d2e7542 100644
  	if (!(dsi->mode_flags & MIPI_DSI_MODE_VIDEO)) {
  		dev_err(&dsi->pdev->dev,
  			"Only VIDEO mode panels supported currently.\n");
-@@ -1335,6 +1366,8 @@ static irqreturn_t vc4_dsi_irq_handler(int irq, void *data)
+@@ -1339,6 +1367,8 @@ static irqreturn_t vc4_dsi_irq_handler(int irq, void *data)
  	u32 stat = DSI_PORT_READ(INT_STAT);
  	irqreturn_t ret = IRQ_NONE;
  
@@ -127,7 +117,7 @@ index 1db39b5..d2e7542 100644
  	DSI_PORT_WRITE(INT_STAT, stat);
  
  	dsi_handle_error(dsi, &ret, stat,
-@@ -1357,10 +1390,12 @@ static irqreturn_t vc4_dsi_irq_handler(int irq, void *data)
+@@ -1361,10 +1391,12 @@ static irqreturn_t vc4_dsi_irq_handler(int irq, void *data)
  	if (stat & (DSI1_INT_TXPKT1_DONE | DSI1_INT_PHY_DIR_RTF)) {
  		complete(&dsi->xfer_completion);
  		ret = IRQ_HANDLED;
@@ -140,7 +130,7 @@ index 1db39b5..d2e7542 100644
  	}
  
  	return ret;
-@@ -1446,6 +1481,8 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+@@ -1450,6 +1482,8 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
  	dma_cap_mask_t dma_mask;
  	int ret;
  
@@ -149,7 +139,7 @@ index 1db39b5..d2e7542 100644
  	match = of_match_device(vc4_dsi_dt_match, dev);
  	if (!match)
  		return -ENODEV;
-@@ -1556,9 +1593,13 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+@@ -1560,9 +1594,13 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
  		return ret;
  	}
  
@@ -163,16 +153,16 @@ index 1db39b5..d2e7542 100644
  		/* If the bridge or panel pointed by dev->of_node is not
  		 * enabled, just return 0 here so that we don't prevent the DRM
  		 * dev from being registered. Of course that means the DSI
-@@ -1572,6 +1613,8 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+@@ -1576,6 +1614,8 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
  	}
  
  	if (panel) {
 +		dev_dbg(dev, "add panel\n");
 +
- 		dsi->bridge = devm_drm_panel_bridge_add(dev, panel,
- 							DRM_MODE_CONNECTOR_DSI);
+ 		dsi->bridge = devm_drm_panel_bridge_add_typed(dev, panel,
+ 							      DRM_MODE_CONNECTOR_DSI);
  		if (IS_ERR(dsi->bridge))
-@@ -1615,6 +1658,8 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
+@@ -1619,6 +1659,8 @@ static int vc4_dsi_bind(struct device *dev, struct device *master, void *data)
  
  	pm_runtime_enable(dev);
  
@@ -181,7 +171,7 @@ index 1db39b5..d2e7542 100644
  	return 0;
  }
  
-@@ -1630,8 +1675,11 @@ static void vc4_dsi_unbind(struct device *dev, struct device *master,
+@@ -1634,8 +1676,11 @@ static void vc4_dsi_unbind(struct device *dev, struct device *master,
  
  	vc4_dsi_encoder_destroy(dsi->encoder);
  
@@ -194,26 +184,15 @@ index 1db39b5..d2e7542 100644
  }
  
  static const struct component_ops vc4_dsi_ops = {
-@@ -1665,7 +1713,9 @@ static int vc4_dsi_dev_probe(struct platform_device *pdev)
+@@ -1669,6 +1714,8 @@ static int vc4_dsi_dev_probe(struct platform_device *pdev)
  	dsi->dsi_host.dev = dev;
  	mipi_dsi_host_register(&dsi->dsi_host);
  
--	ret = component_add(&pdev->dev, &vc4_dsi_ops);
 +	dev_dbg(dev, "add component\n");
 +
-+	ret = component_add(dev, &vc4_dsi_ops);
+ 	ret = component_add(&pdev->dev, &vc4_dsi_ops);
  	if (ret) {
  		mipi_dsi_host_unregister(&dsi->dsi_host);
- 		return ret;
-@@ -1679,7 +1729,7 @@ static int vc4_dsi_dev_remove(struct platform_device *pdev)
- 	struct device *dev = &pdev->dev;
- 	struct vc4_dsi *dsi = dev_get_drvdata(dev);
- 
--	component_del(&pdev->dev, &vc4_dsi_ops);
-+	component_del(dev, &vc4_dsi_ops);
- 	mipi_dsi_host_unregister(&dsi->dsi_host);
- 
- 	return 0;
 -- 
 2.17.1
 

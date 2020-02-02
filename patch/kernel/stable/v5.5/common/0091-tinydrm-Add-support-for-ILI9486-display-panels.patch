@@ -1,14 +1,14 @@
-From 396997b74e3ebdd708b1506ae6f2489a0f890b6d Mon Sep 17 00:00:00 2001
+From 235ac0144f16bab7ffbe4eb89341f02e9b4d0e06 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sun, 26 Jan 2020 10:34:27 +0300
+Date: Sat, 1 Feb 2020 23:32:15 +0300
 Subject: [PATCH] tinydrm: Add support for ILI9486 display panels
 
 ---
  drivers/gpu/drm/tiny/Kconfig   |  13 ++
  drivers/gpu/drm/tiny/Makefile  |   1 +
- drivers/gpu/drm/tiny/ili9486.c | 311 +++++++++++++++++++++++++++++++++
+ drivers/gpu/drm/tiny/ili9486.c | 314 +++++++++++++++++++++++++++++++++
  drivers/gpu/drm/tiny/ili9486.h |  95 ++++++++++
- 4 files changed, 420 insertions(+)
+ 4 files changed, 423 insertions(+)
  create mode 100644 drivers/gpu/drm/tiny/ili9486.c
  create mode 100644 drivers/gpu/drm/tiny/ili9486.h
 
@@ -50,10 +50,10 @@ index 896cf31..c96ceee 100644
  obj-$(CONFIG_TINYDRM_ST7586)		+= st7586.o
 diff --git a/drivers/gpu/drm/tiny/ili9486.c b/drivers/gpu/drm/tiny/ili9486.c
 new file mode 100644
-index 0000000..4c2c1e1
+index 0000000..d03722b
 --- /dev/null
 +++ b/drivers/gpu/drm/tiny/ili9486.c
-@@ -0,0 +1,311 @@
+@@ -0,0 +1,314 @@
 +/*
 + * DRM driver for ILI9486 LCD display panels
 + *
@@ -64,6 +64,8 @@ index 0000000..4c2c1e1
 + * the Free Software Foundation; either version 2 of the License, or
 + * (at your option) any later version.
 + */
++
++#define DEBUG
 +
 +#include <linux/version.h>
 +#include <linux/delay.h>
@@ -116,18 +118,17 @@ index 0000000..4c2c1e1
 +		DRM_DEBUG_DRIVER("cmd=%02x, len=%zu\n", cmd, num);
 +
 +	/*
-+	 * The host supports only 8-bit on DMA capable SPI controller
-+	 * and is little endian, so byte swapping is needed.
++	 * The displays are Raspberry Pi HATs and connected to the 8-bit only
++	 * SPI controller, so 16-bit command and parameters need byte swapping
++	 * before being transferred as 8-bit on the big endian SPI bus.
++	 * Pixel data bytes have already been swapped before this function is
++	 * called.
 +	 */
 +	buf[0] = cpu_to_be16(cmd);
 +	gpiod_set_value_cansleep(dbi->dc, 0);
 +
-+	/*
-+	 * Many controllers have max speed of 10MHz, but can be pushed way beyond
-+	 * that. Increase reliability by running pixel data at max speed and the rest
-+	 * at a lower one, preventing transfer glitches from messing up the init settings.
-+	 */
-+	ret = mipi_dbi_spi_transfer(spi, 10000000, 8, buf, 2);
++	speed_hz = mipi_dbi_spi_cmd_max_speed(spi, 2);
++	ret = mipi_dbi_spi_transfer(spi, speed_hz, 8, buf, 2);
 +	if (ret || !num)
 +		goto cleanup;
 +
@@ -136,7 +137,7 @@ index 0000000..4c2c1e1
 +		for (i = 0; i < num; i++)
 +			buf[i] = cpu_to_be16(par[i]);
 +		num *= 2;
-+		speed_hz = 10000000; /* slow down config */
++		speed_hz = mipi_dbi_spi_cmd_max_speed(spi, num);
 +		data = buf;
 +	}
 +
@@ -168,17 +169,20 @@ index 0000000..4c2c1e1
 +	if (ret == 1)
 +		goto out_enable;
 +
-+
 +	mipi_dbi_command(dbi, ILI9486_IFACE_MODE_CTRL, 0x00);
++	mipi_dbi_command(dbi, MIPI_DCS_EXIT_SLEEP_MODE);
++	msleep(250);
++
++	/* Pixel Format */
++	mipi_dbi_command(dbi, ILI9486_IFACE_PIXEL_FORMAT, ILI9486_DBI_BPP16
++							| ILI9486_DPI_BPP16);
 +
 +	/* Power Control 3 */
-+	mipi_dbi_command(dbi, ILI9486_PWR3_CTRL, ILI9486_PWR3_DCA0_2H | ILI9486_PWR3_DCA1_8H);
++	mipi_dbi_command(dbi, ILI9486_PWR3_CTRL, ILI9486_PWR3_DCA0_2H
++						| ILI9486_PWR3_DCA1_8H);
 +
 +	/* VCOM Control */
 +	mipi_dbi_command(dbi, ILI9486_VCOM_CTRL, 0x00, 0x00, 0x00, 0x00);
-+
-+	/* Pixel Format */
-+	mipi_dbi_command(dbi, ILI9486_IFACE_PIXEL_FORMAT, ILI9486_DBI_BPP16 | ILI9486_DPI_BPP16);
 +
 +	/* Positive Gamma Control */
 +	mipi_dbi_command(dbi, ILI9486_PGAM_CTRL,  0x0f, 0x1f, 0x1c, 0x0c, 0x0f,
@@ -192,9 +196,6 @@ index 0000000..4c2c1e1
 +	mipi_dbi_command(dbi, ILI9486_DIGIGAM1_CTRL,  0x0f, 0x32, 0x2e, 0x0b, 0x0d,
 +						      0x05, 0x47, 0x75, 0x37, 0x06,
 +						      0x10, 0x03, 0x24, 0x20, 0x00);
-+
-+	mipi_dbi_command(dbi, ILI9486_SLEEP_OUT);
-+	msleep(100);
 +
 +	mipi_dbi_command(dbi, ILI9486_DISPLAY_ON);
 +	msleep(100);
@@ -216,10 +217,9 @@ index 0000000..4c2c1e1
 +		break;
 +	}
 +
-+	DRM_DEBUG_DRIVER("Add BGR flag to address mode\n");
 +	addr_mode |= ILI9486_BGR;
++	mipi_dbi_command(dbi, MIPI_DCS_SET_ADDRESS_MODE, addr_mode);
 +
-+	mipi_dbi_command(dbi, ILI9486_MEM_ACCESS_CTRL, addr_mode);
 +	mipi_dbi_enable_flush(dbidev, crtc_state, plane_state);
 +out_exit:
 +	drm_dev_exit(idx);
@@ -304,6 +304,10 @@ index 0000000..4c2c1e1
 +		return PTR_ERR(dc);
 +	}
 +
++	dbidev->backlight = devm_of_find_backlight(dev);
++	if (IS_ERR(dbidev->backlight))
++		return PTR_ERR(dbidev->backlight);
++
 +	device_property_read_u32(dev, "rotation", &rotation);
 +
 +	ret = mipi_dbi_spi_init(spi, dbi, dc);
@@ -311,8 +315,7 @@ index 0000000..4c2c1e1
 +		return ret;
 +
 +	dbi->command = quirks->command;
-+	/* Reading is not supported */
-+	dbi->read_commands = NULL;
++	dbi->read_commands = NULL;	/* Reading is not supported */
 +
 +	ret = mipi_dbi_dev_init(dbidev, quirks->funcs, &ili9486_mode, rotation);
 +	if (ret)
@@ -367,7 +370,7 @@ index 0000000..4c2c1e1
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/gpu/drm/tiny/ili9486.h b/drivers/gpu/drm/tiny/ili9486.h
 new file mode 100644
-index 0000000..b628d4a
+index 0000000..9a0f146
 --- /dev/null
 +++ b/drivers/gpu/drm/tiny/ili9486.h
 @@ -0,0 +1,95 @@
@@ -422,11 +425,11 @@ index 0000000..b628d4a
 +/*
 + * ILI9486 power control 3 flags
 + *
-+ * DCA0 - Selects the operating frequency of the step-up circuit 1/4/5 for Normal mode. 
-+ *      The higher step-up operating frequency enhances the drivability of the step-up 
-+ *      circuit and the quality of display but increases the current consumption. 
-+ *      Adjust the frequency taking the trade-off between the display quality and 
-+ *      the current consumption into account. 
++ * DCA0 - Selects the operating frequency of the step-up circuit 1/4/5 for Normal mode.
++ *      The higher step-up operating frequency enhances the drivability of the step-up
++ *      circuit and the quality of display but increases the current consumption.
++ *      Adjust the frequency taking the trade-off between the display quality and
++ *      the current consumption into account.
 + */
 +#define ILI9486_PWR3_DCA0_0_125H        0x00
 +#define ILI9486_PWR3_DCA0_0_25H         0x01
@@ -438,11 +441,11 @@ index 0000000..b628d4a
 +#define ILI9486_PWR3_DCA0_16H           0x07
 +
 +/*
-+ * DCA1 - Selects the operating frequency of the step-up circuit 2/3 for Normal mode. 
-+ *      The higher step-up operating frequency enhances the drivability of the step-up 
-+ *      circuit and the quality of display but increases the current consumption. 
-+ *      Adjust the frequency taking the trade-off between the display quality and 
-+ *      the current consumption into account. 
++ * DCA1 - Selects the operating frequency of the step-up circuit 2/3 for Normal mode.
++ *      The higher step-up operating frequency enhances the drivability of the step-up
++ *      circuit and the quality of display but increases the current consumption.
++ *      Adjust the frequency taking the trade-off between the display quality and
++ *      the current consumption into account.
 + */
 +#define ILI9486_PWR3_DCA1_0_5H          0x00
 +#define ILI9486_PWR3_DCA1_1H            0x10

@@ -37,4 +37,4 @@ ${UBOOT_SOURCE_DIR}/tools/mkimage -A "${KERNEL_ARCH}" -O linux -T script -C none
 	-d "${BOOT_SCR_CMD}" "${BOOT_DIR}/boot.scr"
 
 # The default bootEnv.txt
-printf "# user provided boot enviroment \nextraargs=${EXTRAARGS}\noverlay_prefix=${OVERLAY_PREFIX}\noverlays=${DEFAULT_OVERLAYS}\n" >> ${BOOTENV_FILE}
+printf "# user provided boot enviroment \nextraargs=${EXTRAARGS}\noverlay_prefix=${OVERLAY_PREFIX}\noverlays=${DEFAULT_OVERLAYS}\n" >> $BOOTENV_FILE

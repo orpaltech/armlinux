@@ -25,9 +25,8 @@ FIRMWARE_NAME="raspberrypi"
 
 QEMU_BINARY="/usr/bin/qemu-arm-static"
 
-BOOTSCR_LOAD_ADDR=0x1FFEBC00
-# Load our device tree below CMA range
-BOOTSCR_FDT_ADDR=0x1FFEFC00
+BOOTSCR_LOAD_ADDR=0x2000000
+BOOTSCR_FDT_ADDR=0x2600000
 
 # The option should be overriden to change GPU support in QT5
 QT5_OPENGL_OPTION="-opengl es2"

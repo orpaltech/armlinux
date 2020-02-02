@@ -18,8 +18,10 @@ else
 fi
 printf "${BOOTCMD} \${kernel_addr_r} - \${fdt_addr}" >> $BOOT_SCR_CMD
 
+
 BOOTARGS_ENV="setenv bootargs \"earlyprintk \${extraargs} ${CMDLINE}\""
 sed -i "/setenv bootargs .*/c ${BOOTARGS_ENV}" $BOOT_SCR_CMD
+
 
 DTB_FILE_BASENAME=$(basename $DTB_FILE)
 sed -i "s/^\(setenv dtb_file \).*/\1${DTB_FILE_BASENAME}/" $BOOT_SCR_CMD
@@ -27,9 +29,12 @@ sed -i "s/^\(setenv dtb_file \).*/\1${DTB_FILE_BASENAME}/" $BOOT_SCR_CMD
 sed -i "s/^\(setenv kernel_file \).*/\1${KERNEL_IMAGE_TARGET}/" $BOOT_SCR_CMD
 
 
-sed -i "s/^\(setenv load_addr \).*/\1${BOOTSCR_LOAD_ADDR}/" $BOOT_SCR_CMD
-sed -i "s/^\(setenv fdt_addr \).*/\1${BOOTSCR_FDT_ADDR}/" $BOOT_SCR_CMD
-
+if [ -z "${BOOTSCR_LOAD_ADDR}" ] ; then
+  sed -i "s/^\(setenv load_addr \).*/\1${BOOTSCR_LOAD_ADDR}/" $BOOT_SCR_CMD
+fi
+if [ -z "${BOOTSCR_FDT_ADDR}" ] ; then
+  sed -i "s/^\(setenv fdt_addr \).*/\1${BOOTSCR_FDT_ADDR}/" $BOOT_SCR_CMD
+fi
 
 # Remove all leading blank lines
 sed -i "/./,\$!d" $BOOT_SCR_CMD
@@ -44,6 +49,8 @@ ${UBOOT_SOURCE_DIR}/tools/mkimage -A "${KERNEL_ARCH}" -O linux -T script -C none
 printf "\n# boot u-boot kernel\nkernel=u-boot.bin\n" >> "${BOOT_DIR}/config.txt"
 
 
+printf "\n# device tree file name\ndevice_tree=${DTB_FILE_BASENAME}\n" >> "${BOOT_DIR}/config.txt"
+
 if [ "${KERNEL_ARCH}" = arm64 ] ; then
   # See:
   # https://kernelnomicon.org/?p=682
@@ -54,4 +61,4 @@ fi
 printf "\n# enable serial console\nenable_uart=1\n" >> "${BOOT_DIR}/config.txt"
 
 # The default bootEnv.txt
-printf "# user provided boot enviroment \nextraargs=\noverlay_prefix=${OVERLAY_PREFIX}\noverlays=\n" >> $BOOTENV_FILE
+printf "# user provided boot enviroment\nextraargs=${EXTRAARGS}\noverlay_prefix=${OVERLAY_PREFIX}\noverlays=\n" >> $BOOTENV_FILE
