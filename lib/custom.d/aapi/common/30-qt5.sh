@@ -2,14 +2,8 @@
 # Build Qt5 framework
 #
 
-# force clone the remote repository
-QT5_REFRESH_SOURCES=${QT5_REFRESH_SOURCES:="no"}
-
-# remove all intermediate files and go for a full rebuild
-QT5_FORCE_REBUILD=${QT5_FORCE_REBUILD:="yes"}
-
 QT5_GIT_ROOT="git://code.qt.io/qt"
-QT5_RELEASE="5.13"
+QT5_RELEASE="5.14"
 QT5_BRANCH="${QT5_RELEASE}"
 QT5_TAG=""
 QT5_MODULES=("qtxmlpatterns" "qtimageformats" "qtgraphicaleffects" "qtsvg" "qtscript" "qtdeclarative" "qtquickcontrols" "qtquickcontrols2" "qtcharts" "qtvirtualkeyboard")
@@ -39,6 +33,17 @@ QT5_CROSS_COMPILE=${QT5_CROSS_COMPILE:="$CROSS_COMPILE"}
 
 [[ "${ENABLE_X11}" = "yes" ]] && QT5_XCB_OPTION="-system-xcb" || QT5_XCB_OPTION="-no-xcb"
 
+echo -n -e "\n*** Build Settings ***\n"
+set -x
+
+# force clone the remote repository
+QT5_UPDATE_SOURCES=${QT5_UPDATE_SOURCES:="no"}
+
+# remove all intermediate files and go for a full rebuild
+QT5_FORCE_REBUILD=${QT5_FORCE_REBUILD:="no"}
+
+set +x
+
 # ----------------------------------------------------------------------------
 
 qt5_update()
@@ -48,27 +53,31 @@ qt5_update()
 	# make sure qt5 root directory exists
 	mkdir -p $QT5_ROOT_DIR
 
-	if [ "${QT5_REFRESH_SOURCES}" = yes ] ; then
+	if [ "${QT5_UPDATE_SOURCES}" = yes ] ; then
 		echo "Forcing full source update qtbase"
-		rm -rf $QTBASE_SRC_DIR
+		sudo rm -rf $QTBASE_SRC_DIR
 	fi
 
 	if [ -d $QTBASE_SRC_DIR ] && [ -d $QTBASE_SRC_DIR/.git ] ; then
-                local OLD_URL=$(git -C $QTBASE_SRC_DIR config --get remote.origin.url)
-                if [ "${OLD_URL}" != "${QTBASE_URL}" ] ; then
-                        rm -rf $QTBASE_SRC_DIR
-                fi
-        fi
+		local OLD_URL=$(git -C $QTBASE_SRC_DIR config --get remote.origin.url)
+		if [ "${OLD_URL}" != "${QTBASE_URL}" ] ; then
+			sudo rm -rf $QTBASE_SRC_DIR
+		fi
+	fi
 	if [ -d $QTBASE_SRC_DIR ] && [ -d $QTBASE_SRC_DIR/.git ] ; then
 		# update sources
 		git -C $QTBASE_SRC_DIR fetch origin --tags
+		[ $? -eq 0 ] || exit $?;
 
 		git -C $QTBASE_SRC_DIR reset --hard
 		git -C $QTBASE_SRC_DIR clean -fdx
 
 		echo "Checking out branch: ${QT5_BRANCH}"
 		git -C $QTBASE_SRC_DIR checkout -B $QT5_BRANCH origin/$QT5_BRANCH
+		[ $? -eq 0 ] || exit $?;
+
 		git -C $QTBASE_SRC_DIR pull
+		[ $? -eq 0 ] || exit $?;
 	else
 		[[ -d $QTBASE_SRC_DIR ]] && rm -rf $QTBASE_SRC_DIR
 
@@ -80,33 +89,38 @@ qt5_update()
 	if [ ! -z "${QT5_TAG}" ] ; then
 		echo "Checking out git tag: tags/${QT5_TAG}"
 		git -C $QTBASE_SRC_DIR checkout tags/$QT5_TAG
+		[ $? -eq 0 ] || exit $?;
 	fi
 
 	for MODULE in "${QT5_MODULES[@]}" ; do
 		QT5_MODULE_DIR=${QT5_ROOT_DIR}/${MODULE}
 		QT5_MODULE_URL=${QT5_GIT_ROOT}/${MODULE}.git
 
-		if [ "${QT5_REFRESH_SOURCES}" = yes ] ; then
+		if [ "${QT5_UPDATE_SOURCES}" = yes ] ; then
 			echo "Forcing full source update ${MODULE}"
-			rm -rf $QT5_MODULE_DIR
+			sudo rm -rf $QT5_MODULE_DIR
 		fi
 
 		if [ -d $QT5_MODULE_DIR ] && [ -d $QT5_MODULE_DIR/.git ] ; then
 			local OLD_MODULE_URL=$(git -C $QT5_MODULE_DIR config --get remote.origin.url)
 			if [ "${OLD_MODULE_URL}" != "${QT5_MODULE_URL}" ] ; then
-				rm -rf $QT5_MODULE_DIR
+				sudo rm -rf $QT5_MODULE_DIR
 			fi
 		fi
 		if [ -d $QT5_MODULE_DIR ] && [ -d $QT5_MODULE_DIR/.git ] ; then
 			# update sources
 			git -C $QT5_MODULE_DIR fetch origin --tags
+			[ $? -eq 0 ] || exit $?;
 
 			git -C $QT5_MODULE_DIR reset --hard
 			git -C $QT5_MODULE_DIR clean -fdx
 
 			echo "Checking out branch: ${QT5_BRANCH}"
 			git -C $QT5_MODULE_DIR checkout -B $QT5_BRANCH origin/$QT5_BRANCH
+			[ $? -eq 0 ] || exit $?;
+
 			git -C $QT5_MODULE_DIR pull
+			[ $? -eq 0 ] || exit $?;
 		else
 			[[ -d $QT5_MODULE_DIR ]] && rm -rf $QT5_MODULE_DIR
 
@@ -118,6 +132,7 @@ qt5_update()
 		if [ ! -z "${QT5_TAG}" ] ; then
 			echo "Checking out git tag: tags/${QT5_TAG}"
 			git -C $QT5_MODULE_DIR checkout tags/$QT5_TAG
+			[ $? -eq 0 ] || exit $?;
 		fi
         done
 

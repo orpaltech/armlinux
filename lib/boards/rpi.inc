@@ -14,14 +14,16 @@ MESON_CPU="armv7hl"
 
 BOOT_DIR="/boot/firmware"
 
-FIRMWARE_URL="git://github.com/raspberrypi/firmware.git"
-FIRMWARE_BRANCH="next"
+FIRMWARE_URL="https://github.com/raspberrypi/firmware.git"
+FIRMWARE_BRANCH="stable"
 FIRMWARE_NAME="raspberrypi"
 
 # you can directly specify tolchain paths
 # UBOOT_CROSS_COMPILE=
 # KERNEL_CROSS_COMPILE=
 # CROSS_COMPILE=
+
+KERNEL_OVERLAY_DIR="overlays"
 
 QEMU_BINARY="/usr/bin/qemu-arm-static"
 
@@ -32,7 +34,7 @@ BOOTSCR_FDT_ADDR=0x2600000
 QT5_OPENGL_OPTION="-opengl es2"
 
 # Extra debian packages to be installed for RaspberryPi
-APT_BOARD_PACKAGES="rng-tools"
+APT_BOARD_PACKAGES="rng-tools fbset"
 
 # All RaspberryPi has the built-in Wi-Fi adapter
 SUPPORT_WLAN="yes"

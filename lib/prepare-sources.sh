@@ -235,8 +235,8 @@ update_kernel()
 
 patch_kernel()
 {
-	local PATCH_BASE_DIR=$BASEDIR/patch/kernel/$KERNEL_REPO_NAME
-	local PATCH_OUT_DIR=$OUTPUTDIR/patches
+	local PATCH_BASE_DIR=${BASEDIR}/patch/kernel/${CONFIG}/${KERNEL_REPO_NAME}
+	local PATCH_OUT_DIR=${OUTPUTDIR}/patches
 
 	rm -rf $PATCH_OUT_DIR/kernel.*
 
@@ -305,6 +305,9 @@ update_firmware()
 
 		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
 			display_alert "Updating Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"
+
+			sudo chown -R ${CURRENT_USER}:${CURRENT_USER} $FIRMWARE_SOURCE_DIR
+
 			 # update sources
 			git -C $FIRMWARE_SOURCE_DIR fetch origin --depth=1
 			[ $? -eq 0 ] || exit $?;
@@ -317,7 +320,7 @@ update_firmware()
 			fi
 
 			echo "Checking out branch: ${FIRMWARE_BRANCH}"
-			git -C $FIRMWARE_SOURCE_DIR checkout -B $FIRMWARE_BRANCH
+			git -C $FIRMWARE_SOURCE_DIR checkout -B $FIRMWARE_BRANCH origin/$FIRMWARE_BRANCH
 			git -C $FIRMWARE_SOURCE_DIR pull
 	        else
 			display_alert "Cloning Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"

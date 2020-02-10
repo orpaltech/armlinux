@@ -138,18 +138,20 @@ if [[ $CLEAN =~ (^|,)"gdb"(,|$) ]] ; then
 	rm -f ${BASEDIR}/debs/${GDB_DEB_PKG}.deb
 fi
 
-if [ ! -f ${BASEDIR}/debs/${GDB_DEB_PKG}.deb ] ; then
-	echo "Building GDB..."
+if [ "${ENABLE_GDB}" = yes ] ; then
+	if [ ! -f ${BASEDIR}/debs/${GDB_DEB_PKG}.deb ] ; then
+		echo "Building GDB..."
 
-	gdb_get_source
+		gdb_get_source
 
-	gdb_make
+		gdb_make
 
-	gdb_deb_pkg
+		gdb_deb_pkg
 
-	echo "GDB build finished."
-else
-	echo "deb-package ${GDB_DEB_PKG} already exists."
+		echo "GDB build finished."
+	else
+		echo "deb-package ${GDB_DEB_PKG} already exists."
+	fi
+
+	gdb_deploy
 fi
-
-gdb_deploy

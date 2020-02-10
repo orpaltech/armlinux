@@ -16,8 +16,8 @@ sed -i "s/ stretch/ ${DEBIAN_RELEASE}/" "${ETC_DIR}/apt/sources.list"
 
 
 # Allow the installation of non-free Debian packages
-if [ "${ENABLE_NONFREE}" = yes ] ; then
-  sed -i "s/ contrib/ contrib non-free/" "${ETC_DIR}/apt/sources.list"
+if [ "${DEBIAN_NONFREE}" = yes ] ; then
+  sed -i "s/ main/ main contrib non-free/" "${ETC_DIR}/apt/sources.list"
 fi
 
 # Upgrade package index and update all installed packages and changed dependencies

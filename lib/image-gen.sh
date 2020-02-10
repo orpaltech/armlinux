@@ -128,13 +128,13 @@ NET_NTP_2=${NET_NTP_2:=""}
 
 # APT settings
 APT_PROXY=${APT_PROXY:=""}
-APT_SERVER=${APT_SERVER:="ftp.ru.debian.org"}
+APT_SERVER=${APT_SERVER:="deb.debian.org"}
 
 # Feature settings
 ENABLE_CONSOLE=${ENABLE_CONSOLE:="yes"}
 ENABLE_IPV6=${ENABLE_IPV6:="yes"}
 ENABLE_SSHD=${ENABLE_SSHD:="yes"}
-ENABLE_NONFREE=${ENABLE_NONFREE:="no"}
+DEBIAN_NONFREE=${DEBIAN_NONFREE:="no"}
 ENABLE_SOUND=${ENABLE_SOUND:="no"}
 ENABLE_DBUS=${ENABLE_DBUS:="yes"}
 ENABLE_X11=${ENABLE_X11:="no"}
@@ -146,12 +146,14 @@ ENABLE_ROOT_SSH=${ENABLE_ROOT_SSH:="yes"}
 ENABLE_WLAN=${ENABLE_WLAN:="no"}
 
 # Advanced settings
-ENABLE_MINBASE=${ENABLE_MINBASE:="no"}
+DEBIAN_MINBASE=${DEBIAN_MINBASE:="no"}
 ENABLE_REDUCE=${ENABLE_REDUCE:="no"}
 ENABLE_HARDNET=${ENABLE_HARDNET:="no"}
 ENABLE_IPTABLES=${ENABLE_IPTABLES:="no"}
 
 DRM_DEBUG=${DRM_DEBUG:=""}
+
+ENABLE_GDB=${ENABLE_GDB:=""}
 
 # Kernel installation settings
 KERNEL_INSTALL_HEADERS=${KERNEL_INSTALL_HEADERS:="yes"}
@@ -263,7 +265,7 @@ fi
 trap cleanup 0 1 2 3 6
 
 # Add required packages for the minbase installation
-if [ "${ENABLE_MINBASE}" = yes ] ; then
+if [ "${DEBIAN_MINBASE}" = yes ] ; then
   APT_INCLUDES="${APT_INCLUDES},vim-tiny,netbase,net-tools,ifupdown"
 fi
 

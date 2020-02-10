@@ -1,6 +1,6 @@
-From 092acfbeea1f8cb1bba0be030b14bea39179b6e6 Mon Sep 17 00:00:00 2001
+From 3c2b68793961bae6309ee72d9fdfcdd909b51924 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sat, 16 Nov 2019 19:46:19 +0300
+Date: Sat, 8 Feb 2020 16:42:37 +0300
 Subject: [PATCH] sunxi: Lower default DRAM-freq for A64-H5
 
 ---
@@ -8,10 +8,10 @@ Subject: [PATCH] sunxi: Lower default DRAM-freq for A64-H5
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
-index ffdf09f..8feda87 100644
+index 16d41b8..06961fb 100644
 --- a/arch/arm/mach-sunxi/Kconfig
 +++ b/arch/arm/mach-sunxi/Kconfig
-@@ -412,7 +412,7 @@ config DRAM_CLK
+@@ -415,7 +415,7 @@ config DRAM_CLK
  	default 312 if MACH_SUN6I || MACH_SUN8I
  	default 360 if MACH_SUN4I || MACH_SUN5I || MACH_SUN7I || \
  		       MACH_SUN8I_V3S

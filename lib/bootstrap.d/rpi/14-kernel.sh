@@ -19,7 +19,7 @@ CMDLINE="root=/dev/mmcblk0p2 console=tty1 cma=128M@256M ${CMDLINE}"
 
 # Add serial console support
 if [ "$ENABLE_CONSOLE" = yes ] ; then
-  CMDLINE="console=serial1:115200 ${CMDLINE}"
+  CMDLINE="console=ttyS0,115200 ${CMDLINE}"
 fi
 
 # Install firmware boot cmdline

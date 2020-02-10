@@ -15,13 +15,15 @@ MESON_CPU="armv8-a"
 BOOT_DIR="/boot/firmware"
 
 FIRMWARE_URL="https://github.com/raspberrypi/firmware.git"
-FIRMWARE_BRANCH="next"
+FIRMWARE_BRANCH="stable"
 FIRMWARE_NAME="raspberrypi"
 
 # you can directly specify tolchain paths
 # UBOOT_CROSS_COMPILE=  
 # KERNEL_CROSS_COMPILE=                                           
 # CROSS_COMPILE= 
+
+KERNEL_OVERLAY_DIR="broadcom/overlays"
 
 QEMU_BINARY="/usr/bin/qemu-aarch64-static"
 
@@ -36,11 +38,17 @@ KERNEL_MKIMAGE_LOADADDR="0x00080000"
 KERNEL_IMAGE_SOURCE="Image"
 KERNEL_IMAGE_TARGET="linux.uImage"
 
+# Custom EDID binary for DRM
+DRM_USE_FIRMWARE_EDID="yes"
+DRM_EDID_BINARY="edid/640x480.bin"
+DRM_CONNECTOR="HDMI-A-1"
+DRM_VIDEO_MODE="640x480-24@60"
+
 # The option should be overriden to change GPU support in QT5
 QT5_OPENGL_OPTION="-opengl es2"
 
 # Extra debian packages to be installed for RaspberryPi
-APT_BOARD_PACKAGES="rng-tools"
+APT_BOARD_PACKAGES="rng-tools fbset"
 
 # All RaspberryPi has the built-in Wi-Fi adapter
 SUPPORT_WLAN="yes"

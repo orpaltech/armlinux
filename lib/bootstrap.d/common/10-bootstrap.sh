@@ -16,12 +16,12 @@ if [ ! -f "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" ] ; then
   COMPONENTS="main"
 
   # Use non-free Debian packages if needed
-  if [ "${ENABLE_NONFREE}" = yes ] ; then
-    COMPONENTS="${COMPONENTS},non-free"
+  if [ "${DEBIAN_NONFREE}" = yes ] ; then
+    COMPONENTS="${COMPONENTS},contrib,non-free"
   fi
 
   # Use minbase bootstrap variant which only includes essential packages
-  if [ "${ENABLE_MINBASE}" = yes ] ; then
+  if [ "${DEBIAN_MINBASE}" = yes ] ; then
     VARIANT="--variant=minbase"
   fi
 
@@ -42,12 +42,12 @@ if [ ! -f "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" ] ; then
   chroot_exec /debootstrap/debootstrap --second-stage
   [ $? -eq 0 ] || exit $?;
 
-  echo "Compressing rootfs to speed next builds up..."
+  echo "Compressing rootfs '${ROOTFS_PKG}' to speed-up next build..."
   tar -czf "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" -C "${BUILDDIR}/" "chroot"
 
 else
 
-  echo "Rootfs already exists, extract it"
+  echo "Rootfs '${ROOTFS_PKG}' already exists, extract it"
   tar -C "${R}/" --strip-components=1 -xzf "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz"
 fi
 echo "Done."

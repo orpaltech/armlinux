@@ -1,8 +1,8 @@
 # For more options and information see
-# http://www.raspberrypi.org/documentation/configuration/config-txt.md
+# https://www.raspberrypi.org/documentation/configuration/config-txt/README.md
 # Some settings may impact device functionality. See link above for details
 
-# uncomment if you get no picture on HDMI for a default "safe" mode
+# Uncomment for a default "safe" mode if you get no picture on HDMI
 #hdmi_safe=1
 
 # CONFIG_DRM_VC4: This driver requires that "avoid_warnings=2" be present in
@@ -32,19 +32,24 @@ hdmi_force_hotplug=1
 #hdmi_group=1
 #hdmi_mode=1
 
-# uncomment to force a HDMI mode rather than DVI. This can make audio work in
+# Allows you to choose between HDMI and DVI output modes. This can make audio work in
 # DMT (computer monitor) modes
-#hdmi_drive=2
+hdmi_drive=1
 
-# uncomment to increase signal to HDMI, if you have interference, blanking, or
+# Uncomment to increase signal to HDMI, if you have interference, blanking, or
 # no display
-config_hdmi_boost=7
+config_hdmi_boost=4
 
-# uncomment for composite PAL
+# Setting hdmi_ignore_edid to 0xa5000080 enables the ignoring of EDID/display data 
+# if your display does not have an accurate EDID. 
+# It requires this unusual value to ensure that it is not triggered accidentally.
+# hdmi_ignore_edid=0xa5000080
+
+# Uncomment for composite PAL
 #sdtv_mode=2
 
-# uncomment to overclock the arm. 700 MHz is the default.
+# Uncomment to overclock the arm. 700 MHz is the default.
 #arm_freq=700
 
-# uncomment to disable 7-inch LCD
+# Uncomment to disable 7-inch LCD
 ignore_lcd=1

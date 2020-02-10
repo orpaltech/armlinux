@@ -5,12 +5,7 @@
 install_overlays()
 {
 	local DEST_OVERLAY_DIR="${BOOT_DIR}/overlays"
-
-	if [ -z "${KERNEL_OVERLAY_DIR}" ] ; then
-		local BUILD_OVERLAY_DIR="${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/dts/overlays"
-	else
-		local BUILD_OVERLAY_DIR="${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/dts/${KERNEL_OVERLAY_DIR}"
-	fi
+	local BUILD_OVERLAY_DIR="${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/dts/${KERNEL_OVERLAY_DIR}"
 
 	local DTBO_COUNT=$(count_files "${BUILD_OVERLAY_DIR}/${OVERLAY_PREFIX}-*.dtbo")
 	if [ $DTBO_COUNT -gt 0 ] ; then

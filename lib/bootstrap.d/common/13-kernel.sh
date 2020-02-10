@@ -72,7 +72,7 @@ if [ "${KERNEL_DIR}" != "${KERNEL_SOURCE_DIR}" ] ; then
 fi
 
 # Setup kernel boot environment
-CMDLINE="${CMDLINE} consoleblank=0 loglevel=7 earlyprintk rootfstype=ext4 rootwait panic=10 rootflags=commit=60,data=writeback elevator=deadline init=/bin/systemd"
+CMDLINE="${CMDLINE} consoleblank=0 loglevel=7 earlyprintk rootfstype=ext4 rootwait panic=10 rootflags=commit=60,data=writeback init=/bin/systemd"
 
 # Remove IPv6 networking support
 if [ "${ENABLE_IPV6}" != yes ] ; then
@@ -92,6 +92,10 @@ fi
 
 if [ ! -z "${DRM_DEBUG}" ] ; then
   EXTRAARGS="drm.debug=${DRM_DEBUG} ${EXTRAARGS}"
+fi
+
+if [ ! -z "${DMESG_BUF_LEN}" ] ; then
+  EXTRAARGS="log_buf_len=${DMESG_BUF_LEN} ${EXTRAARGS}"
 fi
 
 # Install and setup fstab

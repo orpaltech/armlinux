@@ -19,7 +19,7 @@ fi
 printf "${BOOTCMD} \${kernel_addr_r} - \${fdt_addr}" >> $BOOT_SCR_CMD
 
 
-BOOTARGS_ENV="setenv bootargs \"earlyprintk \${extraargs} ${CMDLINE}\""
+BOOTARGS_ENV="setenv bootargs \"\${extraargs} ${CMDLINE}\""
 sed -i "/setenv bootargs .*/c ${BOOTARGS_ENV}" $BOOT_SCR_CMD
 
 
@@ -61,4 +61,4 @@ fi
 printf "\n# enable serial console\nenable_uart=1\n" >> "${BOOT_DIR}/config.txt"
 
 # The default bootEnv.txt
-printf "# user provided boot enviroment\nextraargs=${EXTRAARGS}\noverlay_prefix=${OVERLAY_PREFIX}\noverlays=\n" >> $BOOTENV_FILE
+printf "# user provided boot environment\nextraargs=${EXTRAARGS}\noverlay_prefix=${OVERLAY_PREFIX}\noverlays=\n" >> $BOOTENV_FILE

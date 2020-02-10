@@ -26,6 +26,8 @@ QEMU_BINARY="/usr/bin/qemu-arm-static"
 KERNEL_BUILD_CONFIG="sunxi_defconfig"
 KERNEL_BUILD_USER_CONFIG="linux-mainline-sunxi.config"
 
+KERNEL_OVERLAY_DIR="overlays"
+
 KERNEL_MKIMAGE_WRAP="no"
 # Use compressed (gzip) or uncompressed (none) kernel image
 KERNEL_MKIMAGE_COMPRESS="none"
@@ -50,7 +52,7 @@ DRM_EDID_BINARY="edid/1280x1024.bin"
 DRM_CONNECTOR="HDMI-A-1"
 DRM_VIDEO_MODE="1280x1024-24@60"
 
-# Set no wireless support by default
+# No wireless support by default, board specific
 SUPPORT_WLAN="no"
 
 # sunxi-specific clean options
