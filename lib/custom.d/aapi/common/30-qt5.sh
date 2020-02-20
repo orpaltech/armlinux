@@ -55,13 +55,13 @@ qt5_update()
 
 	if [ "${QT5_UPDATE_SOURCES}" = yes ] ; then
 		echo "Forcing full source update qtbase"
-		sudo rm -rf $QTBASE_SRC_DIR
+		rm -rf $QTBASE_SRC_DIR
 	fi
 
 	if [ -d $QTBASE_SRC_DIR ] && [ -d $QTBASE_SRC_DIR/.git ] ; then
-		local OLD_URL=$(git -C $QTBASE_SRC_DIR config --get remote.origin.url)
-		if [ "${OLD_URL}" != "${QTBASE_URL}" ] ; then
-			sudo rm -rf $QTBASE_SRC_DIR
+		local old_url=$(git -C $QTBASE_SRC_DIR config --get remote.origin.url)
+		if [ "${old_url}" != "${QTBASE_URL}" ] ; then
+			rm -rf $QTBASE_SRC_DIR
 		fi
 	fi
 	if [ -d $QTBASE_SRC_DIR ] && [ -d $QTBASE_SRC_DIR/.git ] ; then
@@ -98,13 +98,13 @@ qt5_update()
 
 		if [ "${QT5_UPDATE_SOURCES}" = yes ] ; then
 			echo "Forcing full source update ${MODULE}"
-			sudo rm -rf $QT5_MODULE_DIR
+			rm -rf $QT5_MODULE_DIR
 		fi
 
 		if [ -d $QT5_MODULE_DIR ] && [ -d $QT5_MODULE_DIR/.git ] ; then
-			local OLD_MODULE_URL=$(git -C $QT5_MODULE_DIR config --get remote.origin.url)
-			if [ "${OLD_MODULE_URL}" != "${QT5_MODULE_URL}" ] ; then
-				sudo rm -rf $QT5_MODULE_DIR
+			local old_module_url=$(git -C $QT5_MODULE_DIR config --get remote.origin.url)
+			if [ "${old_module_url}" != "${QT5_MODULE_URL}" ] ; then
+				rm -rf $QT5_MODULE_DIR
 			fi
 		fi
 		if [ -d $QT5_MODULE_DIR ] && [ -d $QT5_MODULE_DIR/.git ] ; then

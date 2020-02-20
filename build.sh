@@ -25,7 +25,7 @@ OUTPUTDIR=$BASEDIR/output
 DEFAULT_CONFIG="armlinux"
 
 . $LIBDIR/common.sh
-. $LIBDIR/update-packages.sh
+. $LIBDIR/packages-update.sh
 
 # start background sudo monitor
 display_alert "This script requires root privileges, entering sudo" "" "wrn"
@@ -105,7 +105,7 @@ UBOOT_BASE_DIR=${SRCDIR}/u-boot/${UBOOT_REPO_NAME}
 KERNEL_BASE_DIR=${SRCDIR}/linux/${KERNEL_REPO_NAME}
 
 # source library scripts
-. ${LIBDIR}/prepare-sources.sh
+. ${LIBDIR}/sources-update.sh
 . ${LIBDIR}/compile.sh
 . ${LIBDIR}/create-image.sh
 

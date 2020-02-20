@@ -1,0 +1,1154 @@
+From c22b2abebb4c31159cc5078e31edbc01664ce66a Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Mon, 17 Feb 2020 00:17:36 +0300
+Subject: [PATCH] clk: Add ORPALTECH AA-Pi clock generator driver
+
+---
+ drivers/clk/Kconfig          |    8 +
+ drivers/clk/Makefile         |    1 +
+ drivers/clk/clk-orpal-aapi.c | 1102 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 1111 insertions(+)
+ create mode 100644 drivers/clk/clk-orpal-aapi.c
+
+diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
+index bcb257b..9b668b3 100644
+--- a/drivers/clk/Kconfig
++++ b/drivers/clk/Kconfig
+@@ -339,6 +339,14 @@ config COMMON_CLK_FIXED_MMIO
+ 	help
+ 	  Support for Memory Mapped IO Fixed clocks
+ 
++config CLK_ORPAL_AAPI
++	tristate "ORPALTECH AA-Pi clock generator driver"
++	depends on I2C
++	select REGMAP_I2C
++	select RATIONAL
++	help
++	  This driver supports ORPALTECH AA-Pi clock generator.
++
+ source "drivers/clk/actions/Kconfig"
+ source "drivers/clk/analogbits/Kconfig"
+ source "drivers/clk/bcm/Kconfig"
+diff --git a/drivers/clk/Makefile b/drivers/clk/Makefile
+index f4169cc..27b15d4 100644
+--- a/drivers/clk/Makefile
++++ b/drivers/clk/Makefile
+@@ -43,6 +43,7 @@ obj-$(CONFIG_ARCH_MOXART)		+= clk-moxart.o
+ obj-$(CONFIG_ARCH_NOMADIK)		+= clk-nomadik.o
+ obj-$(CONFIG_ARCH_NPCM7XX)	    	+= clk-npcm7xx.o
+ obj-$(CONFIG_ARCH_NSPIRE)		+= clk-nspire.o
++obj-$(CONFIG_CLK_ORPAL_AAPI)		+= clk-orpal-aapi.o
+ obj-$(CONFIG_COMMON_CLK_OXNAS)		+= clk-oxnas.o
+ obj-$(CONFIG_COMMON_CLK_PALMAS)		+= clk-palmas.o
+ obj-$(CONFIG_CLK_LS1028A_PLLDIG)	+= clk-plldig.o
+diff --git a/drivers/clk/clk-orpal-aapi.c b/drivers/clk/clk-orpal-aapi.c
+new file mode 100644
+index 0000000..6b4cf81
+--- /dev/null
++++ b/drivers/clk/clk-orpal-aapi.c
+@@ -0,0 +1,1102 @@
++/* ORPALTECH AA-Pi si5351-based synthesizer driver.
++ *
++ *  Created on: 05-May-2018
++ *      Author: Sergey Suloev <ssuloev@orpaltech.com>
++ *
++ * Copyright (C) 2013-2018 ORPAL Technology, Inc.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#define DEBUG
++
++#include <linux/clk.h>
++#include <linux/clk-provider.h>
++#include <linux/delay.h>
++#include <linux/err.h>
++#include <linux/errno.h>
++#include <linux/i2c.h>
++#include <linux/kernel.h>
++#include <linux/math64.h>
++#include <linux/module.h>
++#include <linux/of_platform.h>
++#include <linux/platform_data/si5351.h>
++#include <linux/pm_runtime.h>
++#include <linux/rational.h>
++#include <linux/regmap.h>
++#include <linux/regulator/consumer.h>
++#include <linux/slab.h>
++#include <linux/string.h>
++
++/*
++ * si5351 definitions
++ */
++#define SI5351_PARAMETERS_LENGTH		8
++#define SI5351_PLL_VCO_MIN			600000000
++#define SI5351_PLL_VCO_MAX			900000000
++#define SI5351_MSYNTH_MIN_FREQ			1000000
++#define SI5351_MSYNTH_DIVBY4_FREQ		150000000
++#define SI5351_MSYNTH_MAX_FREQ			190000000	/*typical max is 160 MHz, make sure your device is capable!!!*/
++#define SI5351_CLKOUT_MIN_FREQ			8000
++#define SI5351_CLKOUT_MAX_FREQ			SI5351_MSYNTH_MAX_FREQ
++
++#define SI5351_PLL_A_MIN			15
++#define SI5351_PLL_A_MAX			90
++#define SI5351_PLL_B_MAX			(SI5351_PLL_C_MAX-1)
++#define SI5351_PLL_C_MAX			((1UL << 20) - 1)
++
++#define SI5351_MSYNTH_A_MIN			6
++#define SI5351_MSYNTH_A_MAX			1800
++#define SI5351_MSYNTH_B_MAX			(SI5351_MSYNTH_C_MAX-1)
++#define SI5351_MSYNTH_C_MAX			1048575
++#define SI5351_MSYNTH_P1_MAX			((1<<18)-1)
++#define SI5351_MSYNTH_P2_MAX			((1<<20)-1)
++#define SI5351_MSYNTH_P3_MAX			((1<<20)-1)
++
++#define SI5351_FREQ_MULT			100ULL
++
++/*
++ * si5351 registers, control bits and bitmasks
++ */
++#define SI5351_REG_DEVICE_STATUS	0
++#define SI5351_REG_INTERRUPT_STATUS	1
++#define SI5351_REG_INTERRUPT_MASK	2
++#define SI5351_REG_OUT_ENABLE_CTRL	3
++
++#define SI5351_REG_PLL_INPUT_SOURCE	15
++#define  SI5351_PLLB_SOURCE			BIT(3)
++#define  SI5351_PLLA_SOURCE			BIT(2)
++
++#define SI5351_REG_CLK0_CTRL		16
++#define SI5351_REG_CLK1_CTRL		17
++#define SI5351_REG_CLK2_CTRL		18
++#define SI5351_REG_CLK6_CTRL		22
++#define  SI5351_CLK_POWERDOWN			BIT(7)
++#define  SI5351_CLK_INTEGER_MODE		BIT(6)
++#define  SI5351_CLK_PLL_SELECT			BIT(5)
++#define  SI5351_CLK_INPUT_MASK			GENMASK(3,2)
++#define  SI5351_CLK_INPUT_XTAL			(0<<2)
++#define  SI5351_CLK_INPUT_CLKIN			(1<<2)
++#define  SI5351_CLK_INPUT_MSYNTH_N		(3<<2)
++#define  SI5351_CLK_DRIVE_STRENGTH_MASK		GENMASK(1,0)
++#define  SI5351_CLK_DRIVE_STRENGTH_2MA		0
++#define  SI5351_CLK_DRIVE_STRENGTH_4MA		1
++#define  SI5351_CLK_DRIVE_STRENGTH_6MA		2
++#define  SI5351_CLK_DRIVE_STRENGTH_8MA		3
++
++#define SI5351_REG_PLLA_PARAMETERS	26
++#define SI5351_REG_PLLB_PARAMETERS	34
++#define SI5351_REG_CLK0_PARAMETERS	42
++#define SI5351_REG_CLK1_PARAMETERS	50
++#define SI5351_REG_CLK2_PARAMETERS	58
++#define  SI5351_OUTPUT_CLK_DIV_SHIFT		4
++#define  SI5351_OUTPUT_CLK_DIV_MASK		GENMASK(6,4)
++#define  SI5351_OUTPUT_CLK_DIV_1		0
++#define  SI5351_OUTPUT_CLK_DIV_2		1
++#define  SI5351_OUTPUT_CLK_DIV_4		2
++#define  SI5351_OUTPUT_CLK_DIV_8		3
++#define  SI5351_OUTPUT_CLK_DIV_16		4
++#define  SI5351_OUTPUT_CLK_DIV_32		5
++#define  SI5351_OUTPUT_CLK_DIV_64		6
++#define  SI5351_OUTPUT_CLK_DIV_128		7
++#define  SI5351_OUTPUT_CLK_DIVBY4		(3<<2)
++
++#define SI5351_REG_PLL_RESET		177
++#define  SI5351_PLL_RESET_B			BIT(7)
++#define  SI5351_PLL_RESET_A			BIT(5)
++
++#define SI5351_REG_CRYSTAL_LOAD		183
++#define  SI5351_CRYSTAL_LOAD_MASK		GENMASK(7,6)
++#define  SI5351_CRYSTAL_LOAD_6PF		(1<<6)
++#define  SI5351_CRYSTAL_LOAD_8PF		(2<<6)
++#define  SI5351_CRYSTAL_LOAD_10PF		(3<<6)
++
++#define SI5351_REG_FANOUT_ENABLE	187
++#define  SI5351_CLKIN_ENABLE			BIT(7)
++#define  SI5351_XTAL_ENABLE			BIT(6)
++#define  SI5351_MSYNTH_ENABLE			BIT(4)
++
++/*
++ * Declare the number of clock outputs to be configured.
++ * NOTE: You must NOT change this value unless you are
++ *	 going to rewrite the code.
++ */
++#define	NUM_CLKOUT	2
++
++
++struct si5351_driver_data;
++
++struct si5351_parameters {
++	unsigned long	p1;
++	unsigned long	p2;
++	unsigned long	p3;
++	int		valid;
++};
++
++struct si5351_hw_data {
++	struct clk_hw			hw;
++	struct si5351_driver_data	*drv;
++	struct si5351_parameters	params;
++	unsigned char			num;
++};
++
++struct si5351_driver_data {
++	struct i2c_client	*i2c;
++	struct regmap		*regmap;
++	struct regulator	*power;
++
++	struct clk		*pxtal;
++	const char		*pxtal_name;
++	struct clk_hw		xtal;
++	u32			xtal_freq;
++	unsigned long		ref_freq;
++
++	struct si5351_hw_data	pll[NUM_CLKOUT];
++	struct si5351_hw_data	msynth[NUM_CLKOUT];
++	struct si5351_hw_data	clkout[NUM_CLKOUT];
++	unsigned int		num_clkout;
++};
++
++#define si5351_get_hw_data(hw)	\
++	container_of(hw, struct si5351_hw_data, hw)
++
++static inline u8 si5351_reg_read(struct si5351_driver_data *drvdata, u8 reg)
++{
++	u32 val;
++	int ret;
++
++	ret = regmap_read(drvdata->regmap, reg, &val);
++	if (ret) {
++		dev_err(&drvdata->i2c->dev, "Unable to read from reg %02x\n", reg);
++		return 0;
++	}
++
++	return (u8)val;
++}
++
++static inline int si5351_bulk_read(struct si5351_driver_data *drvdata,
++				   u8 reg, u8 count, u8 *buf)
++{
++	return regmap_bulk_read(drvdata->regmap, reg, buf, count);
++}
++
++static inline int si5351_reg_write(struct si5351_driver_data *drvdata,
++				   u8 reg, u8 val)
++{
++	int ret;
++
++	ret = regmap_write(drvdata->regmap, reg, val);
++	if (ret < 0)
++		dev_err(&drvdata->i2c->dev,
++			"unable to write to regmap: reg = %02x, err = %d\n",
++			reg, ret);
++	return ret;
++}
++
++static inline int si5351_bulk_write(struct si5351_driver_data *drvdata,
++				    u8 reg, u8 count, const u8 *buf)
++{
++	int ret;
++
++	ret = regmap_raw_write(drvdata->regmap, reg, buf, count);
++	if (ret < 0)
++		dev_err(&drvdata->i2c->dev,
++			"unable to write to regmap: addr = %02x, err = %d\n",
++			reg, ret);
++	return ret;
++}
++
++static inline int si5351_set_bits(struct si5351_driver_data *drvdata,
++				  u8 reg, u8 mask, u8 val)
++{
++	int ret;
++
++	ret = regmap_update_bits(drvdata->regmap, reg, mask, val);
++	if (ret < 0)
++		dev_err(&drvdata->i2c->dev,
++			"unable to update regmap bits: reg = %02x, err = %d\n",
++			reg, ret);
++	return ret;
++}
++
++static void si5351_read_parameters(struct si5351_driver_data *drvdata,
++				   u8 reg, struct si5351_parameters *params)
++{
++	u8 buf[SI5351_PARAMETERS_LENGTH];
++
++	si5351_bulk_read(drvdata, reg, SI5351_PARAMETERS_LENGTH, buf);
++
++	params->p1 = ((buf[2] & 0x03) << 16) | (buf[3] << 8) | buf[4];
++	params->p2 = ((buf[5] & 0x0f) << 16) | (buf[6] << 8) | buf[7];
++	params->p3 = ((buf[5] & 0xf0) << 12) | (buf[0] << 8) | buf[1];
++	params->valid = 1;
++}
++
++static void si5351_write_parameters(struct si5351_driver_data *drvdata,
++				    u8 reg, struct si5351_parameters *params)
++{
++	u8 buf[SI5351_PARAMETERS_LENGTH];
++
++	buf[0] = ((params->p3 & 0x0ff00) >> 8) & 0xff;
++	buf[1] = params->p3 & 0xff;
++
++	/* save rdiv and divby4 */
++	buf[2] = si5351_reg_read(drvdata, reg + 2) & ~0x03;
++	buf[2] |= ((params->p1 & 0x30000) >> 16) & 0x03;
++	buf[3] = ((params->p1 & 0x0ff00) >> 8) & 0xff;
++	buf[4] = params->p1 & 0xff;
++	buf[5] = ((params->p3 & 0xf0000) >> 12) |
++		 ((params->p2 & 0xf0000) >> 16);
++	buf[6] = ((params->p2 & 0x0ff00) >> 8) & 0xff;
++	buf[7] = params->p2 & 0xff;
++
++	si5351_bulk_write(drvdata, reg, SI5351_PARAMETERS_LENGTH, buf);
++}
++
++static bool si5351_regmap_is_volatile(struct device *dev, unsigned int reg)
++{
++	switch (reg) {
++	case SI5351_REG_DEVICE_STATUS:
++	case SI5351_REG_INTERRUPT_STATUS:
++	case SI5351_REG_PLL_RESET:
++		return true;
++	}
++	return false;
++}
++
++static bool si5351_regmap_is_writeable(struct device *dev, unsigned int reg)
++{
++	/* reserved registers */
++	if (reg >= 4 && reg <= 8)
++		return false;
++	if (reg >= 10 && reg <= 14)
++		return false;
++	if (reg >= 173 && reg <= 176)
++		return false;
++	if (reg >= 178 && reg <= 182)
++		return false;
++
++	/* read-only */
++	if (reg == SI5351_REG_DEVICE_STATUS)
++		return false;
++
++	return true;
++}
++
++static const struct regmap_config si5351_regmap_config = {
++	.reg_bits	= 8,
++	.val_bits	= 8,
++	.cache_type	= REGCACHE_RBTREE,
++	.max_register	= 187,
++	.writeable_reg	= si5351_regmap_is_writeable,
++	.volatile_reg	= si5351_regmap_is_volatile,
++};
++
++static void si5351_clkout_power_up(struct si5351_driver_data *drvdata, int num)
++{
++	si5351_set_bits(drvdata, SI5351_REG_CLK0_CTRL + num,
++			SI5351_CLK_POWERDOWN, 0);
++}
++
++static void si5351_clkout_power_down(struct si5351_driver_data *drvdata, int num)
++{
++	si5351_set_bits(drvdata, SI5351_REG_CLK0_CTRL + num,
++			SI5351_CLK_POWERDOWN, SI5351_CLK_POWERDOWN);
++}
++
++static void si5351_clkout_enable_out(struct si5351_driver_data *drvdata, int num)
++{
++	si5351_set_bits(drvdata, SI5351_REG_OUT_ENABLE_CTRL,
++			BIT(num), 0);
++}
++
++static void si5351_clkout_disable_out(struct si5351_driver_data *drvdata, int num)
++{
++	si5351_set_bits(drvdata, SI5351_REG_OUT_ENABLE_CTRL,
++			BIT(num), BIT(num));
++}
++
++static void si5351_clkout_set_drive_strength(struct si5351_driver_data *drvdata,
++					     int num, u8 strength)
++{
++	si5351_set_bits(drvdata, SI5351_REG_CLK0_CTRL + num,
++			SI5351_CLK_DRIVE_STRENGTH_MASK, strength);
++}
++
++static void si5351_clkout_reset_pll(struct si5351_driver_data *drvdata, int num)
++{
++	si5351_reg_write(drvdata, SI5351_REG_PLL_RESET,
++		(num == 0) ? SI5351_PLL_RESET_A : SI5351_PLL_RESET_B);
++
++	dev_dbg(&drvdata->i2c->dev, "%s - %s: pll = %d\n",
++		__func__, clk_hw_get_name(&drvdata->clkout[num].hw), num);
++}
++
++static int si5351_clkout_prepare(struct clk_hw *hw)
++{
++	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
++
++	dev_dbg(&hwdata->drv->i2c->dev, "%s: prepare clk%d\n",
++                __func__, hwdata->num);
++
++	si5351_clkout_power_up(hwdata->drv, hwdata->num);
++	si5351_clkout_enable_out(hwdata->drv, hwdata->num);
++
++	return 0;
++}
++
++static void si5351_clkout_unprepare(struct clk_hw *hw)
++{
++	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
++
++	dev_dbg(&hwdata->drv->i2c->dev, "%s: unprepare clk%d\n",
++		__func__, hwdata->num);
++
++	si5351_clkout_disable_out(hwdata->drv, hwdata->num);
++	si5351_clkout_power_down(hwdata->drv, hwdata->num);
++}
++
++static struct clk_hw *si53351_of_clk_get(struct of_phandle_args *clkspec,
++					 void *data)
++{
++	struct si5351_driver_data *drvdata = data;
++	unsigned int i = clkspec->args[0];
++
++	if (i >= drvdata->num_clkout) {
++		pr_err("%s: invalid index %u\n", __func__, i);
++		return ERR_PTR(-EINVAL);
++	}
++
++	return &drvdata->clkout[i].hw;
++}
++
++static int aapi_clk_parse_dt(struct si5351_driver_data *data)
++{
++	struct device *dev = &data->i2c->dev;
++	int ret, corr_val, corr_sign;
++	u64 lltmp;
++	u32 corr[2];
++
++        data->pxtal = devm_clk_get(dev, "xtal");
++
++        if (PTR_ERR(data->pxtal) == -EPROBE_DEFER) {
++		dev_warn(dev, "access to xtal deferred\n");
++                return -EPROBE_DEFER;
++	}
++	if (IS_ERR(data->pxtal)) {
++		dev_err(dev, "missing xtal clock\n");
++		return -EINVAL;
++	}
++
++	data->pxtal_name = __clk_get_name(data->pxtal);
++
++	ret = device_property_read_u32(dev, "xtal-frequency",
++				       &data->xtal_freq);
++	if (ret) {
++		dev_err(dev,"couldn't read 'xtal-frequency' property\n");
++		return ret;
++	}
++
++	data->ref_freq = data->xtal_freq;
++
++	ret = device_property_read_u32_array(dev, "xtal-correction",
++					     corr, 2);
++	if (!ret) {
++		corr_val = (int) corr[0];
++		corr_sign = corr[1] ? -1 : 1;
++
++        	if (corr_val) {
++			/* Factor correction value into nominal crystal frequency */
++                	lltmp = corr_val;
++	                lltmp <<= 31;
++        	        lltmp = div_u64(lltmp, 1000000000);
++                	data->ref_freq = data->ref_freq +
++				corr_sign * (int)((lltmp * data->ref_freq) >> 31);
++	        }
++	}
++
++	return 0;
++}
++
++static int si5351_chip_init(struct si5351_driver_data *drvdata)
++{
++	int n;
++	u8 mask, val;
++
++	/* set crystal load capacitance */
++	si5351_set_bits(drvdata, SI5351_REG_CRYSTAL_LOAD,
++			SI5351_CRYSTAL_LOAD_MASK,
++			SI5351_CRYSTAL_LOAD_10PF);
++
++	/* disable interrupts */
++	si5351_reg_write(drvdata, SI5351_REG_INTERRUPT_MASK, 0xf0);
++
++	/* ensure pll source is XTAL for Si5351A */
++	si5351_set_bits(drvdata, SI5351_REG_PLL_INPUT_SOURCE,
++			SI5351_PLLA_SOURCE | SI5351_PLLB_SOURCE, 0);
++
++
++	for (n = 0; n < drvdata->num_clkout; n++) {
++		/* set the output parameters */
++		mask = SI5351_CLK_INPUT_MASK | SI5351_CLK_PLL_SELECT;
++		val  = SI5351_CLK_INPUT_MSYNTH_N |
++              	/* PLLA for clk0, PLLB for the rest*/
++	                ((n == 0) ? 0 : SI5351_CLK_PLL_SELECT);
++
++		si5351_set_bits(drvdata, SI5351_REG_CLK0_CTRL + n,
++				mask, val);
++
++		si5351_clkout_set_drive_strength(drvdata, n,
++				SI5351_CLK_DRIVE_STRENGTH_8MA);
++	}
++
++	return 0;
++}
++
++static int si5351_xtal_prepare(struct clk_hw *hw)
++{
++	struct si5351_driver_data *drvdata =
++		container_of(hw, struct si5351_driver_data, xtal);
++	si5351_set_bits(drvdata, SI5351_REG_FANOUT_ENABLE,
++			SI5351_XTAL_ENABLE, SI5351_XTAL_ENABLE);
++	return 0;
++}
++
++static void si5351_xtal_unprepare(struct clk_hw *hw)
++{
++	struct si5351_driver_data *drvdata =
++		container_of(hw, struct si5351_driver_data, xtal);
++	si5351_set_bits(drvdata, SI5351_REG_FANOUT_ENABLE,
++			SI5351_XTAL_ENABLE, 0);
++}
++
++static const struct clk_ops si5351_xtal_ops = {
++	.prepare   = si5351_xtal_prepare,
++	.unprepare = si5351_xtal_unprepare,
++};
++
++static unsigned long si5351_pll_recalc_rate(struct clk_hw *hw,
++					    unsigned long parent_rate)
++{
++	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
++	u8 reg = (hwdata->num == 0) ? SI5351_REG_PLLA_PARAMETERS :
++				      SI5351_REG_PLLB_PARAMETERS;
++	unsigned long long rate;
++
++	if (!hwdata->params.valid)
++		si5351_read_parameters(hwdata->drv, reg, &hwdata->params);
++
++	if (hwdata->params.p3 == 0)
++		return parent_rate;
++
++	/* fVCO = fIN * (P1*P3 + 512*P3 + P2)/(128*P3) */
++	rate  = hwdata->params.p1 * hwdata->params.p3;
++	rate += 512 * hwdata->params.p3;
++	rate += hwdata->params.p2;
++	rate *= parent_rate;
++	do_div(rate, 128 * hwdata->params.p3);
++
++	dev_dbg(&hwdata->drv->i2c->dev,
++		"%s - %s: p1 = %lu, p2 = %lu, p3 = %lu, parent_rate = %lu, rate = %lu\n",
++		__func__, clk_hw_get_name(hw),
++		hwdata->params.p1, hwdata->params.p2, hwdata->params.p3,
++		parent_rate, (unsigned long)rate);
++
++	return (unsigned long)rate;
++}
++
++static long si5351_pll_round_rate(struct clk_hw *hw, unsigned long rate,
++				  unsigned long *parent_rate)
++{
++	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
++	unsigned long rfrac, denom, a, b, c;
++	unsigned long long lltmp;
++
++	if (rate < SI5351_PLL_VCO_MIN)
++		rate = SI5351_PLL_VCO_MIN;
++	if (rate > SI5351_PLL_VCO_MAX)
++		rate = SI5351_PLL_VCO_MAX;
++
++	/* determine integer part of feedback equation */
++	a = rate / *parent_rate;
++
++	if (a < SI5351_PLL_A_MIN)
++		rate = (*parent_rate) * SI5351_PLL_A_MIN;
++	if (a > SI5351_PLL_A_MAX)
++		rate = (*parent_rate) * SI5351_PLL_A_MAX;
++
++	/* find best approximation for b/c = fVCO mod fIN */
++	denom = 1000 * 1000;
++	lltmp = rate % (*parent_rate);
++	lltmp *= denom;
++	do_div(lltmp, *parent_rate);
++	rfrac = (unsigned long)lltmp;
++
++	b = 0;
++	c = 1;
++	if (rfrac)
++		rational_best_approximation(rfrac, denom,
++				    SI5351_PLL_B_MAX, SI5351_PLL_C_MAX, &b, &c);
++
++	/* calculate parameters */
++	hwdata->params.p3  = c;
++	hwdata->params.p2  = (128 * b) % c;
++	hwdata->params.p1  = 128 * a;
++	hwdata->params.p1 += (128 * b / c);
++	hwdata->params.p1 -= 512;
++
++	/* recalculate rate by fIN * (a + b/c) */
++	lltmp  = (*parent_rate);
++	lltmp *= b;
++	do_div(lltmp, c);
++
++	rate  = (unsigned long)lltmp;
++	rate += (*parent_rate) * a;
++
++	dev_dbg(&hwdata->drv->i2c->dev,
++		"%s - %s: a = %lu, b = %lu, c = %lu, parent_rate = %lu, rate = %lu\n",
++		__func__, clk_hw_get_name(hw), a, b, c,
++		*parent_rate, rate);
++
++	return rate;
++}
++
++static int si5351_pll_set_rate(struct clk_hw *hw, unsigned long rate,
++			       unsigned long parent_rate)
++{
++	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
++	u8 reg = (hwdata->num == 0) ? SI5351_REG_PLLA_PARAMETERS :
++				      SI5351_REG_PLLB_PARAMETERS;
++
++	/* write pll parameters */
++	si5351_write_parameters(hwdata->drv, reg, &hwdata->params);
++
++	/* plla/pllb ctrl is in clk6/clk7 ctrl registers */
++	si5351_set_bits(hwdata->drv, SI5351_REG_CLK6_CTRL + hwdata->num,
++			SI5351_CLK_INTEGER_MODE,
++			(hwdata->params.p2 == 0) ? SI5351_CLK_INTEGER_MODE : 0);
++
++	/* soft reset on the affected pll */
++	si5351_clkout_reset_pll(hwdata->drv, hwdata->num);
++
++	dev_dbg(&hwdata->drv->i2c->dev,
++		"%s - %s: p1 = %lu, p2 = %lu, p3 = %lu, parent_rate = %lu, rate = %lu\n",
++		__func__, clk_hw_get_name(hw),
++		hwdata->params.p1, hwdata->params.p2, hwdata->params.p3,
++		parent_rate, rate);
++
++	return 0;
++}
++
++static const struct clk_ops si5351_pll_ops = {
++	.recalc_rate = si5351_pll_recalc_rate,
++	.round_rate = si5351_pll_round_rate,
++	.set_rate = si5351_pll_set_rate,
++};
++
++static unsigned long si5351_msynth_recalc_rate(struct clk_hw *hw,
++					       unsigned long parent_rate)
++{
++	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
++	unsigned long long rate;
++	unsigned long m;
++	u8 reg;
++
++	reg = SI5351_REG_CLK0_PARAMETERS +
++	     (SI5351_PARAMETERS_LENGTH * hwdata->num);
++
++	if (!hwdata->params.valid)
++		si5351_read_parameters(hwdata->drv, reg, &hwdata->params);
++
++	/*
++	 * multisync0-5: fOUT = (128 * P3 * fIN) / (P1*P3 + P2 + 512*P3)
++	 * multisync6-7: fOUT = fIN / P1
++	 */
++	rate = parent_rate;
++	if (hwdata->num > 5) {
++		m = hwdata->params.p1;
++	} else if (hwdata->params.p3 == 0) {
++		return parent_rate;
++	} else if ((si5351_reg_read(hwdata->drv, reg + 2) &
++		    SI5351_OUTPUT_CLK_DIVBY4) == SI5351_OUTPUT_CLK_DIVBY4) {
++		m = 4;
++	} else {
++		rate *= (128 * hwdata->params.p3);
++		m = hwdata->params.p1 * hwdata->params.p3;
++		m += hwdata->params.p2;
++		m += 512 * hwdata->params.p3;
++	}
++
++	if (m == 0)
++		return 0;
++	do_div(rate, m);
++
++	dev_dbg(&hwdata->drv->i2c->dev,
++		"%s - %s: p1 = %lu, p2 = %lu, p3 = %lu, m = %lu, parent_rate = %lu, rate = %lu\n",
++		__func__, clk_hw_get_name(hw),
++		hwdata->params.p1, hwdata->params.p2, hwdata->params.p3,
++		m, parent_rate, (unsigned long)rate);
++
++	return (unsigned long)rate;
++}
++
++static long si5351_msynth_round_rate(struct clk_hw *hw, unsigned long rate,
++				     unsigned long *parent_rate)
++{
++	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
++	unsigned long long lltmp;
++	unsigned long a, b, c;
++	int divby4;
++
++	/* multisync frequency is 1MHz .. 160MHz */
++	if (rate > SI5351_MSYNTH_MAX_FREQ)
++		rate = SI5351_MSYNTH_MAX_FREQ;
++	if (rate < SI5351_MSYNTH_MIN_FREQ)
++		rate = SI5351_MSYNTH_MIN_FREQ;
++
++	divby4 = 0;
++	if (rate > SI5351_MSYNTH_DIVBY4_FREQ)
++		divby4 = 1;
++
++	/* multisynth can set pll */
++	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT) {
++		/*
++		 * find largest integer divider for max
++		 * vco frequency and given target rate
++		 */
++		if (divby4 == 0) {
++			lltmp = SI5351_PLL_VCO_MAX;
++			do_div(lltmp, rate);
++			a = (unsigned long)lltmp;
++		} else
++			a = 4;
++
++		b = 0;
++		c = 1;
++
++		*parent_rate = a * rate;
++	} else {
++		unsigned long rfrac, denom;
++
++		/* disable divby4 */
++		if (divby4) {
++			rate = SI5351_MSYNTH_DIVBY4_FREQ;
++			divby4 = 0;
++		}
++
++		/* determine integer part of divider equation */
++		a = *parent_rate / rate;
++		if (a < SI5351_MSYNTH_A_MIN)
++			a = SI5351_MSYNTH_A_MIN;
++		if (a > SI5351_MSYNTH_A_MAX)
++			a = SI5351_MSYNTH_A_MAX;
++
++		/* find best approximation for b/c = fVCO mod fOUT */
++		denom = 1000 * 1000;
++		lltmp = (*parent_rate) % rate;
++		lltmp *= denom;
++		do_div(lltmp, rate);
++		rfrac = (unsigned long)lltmp;
++
++		b = 0;
++		c = 1;
++		if (rfrac)
++			rational_best_approximation(rfrac, denom,
++			    SI5351_MSYNTH_B_MAX, SI5351_MSYNTH_C_MAX,
++			    &b, &c);
++	}
++
++	/* recalculate rate by fOUT = fIN / (a + b/c) */
++	lltmp  = *parent_rate;
++	lltmp *= c;
++	do_div(lltmp, a * c + b);
++	rate  = (unsigned long)lltmp;
++
++	/* calculate parameters */
++	if (divby4) {
++		hwdata->params.p3 = 1;
++		hwdata->params.p2 = 0;
++		hwdata->params.p1 = 0;
++	} else {
++		hwdata->params.p3  = c;
++		hwdata->params.p2  = (128 * b) % c;
++		hwdata->params.p1  = 128 * a;
++		hwdata->params.p1 += (128 * b / c);
++		hwdata->params.p1 -= 512;
++	}
++
++	dev_dbg(&hwdata->drv->i2c->dev,
++		"%s - %s: a = %lu, b = %lu, c = %lu, divby4 = %d, parent_rate = %lu, rate = %lu\n",
++		__func__, clk_hw_get_name(hw), a, b, c, divby4,
++		*parent_rate, rate);
++
++	return rate;
++}
++
++static int si5351_msynth_set_rate(struct clk_hw *hw, unsigned long rate,
++				  unsigned long parent_rate)
++{
++	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
++	int divby4 = 0;
++	u8 reg;
++
++	reg = SI5351_REG_CLK0_PARAMETERS +
++	     (SI5351_PARAMETERS_LENGTH * hwdata->num);
++
++	/* write multisynth parameters */
++	si5351_write_parameters(hwdata->drv, reg, &hwdata->params);
++
++	if (rate > SI5351_MSYNTH_DIVBY4_FREQ)
++		divby4 = 1;
++
++	/* enable/disable integer mode and divby4 on multisynth0-5 */
++	si5351_set_bits(hwdata->drv, reg + 2, SI5351_OUTPUT_CLK_DIVBY4,
++			(divby4) ? SI5351_OUTPUT_CLK_DIVBY4 : 0);
++	si5351_set_bits(hwdata->drv, SI5351_REG_CLK0_CTRL + hwdata->num,
++			SI5351_CLK_INTEGER_MODE,
++			(hwdata->params.p2 == 0) ? SI5351_CLK_INTEGER_MODE : 0);
++
++	dev_dbg(&hwdata->drv->i2c->dev,
++		"%s - %s: p1 = %lu, p2 = %lu, p3 = %lu, divby4 = %d, parent_rate = %lu, rate = %lu\n",
++		__func__, clk_hw_get_name(hw),
++		hwdata->params.p1, hwdata->params.p2, hwdata->params.p3,
++		divby4, parent_rate, rate);
++
++	return 0;
++}
++
++static const struct clk_ops si5351_msynth_ops = {
++	.recalc_rate = si5351_msynth_recalc_rate,
++	.round_rate = si5351_msynth_round_rate,
++	.set_rate = si5351_msynth_set_rate,
++};
++
++static unsigned long si5351_clkout_recalc_rate(struct clk_hw *hw,
++					       unsigned long parent_rate)
++{
++	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
++	u8 reg, rdiv;
++
++	reg = SI5351_REG_CLK0_PARAMETERS +
++	     (SI5351_PARAMETERS_LENGTH * hwdata->num) + 2;
++
++	rdiv = si5351_reg_read(hwdata->drv, reg);
++	rdiv &= SI5351_OUTPUT_CLK_DIV_MASK;
++	rdiv >>= SI5351_OUTPUT_CLK_DIV_SHIFT;
++
++	return parent_rate >> rdiv;
++}
++
++static long si5351_clkout_round_rate(struct clk_hw *hw, unsigned long rate,
++				     unsigned long *parent_rate)
++{
++	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
++	u8 rdiv;
++
++	/* clkout freqency is 8kHz - 160MHz */
++	if (rate > SI5351_CLKOUT_MAX_FREQ)
++		rate = SI5351_CLKOUT_MAX_FREQ;
++	if (rate < SI5351_CLKOUT_MIN_FREQ)
++		rate = SI5351_CLKOUT_MIN_FREQ;
++
++	/* request frequency if multisync master */
++	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT) {
++		/* use r divider for frequencies below 1MHz */
++		rdiv = SI5351_OUTPUT_CLK_DIV_1;
++		while (rate < SI5351_MSYNTH_MIN_FREQ &&
++		       rdiv < SI5351_OUTPUT_CLK_DIV_128) {
++			rdiv += 1;
++			rate *= 2;
++		}
++		*parent_rate = rate;
++	} else {
++		unsigned long new_rate, new_err, err;
++
++		/* round to closest rdiv */
++		rdiv = SI5351_OUTPUT_CLK_DIV_1;
++		new_rate = *parent_rate;
++		err = abs(new_rate - rate);
++		do {
++			new_rate >>= 1;
++			new_err = abs(new_rate - rate);
++			if (new_err > err || rdiv == SI5351_OUTPUT_CLK_DIV_128)
++				break;
++			rdiv++;
++			err = new_err;
++		} while (1);
++	}
++	rate = *parent_rate >> rdiv;
++
++	dev_dbg(&hwdata->drv->i2c->dev,
++		"%s - %s: rdiv = %u, parent_rate = %lu, rate = %lu\n",
++		__func__, clk_hw_get_name(hw), (1 << rdiv),
++		*parent_rate, rate);
++
++	return rate;
++}
++
++static int si5351_clkout_set_rate(struct clk_hw *hw, unsigned long rate,
++				  unsigned long parent_rate)
++{
++	struct si5351_hw_data *hwdata = si5351_get_hw_data(hw);
++	unsigned long new_rate, new_err, err;
++	u8 rdiv, reg;
++
++	reg = SI5351_REG_CLK0_PARAMETERS +
++	     (SI5351_PARAMETERS_LENGTH * hwdata->num) + 2;
++
++	/* round to closest rdiv */
++	rdiv = SI5351_OUTPUT_CLK_DIV_1;
++	new_rate = parent_rate;
++	err = abs(new_rate - rate);
++	do {
++		new_rate >>= 1;
++		new_err = abs(new_rate - rate);
++		if (new_err > err || rdiv == SI5351_OUTPUT_CLK_DIV_128)
++			break;
++		rdiv++;
++		err = new_err;
++	} while (1);
++
++	/* write output divider */
++	si5351_set_bits(hwdata->drv, reg, SI5351_OUTPUT_CLK_DIV_MASK,
++			rdiv << SI5351_OUTPUT_CLK_DIV_SHIFT);
++
++	dev_dbg(&hwdata->drv->i2c->dev,
++		"%s - %s: rdiv = %u, parent_rate = %lu, rate = %lu\n",
++		__func__, clk_hw_get_name(hw), (1 << rdiv),
++		parent_rate, rate);
++
++	return 0;
++}
++
++static const struct clk_ops si5351_clkout_ops = {
++	.prepare = si5351_clkout_prepare,
++	.unprepare = si5351_clkout_unprepare,
++	.recalc_rate = si5351_clkout_recalc_rate,
++	.round_rate = si5351_clkout_round_rate,
++	.set_rate = si5351_clkout_set_rate,
++};
++
++static const char *const si5351_input_names[] = {
++	"xtal"
++};
++static const char *const si5351_pll_names[] = {
++	"si5351_plla", "si5351_pllb"
++};
++static const char *const si5351_msynth_names[] = {
++	"ms0", "ms1"
++};
++static const char *const si5351_clkout_names[] = {
++	"clk0", "clk1"
++};
++
++static int aapi_clk_register(struct si5351_driver_data *drvdata)
++{
++	struct device *dev = &drvdata->i2c->dev;
++	struct clk_init_data init;
++	int ret, n;
++
++	/* register xtal input clock gate */
++	memset(&init, 0, sizeof(init));
++	init.name = si5351_input_names[0];
++	init.ops = &si5351_xtal_ops;
++	init.parent_names = &drvdata->pxtal_name;
++	init.num_parents = 1;
++
++	drvdata->xtal.init = &init;
++	ret = devm_clk_hw_register(dev, &drvdata->xtal);
++	if (ret) {
++		dev_err(dev, "unable to register %s\n", init.name);
++		return ret;
++	}
++
++	/* register PLLA */
++	memset(&init, 0, sizeof(init));
++	init.name = si5351_pll_names[0];
++	init.ops = &si5351_pll_ops;
++	init.parent_names = si5351_input_names;
++	init.num_parents = 1;
++
++	drvdata->pll[0].num = 0;
++	drvdata->pll[0].drv = drvdata;
++	drvdata->pll[0].hw.init = &init;
++
++	ret = devm_clk_hw_register(dev, &drvdata->pll[0].hw);
++	if (ret) {
++		dev_err(dev, "unable to register %s\n", init.name);
++		return ret;
++	}
++
++	/* register PLLB */
++	memset(&init, 0, sizeof(init));
++	init.name = si5351_pll_names[1];
++	init.ops = &si5351_pll_ops;
++	init.parent_names = si5351_input_names;
++	init.num_parents = 1;
++
++	drvdata->pll[1].num = 1;
++	drvdata->pll[1].drv = drvdata;
++	drvdata->pll[1].hw.init = &init;
++
++	ret = devm_clk_hw_register(dev, &drvdata->pll[1].hw);
++	if (ret) {
++		dev_err(dev, "unable to register %s\n", init.name);
++		return ret;
++	}
++
++
++	/* register clk multisynth */
++	memset(&init, 0, sizeof(init));
++	init.ops = &si5351_msynth_ops;
++	init.flags = CLK_SET_RATE_PARENT;
++	init.num_parents = 1;
++
++	for (n = 0; n < drvdata->num_clkout; n++) {
++		init.name = si5351_msynth_names[n];
++		init.parent_names = &si5351_pll_names[n];
++
++		drvdata->msynth[n].num = n;
++		drvdata->msynth[n].drv = drvdata;
++		drvdata->msynth[n].hw.init = &init;
++
++		ret = devm_clk_hw_register(dev, &drvdata->msynth[n].hw);
++		if (ret) {
++			dev_err(dev, "unable to register %s\n", init.name);
++			return ret;
++		}
++	}
++
++	/* register clock outputs */
++	memset(&init, 0, sizeof(init));
++	init.ops = &si5351_clkout_ops;
++	init.flags = CLK_SET_RATE_PARENT;
++	init.num_parents = 1;
++
++	for (n = 0; n < drvdata->num_clkout; n++) {
++		init.name = si5351_clkout_names[n];
++		init.parent_names = &si5351_msynth_names[n];
++
++		drvdata->clkout[n].num = n;
++		drvdata->clkout[n].drv = drvdata;
++		drvdata->clkout[n].hw.init = &init;
++
++		ret = devm_clk_hw_register(dev, &drvdata->clkout[n].hw);
++		if (ret < 0) {
++			dev_err(dev, "unable to register %s\n", init.name);
++			return ret;
++		}
++	}
++
++	ret = of_clk_add_hw_provider(dev->of_node,
++				     si53351_of_clk_get, drvdata);
++	if (ret) {
++		dev_err(dev, "unable to add clock provider\n");
++		return ret;
++	}
++
++	return 0;
++}
++
++static int aapi_clk_probe(struct i2c_client *i2c,
++			  const struct i2c_device_id *id)
++{
++	struct si5351_driver_data *drvdata;
++	struct device *dev = &i2c->dev;
++	int ret;
++
++	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
++	if (!drvdata)
++		return -ENOMEM;
++
++	i2c_set_clientdata(i2c, drvdata);
++
++	drvdata->i2c = i2c;
++	drvdata->num_clkout = NUM_CLKOUT;
++
++	ret = aapi_clk_parse_dt(drvdata);
++	if (ret)
++		return ret;
++
++	drvdata->regmap = devm_regmap_init_i2c(i2c,
++					&si5351_regmap_config);
++	if (IS_ERR(drvdata->regmap)) {
++		dev_err(dev, "failed to allocate register map\n");
++		return PTR_ERR(drvdata->regmap);
++	}
++
++	drvdata->power = devm_regulator_get(dev, "power");
++	if (IS_ERR(drvdata->power)) {
++		ret = PTR_ERR(drvdata->power);
++		dev_err(dev, "couldn't get regulator: %d\n", ret);
++		return ret;
++	}
++	/* power up */
++	ret = regulator_enable(drvdata->power);
++	if (ret) {
++		dev_err(dev, "can't enable regulator: %d\n", ret);
++		return ret;
++	}
++
++	ret = si5351_chip_init(drvdata);
++	if (ret)
++		goto err_regulator;
++
++
++	ret = aapi_clk_register(drvdata);
++	if (ret)
++		goto err_regulator;
++
++	return 0;
++
++err_regulator:
++	regulator_disable(drvdata->power);
++	return ret;
++}
++
++static int aapi_clk_remove(struct i2c_client *i2c)
++{
++	struct si5351_driver_data *drvdata = i2c_get_clientdata(i2c);
++	int ret;
++
++	/* power down */
++	ret = regulator_disable(drvdata->power);
++	if (ret)
++		dev_warn(&i2c->dev, "can't disable regulator: %d\n", ret);
++
++
++	of_clk_del_provider(i2c->dev.of_node);
++
++	return 0;
++}
++
++static const struct i2c_device_id aapi_clk_i2c_ids[] = {
++	{ "aapi-clk-si5351", 0 },
++	{ }
++};
++MODULE_DEVICE_TABLE(i2c, aapi_clk_i2c_ids);
++
++static const struct of_device_id aapi_clk_of_match[] = {
++	{ .compatible = "orpaltech,aapi-clk-si5351" },
++	{ /*sentinel*/ }
++};
++MODULE_DEVICE_TABLE(of, aapi_clk_of_match);
++
++static struct i2c_driver aapi_clk_i2c_driver = {
++	.probe	= aapi_clk_probe,
++	.remove	= aapi_clk_remove,
++	.id_table = aapi_clk_i2c_ids,
++	.driver	= {
++		.name	= "aapi-clk-si5351",
++		.owner	= THIS_MODULE,
++		.of_match_table	= aapi_clk_of_match,
++	},
++};
++module_i2c_driver(aapi_clk_i2c_driver);
++
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com");
++MODULE_DESCRIPTION("AA-Pi si5351-based synthesizer driver");
++MODULE_LICENSE("GPL");
+-- 
+2.17.1
+

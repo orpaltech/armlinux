@@ -55,3 +55,6 @@ SUPPORT_WLAN="yes"
 
 # Raspberry-specific clean options
 CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa-vc4"
+
+# Userland is broken on arm64 platform
+ENABLE_RPI_USERLAND=no

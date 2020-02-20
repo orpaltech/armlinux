@@ -50,7 +50,7 @@ export PKG_CONFIG_SYSROOT_DIR=\${SYSROOT}
 exec pkg-config "\$@"
 EOF
 
-	sudo chmod +x ${MESON_CROSS_PKGCONFIG}
+	chmod +x ${MESON_CROSS_PKGCONFIG}
 
 	cat <<-EOF > ${MESA_OUT_DIR}/${MESON_CROSSFILE}
 [binaries]

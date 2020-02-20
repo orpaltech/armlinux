@@ -16,7 +16,7 @@ if [ "${KERNEL_ARCH}" = arm64 ] ; then
 else
   BOOTCMD="bootz"
 fi
-printf "${BOOTCMD} \${kernel_addr_r} - \${fdt_addr}" >> $BOOT_SCR_CMD
+echo "${BOOTCMD} \${kernel_addr_r} - \${fdt_addr}" >> $BOOT_SCR_CMD
 
 BOOTARGS_ENV="setenv bootargs \"${CMDLINE} hdmi.audio=EDID:0 disp.screen0_output_mode=\${video_mode} \${extraargs}\""
 sed -i "/setenv bootargs .*/c ${BOOTARGS_ENV}" $BOOT_SCR_CMD

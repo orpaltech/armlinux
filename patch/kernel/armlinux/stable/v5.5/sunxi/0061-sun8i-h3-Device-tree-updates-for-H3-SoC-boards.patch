@@ -1,6 +1,6 @@
-From 522a97d26fe99a88359b49e8bd2ffe8d08d0388f Mon Sep 17 00:00:00 2001
+From a230f45f551b8c341420afb1a6b01886325c71cc Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sun, 9 Feb 2020 21:09:21 +0300
+Date: Wed, 12 Feb 2020 19:09:57 +0300
 Subject: [PATCH] sun8i-h3: Device tree updates for H3 SoC boards
 
 ---
@@ -31,10 +31,10 @@ index 5aff8ec..1d740f4 100644
  
  &mmc0 {
 diff --git a/arch/arm/boot/dts/sun8i-h3.dtsi b/arch/arm/boot/dts/sun8i-h3.dtsi
-index fe773c7..6864f31 100644
+index 20217e2..956248e 100644
 --- a/arch/arm/boot/dts/sun8i-h3.dtsi
 +++ b/arch/arm/boot/dts/sun8i-h3.dtsi
-@@ -248,6 +248,23 @@
+@@ -277,6 +277,23 @@
  
  &pio {
  	compatible = "allwinner,sun8i-h3-pinctrl";

@@ -105,5 +105,8 @@ install_readonly "${FILES_DIR}/mount/fstab" "${ETC_DIR}/fstab"
 install_readonly "${FILES_DIR}/sysctl.d/81-vm.conf" "${ETC_DIR}/sysctl.d/81-vm.conf"
 
 if [ ! -z "${KERNEL_MODULES}" ] ; then
-  tr ' ' '\n' <<< "${KERNEL_MODULES}" > "${ETC_DIR}/modules"
+  for kmod in ${KERNEL_MODULES}
+  do
+	echo "${kmod}" > "${ETC_DIR}/modules-load.d/${kmod}.conf"
+  done
 fi

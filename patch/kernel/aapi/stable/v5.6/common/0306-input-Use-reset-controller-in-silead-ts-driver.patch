@@ -1,0 +1,86 @@
+From 6a2469de1d3438f5d541adbef8d47d40eee518e8 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Mon, 15 Jul 2019 13:55:20 +0300
+Subject: [PATCH] input: Use reset controller in silead-ts driver
+
+---
+ drivers/input/touchscreen/silead.c | 30 +++++++++++++++++++++++-------
+ 1 file changed, 23 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/input/touchscreen/silead.c b/drivers/input/touchscreen/silead.c
+index ad8b6a2..71b9eae 100644
+--- a/drivers/input/touchscreen/silead.c
++++ b/drivers/input/touchscreen/silead.c
+@@ -9,6 +9,8 @@
+  * -------------------------------------------------------------------------
+  */
+ 
++#define DEBUG
++
+ #include <linux/i2c.h>
+ #include <linux/module.h>
+ #include <linux/acpi.h>
+@@ -22,6 +24,7 @@
+ #include <linux/pm.h>
+ #include <linux/irq.h>
+ #include <linux/regulator/consumer.h>
++#include <linux/reset.h>
+ 
+ #include <asm/unaligned.h>
+ 
+@@ -67,6 +70,7 @@ struct silead_ts_data {
+ 	struct gpio_desc *gpio_power;
+ 	struct input_dev *input;
+ 	struct regulator_bulk_data regulators[2];
++	struct reset_control *reset;
+ 	char fw_name[64];
+ 	struct touchscreen_properties prop;
+ 	u32 max_fingers;
+@@ -497,6 +501,10 @@ static int silead_ts_probe(struct i2c_client *client,
+ 	if (error)
+ 		return error;
+ 
++	error = devm_add_action_or_reset(dev, silead_disable_regulator, data);
++	if (error)
++		return error;
++
+ 	/*
+ 	 * Enable regulators at probe and disable them at remove, we need
+ 	 * to keep the chip powered otherwise it forgets its firmware.
+@@ -506,18 +514,26 @@ static int silead_ts_probe(struct i2c_client *client,
+ 	if (error)
+ 		return error;
+ 
+-	error = devm_add_action_or_reset(dev, silead_disable_regulator, data);
+-	if (error)
+-		return error;
+-
+ 	/* Power GPIO pin */
+ 	data->gpio_power = devm_gpiod_get_optional(dev, "power", GPIOD_OUT_LOW);
+ 	if (IS_ERR(data->gpio_power)) {
+-		if (PTR_ERR(data->gpio_power) != -EPROBE_DEFER)
+-			dev_err(dev, "Shutdown GPIO request failed\n");
+-		return PTR_ERR(data->gpio_power);
++		error = PTR_ERR(data->gpio_power);
++		if (error != -EPROBE_DEFER)
++			dev_err(dev, "Shutdown GPIO request failed: %d\n", error);
++		return error;
++	}
++
++	data->reset = devm_reset_control_get(dev, "reset");
++	if (IS_ERR(data->reset)) {
++		error = PTR_ERR(data->reset);
++		if (error != -EPROBE_DEFER)
++			dev_err(dev, "Couldn't get reset line: %d\n", error);
++		return error;
+ 	}
+ 
++	/* Reset touchscreen */
++	reset_control_reset(data->reset);
++
+ 	error = silead_ts_setup(client);
+ 	if (error)
+ 		return error;
+-- 
+2.17.1
+

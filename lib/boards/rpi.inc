@@ -41,3 +41,5 @@ SUPPORT_WLAN="yes"
 
 # Raspberry-specific clean options
 CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa-vc4 userland"
+
+ENABLE_RPI_USERLAND=yes

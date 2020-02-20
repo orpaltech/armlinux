@@ -13,10 +13,17 @@
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2018 ORPAL Technology, Inc.
+# Copyright (C) 2013-2020 ORPAL Technology, Inc.
 #
 ########################################################################
 
+
+if [ -f ${LIBDIR}/sources-finalize.sh ] ; then
+	. ${LIBDIR}/sources-finalize.sh
+	sources_finalize="yes"
+else
+	sources_finalize="no"
+fi
 
 update_uboot()
 {
@@ -25,8 +32,8 @@ update_uboot()
 	mkdir -p $UBOOT_BASE_DIR
 
         if [ -d "${UBOOT_SOURCE_DIR}" ] && [ -d "${UBOOT_SOURCE_DIR}/.git" ] ; then
-		local UBOOT_OLD_URL=$(git -C $UBOOT_SOURCE_DIR config --get remote.origin.url)
-		if [ "${UBOOT_OLD_URL}" != "${UBOOT_REPO_URL}" ] ; then
+		local uboot_old_url=$(git -C $UBOOT_SOURCE_DIR config --get remote.origin.url)
+		if [ "${uboot_old_url}" != "${UBOOT_REPO_URL}" ] ; then
 			echo "U-Boot repository has changed, clean up working dir ?"
 			pause
 			rm -rf $UBOOT_SOURCE_DIR
@@ -71,6 +78,8 @@ update_uboot()
 		[ $? -eq 0 ] || exit $?;
 	fi
 
+	[[ "${sources_finalize}" = yes ]] && uboot_source_finalize
+
 	UBOOT_SOURCE_DIR="${UBOOT_BASE_DIR}${UBOOT_REPO_SUBDIR}"
 
 	echo "Done."
@@ -94,7 +103,7 @@ copy_patches()
 	cp $PATCH_SRC_DIR/common/*.patch $PATCH_TMP_DIR/ 2> /dev/null
 
 	#
-	# Pahes 2 - copy SoC-spec patches, allow ovewrite the common patches
+	# Pahes 2 - copy SoC-spec patches, allow overwrite the common patches
 	#
 	if [ -d "${PATCH_SOC_DIR}" ] ; then
 		echo "--- 2) Copy SoC-specific patches from '${PATCH_SOC_DIR}'"
@@ -102,7 +111,7 @@ copy_patches()
 	fi
 
 	#
-	# Phase 3 - copy board-spec patches, allow ovewrite the common & SoC-spec patches
+	# Phase 3 - copy board-spec patches, allow overwrite the common & SoC-spec patches
 	#
 	if [ -d "${PATCH_BOARD_DIR}" ] ; then
 		echo "--- 3) Copy board-specific patches '${PATCH_BOARD_DIR}'"
@@ -147,15 +156,15 @@ patch_uboot()
 			PATCH_HIGH_DIR="${UBOOT_REPO_TAG}"
 		fi
 		if [ -n "${PATCH_HIGH_DIR}" ]  && [ -d "${PATCH_BASE_DIR}/${PATCH_HIGH_DIR}" ] ; then
-			echo "Copy U-Boot high-priority patches from '${PATCH_HIGH_DIR}', allow ovewrite base patches"
+			echo "Copy U-Boot high-priority patches from '${PATCH_HIGH_DIR}', allow overwrite base patches"
 
 			copy_patches $PATCH_BASE_DIR/$PATCH_HIGH_DIR  $PATCH_TMP_DIR
 		fi
 
 		display_alert "Patching U-Boot..." "" "info"
 
-		local PATCH_COUNT=$(count_files "${PATCH_TMP_DIR}/*.patch")
-		if [ $PATCH_COUNT -gt 0 ] ; then
+		local patch_count=$(count_files "${PATCH_TMP_DIR}/*.patch")
+		if [ $patch_count -gt 0 ] ; then
 			# patching
 			for PATCHFILE in $PATCH_TMP_DIR/*.patch; do
 				echo "Applying patch '${PATCHFILE}' to U-Boot..."
@@ -226,6 +235,8 @@ update_kernel()
 		[ $? -eq 0 ] || exit $?;
 	fi
 
+	[[ "${sources_finalize}" = yes ]] && kernel_source_finalize
+
 	KERNEL_SOURCE_DIR="${KERNEL_SOURCE_DIR}${KERNEL_REPO_SUBDIR}"
 
 	echo "Done."
@@ -235,8 +246,8 @@ update_kernel()
 
 patch_kernel()
 {
-	local PATCH_BASE_DIR=$BASEDIR/patch/kernel/$KERNEL_REPO_NAME
-	local PATCH_OUT_DIR=$OUTPUTDIR/patches
+	local PATCH_BASE_DIR=${BASEDIR}/patch/kernel/${CONFIG}/${KERNEL_REPO_NAME}
+	local PATCH_OUT_DIR=${OUTPUTDIR}/patches
 
 	rm -rf $PATCH_OUT_DIR/kernel.*
 
@@ -258,13 +269,13 @@ patch_kernel()
 			PATCH_HIGH_DIR="${KERNEL_RELEASE}"
 		fi
                 if [ -n "${PATCH_HIGH_DIR}" ] && [ -d "${PATCH_BASE_DIR}/${PATCH_HIGH_DIR}" ] ; then
-                        echo "Copy Kernel high-priority patches from '${PATCH_HIGH_DIR}', allow ovewrite base patches"
+                        echo "Copy Kernel high-priority patches from '${PATCH_HIGH_DIR}', allow overwrite base patches"
 
                         copy_patches $PATCH_BASE_DIR/$PATCH_HIGH_DIR  $PATCH_TMP_DIR
                 fi
 
-		local PATCH_COUNT=$(count_files "$PATCH_TMP_DIR/*.patch")
-		if [ $PATCH_COUNT -gt 0 ] ; then
+		local patch_count=$(count_files "$PATCH_TMP_DIR/*.patch")
+		if [ $patch_count -gt 0 ] ; then
 			# patching
 			for PATCHFILE in $PATCH_TMP_DIR/*.patch; do
 				echo "Applying patch '${PATCHFILE}' to kernel..."
@@ -286,8 +297,8 @@ update_firmware()
 		mkdir -p $FIRMWARE_BASE_DIR
 
 		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
-			local FW_OLD_URL=$(git -C $FIRMWARE_SOURCE_DIR config --get remote.origin.url)
-			if [ "${FW_OLD_URL}" != "${FIRMWARE_URL}" ] ; then
+			local fw_old_url=$(git -C $FIRMWARE_SOURCE_DIR config --get remote.origin.url)
+			if [ "${fw_old_url}" != "${FIRMWARE_URL}" ] ; then
 				echo "Firmware repository has changed, clean up working dir ?"
 				pause
 				rm -rf $FIRMWARE_SOURCE_DIR
@@ -295,7 +306,16 @@ update_firmware()
 		fi
 
 		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
+
+			# see if branch has changed
+			local cur_branch=$(git -C $FIRMWARE_SOURCE_DIR symbolic-ref --short -q HEAD)
+			[[ "${cur_branch}" != "${FIRMWARE_BRANCH}" ]] && rm -rf $FIRMWARE_SOURCE_DIR
+		fi
+
+		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
 			display_alert "Updating Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"
+
+			sudo chown -R ${CURRENT_USER}:${CURRENT_USER} $FIRMWARE_SOURCE_DIR
 
 			 # update sources
 			git -C $FIRMWARE_SOURCE_DIR fetch origin --depth=1

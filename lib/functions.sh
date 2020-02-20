@@ -17,7 +17,8 @@
 ########################################################################
 
 
-cleanup() {
+cleanup()
+{
   set +x
   set +e
 
@@ -44,17 +45,20 @@ cleanup() {
   trap - 0 1 2 3 6
 }
 
-chroot_exec() {
+chroot_exec()
+{
   # Exec command in chroot
   LANG=C LC_ALL=C DEBIAN_FRONTEND=noninteractive chroot ${R} "$@"
 }
 
-install_readonly() {
+install_readonly()
+{
   # Install file with user read-only permissions
   install -o root -g root -m 644 $*
 }
 
-install_exec() {
+install_exec()
+{
   # Install file with root exec permissions
   install -o root -g root -m 744 $*
 }
