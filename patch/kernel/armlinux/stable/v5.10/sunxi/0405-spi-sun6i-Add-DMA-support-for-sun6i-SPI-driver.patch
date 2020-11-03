@@ -1,0 +1,773 @@
+From c22621bd7b688917a9fe237930923232f308e9b2 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Tue, 27 Oct 2020 14:18:09 +0300
+Subject: [PATCH] spi: sun6i: Add DMA support for sun6i-SPI driver
+
+---
+ drivers/spi/spi-sun6i.c | 599 +++++++++++++++++++++++++++++-----------
+ 1 file changed, 440 insertions(+), 159 deletions(-)
+
+diff --git a/drivers/spi/spi-sun6i.c b/drivers/spi/spi-sun6i.c
+index 19238e1..9e24dbe 100644
+--- a/drivers/spi/spi-sun6i.c
++++ b/drivers/spi/spi-sun6i.c
+@@ -11,6 +11,8 @@
+ #include <linux/clk.h>
+ #include <linux/delay.h>
+ #include <linux/device.h>
++#include <linux/dmaengine.h>
++#include <linux/dma-mapping.h>
+ #include <linux/interrupt.h>
+ #include <linux/io.h>
+ #include <linux/module.h>
+@@ -53,10 +55,13 @@
+ #define SUN6I_FIFO_CTL_REG		0x18
+ #define SUN6I_FIFO_CTL_RF_RDY_TRIG_LEVEL_MASK	0xff
+ #define SUN6I_FIFO_CTL_RF_RDY_TRIG_LEVEL_BITS	0
++#define SUN6I_FIFO_CTL_RF_DRQ_EN		BIT(8)
+ #define SUN6I_FIFO_CTL_RF_RST			BIT(15)
+ #define SUN6I_FIFO_CTL_TF_ERQ_TRIG_LEVEL_MASK	0xff
+ #define SUN6I_FIFO_CTL_TF_ERQ_TRIG_LEVEL_BITS	16
++#define SUN6I_FIFO_CTL_TF_DRQ_EN		BIT(24)
+ #define SUN6I_FIFO_CTL_TF_RST			BIT(31)
++#define SUN6I_FIFO_CTL_DMA_DEDICATE		BIT(9)|BIT(25)
+ 
+ #define SUN6I_FIFO_STA_REG		0x1c
+ #define SUN6I_FIFO_STA_RF_CNT_MASK		GENMASK(7, 0)
+@@ -80,19 +85,22 @@
+ #define SUN6I_TXDATA_REG		0x200
+ #define SUN6I_RXDATA_REG		0x300
+ 
++#define SUN6I_SPI_DMA_TIMEOUT		(msecs_to_jiffies(1000))
++
+ struct sun6i_spi {
+-	struct spi_master	*master;
+ 	void __iomem		*base_addr;
+ 	struct clk		*hclk;
+ 	struct clk		*mclk;
+ 	struct reset_control	*rstc;
+ 
+-	struct completion	done;
+-
+ 	const u8		*tx_buf;
+ 	u8			*rx_buf;
+ 	int			len;
+ 	unsigned long		fifo_depth;
++
++	bool			dma_pending;
++	struct completion	rx_dma_complete;
++	struct completion	tx_dma_complete;
+ };
+ 
+ static inline u32 sun6i_spi_read(struct sun6i_spi *sspi, u32 reg)
+@@ -119,14 +127,6 @@ static inline u32 sun6i_spi_get_tx_fifo_count(struct sun6i_spi *sspi)
+ 	return FIELD_GET(SUN6I_FIFO_STA_TF_CNT_MASK, reg);
+ }
+ 
+-static inline void sun6i_spi_disable_interrupt(struct sun6i_spi *sspi, u32 mask)
+-{
+-	u32 reg = sun6i_spi_read(sspi, SUN6I_INT_CTL_REG);
+-
+-	reg &= ~mask;
+-	sun6i_spi_write(sspi, SUN6I_INT_CTL_REG, reg);
+-}
+-
+ static inline void sun6i_spi_drain_fifo(struct sun6i_spi *sspi)
+ {
+ 	u32 len;
+@@ -160,6 +160,19 @@ static inline void sun6i_spi_fill_fifo(struct sun6i_spi *sspi)
+ 	}
+ }
+ 
++static inline void sun6i_spi_reset_hw(struct sun6i_spi *sspi)
++{
++	/* clear pending interrupts */
++	sun6i_spi_write(sspi, SUN6I_INT_STA_REG, ~0);
++
++	/* disable interrupts */
++	sun6i_spi_write(sspi, SUN6I_INT_CTL_REG, 0);
++
++	/* Reset FIFO */
++	sun6i_spi_write(sspi, SUN6I_FIFO_CTL_REG,
++			SUN6I_FIFO_CTL_RF_RST | SUN6I_FIFO_CTL_TF_RST);
++}
++
+ static void sun6i_spi_set_cs(struct spi_device *spi, bool enable)
+ {
+ 	struct sun6i_spi *sspi = spi_master_get_devdata(spi->master);
+@@ -174,52 +187,36 @@ static void sun6i_spi_set_cs(struct spi_device *spi, bool enable)
+ 	else
+ 		reg &= ~SUN6I_TFR_CTL_CS_LEVEL;
+ 
++	/* Handle chip select "reverse" polarity */
++	if (spi->mode & SPI_CS_HIGH)
++		reg &= ~SUN6I_TFR_CTL_SPOL;
++	else
++		reg |= SUN6I_TFR_CTL_SPOL;
++
++	/* We want to control the chip select manually */
++	reg |= SUN6I_TFR_CTL_CS_MANUAL;
++
+ 	sun6i_spi_write(sspi, SUN6I_TFR_CTL_REG, reg);
+ }
+ 
+ static size_t sun6i_spi_max_transfer_size(struct spi_device *spi)
+ {
+-	return SUN6I_MAX_XFER_SIZE - 1;
++	struct spi_master *master = spi->master;
++	struct sun6i_spi *sspi = spi_master_get_devdata(master);
++
++	if (master->can_dma)
++		return SUN6I_MAX_XFER_SIZE;
++
++	return sspi->fifo_depth;
+ }
+ 
+-static int sun6i_spi_transfer_one(struct spi_master *master,
+-				  struct spi_device *spi,
+-				  struct spi_transfer *tfr)
++static int sun6i_spi_prepare_message(struct spi_master *master,
++				     struct spi_message *msg)
+ {
+ 	struct sun6i_spi *sspi = spi_master_get_devdata(master);
+-	unsigned int mclk_rate, div, div_cdr1, div_cdr2, timeout;
+-	unsigned int start, end, tx_time;
+-	unsigned int trig_level;
+-	unsigned int tx_len = 0, rx_len = 0;
+-	int ret = 0;
++	struct spi_device *spi = msg->spi;
+ 	u32 reg;
+ 
+-	if (tfr->len > SUN6I_MAX_XFER_SIZE)
+-		return -EINVAL;
+-
+-	reinit_completion(&sspi->done);
+-	sspi->tx_buf = tfr->tx_buf;
+-	sspi->rx_buf = tfr->rx_buf;
+-	sspi->len = tfr->len;
+-
+-	/* Clear pending interrupts */
+-	sun6i_spi_write(sspi, SUN6I_INT_STA_REG, ~0);
+-
+-	/* Reset FIFO */
+-	sun6i_spi_write(sspi, SUN6I_FIFO_CTL_REG,
+-			SUN6I_FIFO_CTL_RF_RST | SUN6I_FIFO_CTL_TF_RST);
+-
+-	/*
+-	 * Setup FIFO interrupt trigger level
+-	 * Here we choose 3/4 of the full fifo depth, as it's the hardcoded
+-	 * value used in old generation of Allwinner SPI controller.
+-	 * (See spi-sun4i.c)
+-	 */
+-	trig_level = sspi->fifo_depth / 4 * 3;
+-	sun6i_spi_write(sspi, SUN6I_FIFO_CTL_REG,
+-			(trig_level << SUN6I_FIFO_CTL_RF_RDY_TRIG_LEVEL_BITS) |
+-			(trig_level << SUN6I_FIFO_CTL_TF_ERQ_TRIG_LEVEL_BITS));
+-
+ 	/*
+ 	 * Setup the transfer control register: Chip Select,
+ 	 * polarities, etc.
+@@ -241,110 +238,22 @@ static int sun6i_spi_transfer_one(struct spi_master *master,
+ 	else
+ 		reg &= ~SUN6I_TFR_CTL_FBS;
+ 
+-	/*
+-	 * If it's a TX only transfer, we don't want to fill the RX
+-	 * FIFO with bogus data
+-	 */
+-	if (sspi->rx_buf) {
+-		reg &= ~SUN6I_TFR_CTL_DHB;
+-		rx_len = tfr->len;
+-	} else {
+-		reg |= SUN6I_TFR_CTL_DHB;
+-	}
+-
+-	/* We want to control the chip select manually */
+-	reg |= SUN6I_TFR_CTL_CS_MANUAL;
+-
+ 	sun6i_spi_write(sspi, SUN6I_TFR_CTL_REG, reg);
+ 
+-	/* Ensure that we have a parent clock fast enough */
+-	mclk_rate = clk_get_rate(sspi->mclk);
+-	if (mclk_rate < (2 * tfr->speed_hz)) {
+-		clk_set_rate(sspi->mclk, 2 * tfr->speed_hz);
+-		mclk_rate = clk_get_rate(sspi->mclk);
+-	}
+-
+-	/*
+-	 * Setup clock divider.
+-	 *
+-	 * We have two choices there. Either we can use the clock
+-	 * divide rate 1, which is calculated thanks to this formula:
+-	 * SPI_CLK = MOD_CLK / (2 ^ cdr)
+-	 * Or we can use CDR2, which is calculated with the formula:
+-	 * SPI_CLK = MOD_CLK / (2 * (cdr + 1))
+-	 * Wether we use the former or the latter is set through the
+-	 * DRS bit.
+-	 *
+-	 * First try CDR2, and if we can't reach the expected
+-	 * frequency, fall back to CDR1.
+-	 */
+-	div_cdr1 = DIV_ROUND_UP(mclk_rate, tfr->speed_hz);
+-	div_cdr2 = DIV_ROUND_UP(div_cdr1, 2);
+-	if (div_cdr2 <= (SUN6I_CLK_CTL_CDR2_MASK + 1)) {
+-		reg = SUN6I_CLK_CTL_CDR2(div_cdr2 - 1) | SUN6I_CLK_CTL_DRS;
+-		tfr->effective_speed_hz = mclk_rate / (2 * div_cdr2);
+-	} else {
+-		div = min(SUN6I_CLK_CTL_CDR1_MASK, order_base_2(div_cdr1));
+-		reg = SUN6I_CLK_CTL_CDR1(div);
+-		tfr->effective_speed_hz = mclk_rate / (1 << div);
+-	}
+-
+-	sun6i_spi_write(sspi, SUN6I_CLK_CTL_REG, reg);
+-
+-	/* Setup the transfer now... */
+-	if (sspi->tx_buf)
+-		tx_len = tfr->len;
+-
+-	/* Setup the counters */
+-	sun6i_spi_write(sspi, SUN6I_BURST_CNT_REG, tfr->len);
+-	sun6i_spi_write(sspi, SUN6I_XMIT_CNT_REG, tx_len);
+-	sun6i_spi_write(sspi, SUN6I_BURST_CTL_CNT_REG, tx_len);
+-
+-	/* Fill the TX FIFO */
+-	sun6i_spi_fill_fifo(sspi);
+-
+-	/* Enable the interrupts */
+-	reg = SUN6I_INT_CTL_TC;
+-
+-	if (rx_len > sspi->fifo_depth)
+-		reg |= SUN6I_INT_CTL_RF_RDY;
+-	if (tx_len > sspi->fifo_depth)
+-		reg |= SUN6I_INT_CTL_TF_ERQ;
+-
+-	sun6i_spi_write(sspi, SUN6I_INT_CTL_REG, reg);
+-
+-	/* Start the transfer */
+-	reg = sun6i_spi_read(sspi, SUN6I_TFR_CTL_REG);
+-	sun6i_spi_write(sspi, SUN6I_TFR_CTL_REG, reg | SUN6I_TFR_CTL_XCH);
+-
+-	tx_time = max(tfr->len * 8 * 2 / (tfr->speed_hz / 1000), 100U);
+-	start = jiffies;
+-	timeout = wait_for_completion_timeout(&sspi->done,
+-					      msecs_to_jiffies(tx_time));
+-	end = jiffies;
+-	if (!timeout) {
+-		dev_warn(&master->dev,
+-			 "%s: timeout transferring %u bytes@%iHz for %i(%i)ms",
+-			 dev_name(&spi->dev), tfr->len, tfr->speed_hz,
+-			 jiffies_to_msecs(end - start), tx_time);
+-		ret = -ETIMEDOUT;
+-	}
+-
+-	sun6i_spi_write(sspi, SUN6I_INT_CTL_REG, 0);
+-
+-	return ret;
++	return 0;
+ }
+ 
+-static irqreturn_t sun6i_spi_handler(int irq, void *dev_id)
++static irqreturn_t sun6i_spi_handle_irq(int irq, void *dev_id)
+ {
+-	struct sun6i_spi *sspi = dev_id;
++	struct spi_master *master = dev_id;
++	struct sun6i_spi *sspi = spi_master_get_devdata(master);
+ 	u32 status = sun6i_spi_read(sspi, SUN6I_INT_STA_REG);
+ 
+ 	/* Transfer complete */
+ 	if (status & SUN6I_INT_CTL_TC) {
+ 		sun6i_spi_write(sspi, SUN6I_INT_STA_REG, SUN6I_INT_CTL_TC);
+ 		sun6i_spi_drain_fifo(sspi);
+-		complete(&sspi->done);
++		spi_finalize_current_transfer(master);
+ 		return IRQ_HANDLED;
+ 	}
+ 
+@@ -356,20 +265,6 @@ static irqreturn_t sun6i_spi_handler(int irq, void *dev_id)
+ 		return IRQ_HANDLED;
+ 	}
+ 
+-	/* Transmit FIFO 3/4 empty */
+-	if (status & SUN6I_INT_CTL_TF_ERQ) {
+-		sun6i_spi_fill_fifo(sspi);
+-
+-		if (!sspi->len)
+-			/* nothing left to transmit */
+-			sun6i_spi_disable_interrupt(sspi, SUN6I_INT_CTL_TF_ERQ);
+-
+-		/* Only clear the interrupt _after_ re-seeding the FIFO */
+-		sun6i_spi_write(sspi, SUN6I_INT_STA_REG, SUN6I_INT_CTL_TF_ERQ);
+-
+-		return IRQ_HANDLED;
+-	}
+-
+ 	return IRQ_NONE;
+ }
+ 
+@@ -422,10 +317,382 @@ static int sun6i_spi_runtime_suspend(struct device *dev)
+ 	return 0;
+ }
+ 
++static void sun6i_spi_handle_err(struct spi_master *master,
++				 struct spi_message *msg)
++{
++	struct sun6i_spi *sspi = spi_master_get_devdata(master);
++
++	/* if we have an active DMA, then terminate */
++	if (sspi->dma_pending) {
++		dev_dbg(&master->dev, "DMA channel teardown\n");
++
++		dmaengine_terminate_sync(master->dma_tx);
++		dmaengine_terminate_sync(master->dma_rx);
++		sspi->dma_pending = 0;
++	}
++	/* and reset */
++	sun6i_spi_reset_hw(sspi);
++}
++
++static bool sun6i_spi_can_dma(struct spi_master *master,
++			      struct spi_device *spi,
++			      struct spi_transfer *tfr)
++{
++	struct sun6i_spi *sspi = spi_master_get_devdata(master);
++
++	return tfr->len > sspi->fifo_depth;
++}
++
++static void sun6i_spi_dma_complete(void *args)
++{
++	struct completion *dma_complete = args;
++
++	complete(dma_complete);
++}
++
++static int sun6i_spi_dma_prep_tx(struct spi_master *master,
++				 struct spi_transfer *tfr)
++{
++	struct dma_async_tx_descriptor *dma_desc = NULL;
++	struct sun6i_spi *sspi = spi_master_get_devdata(master);
++	dma_cookie_t cookie;
++
++	reinit_completion(&sspi->tx_dma_complete);
++
++	dma_desc = dmaengine_prep_slave_sg(master->dma_tx,
++					   tfr->tx_sg.sgl, tfr->tx_sg.nents,
++					   DMA_TO_DEVICE,
++					   DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
++	if (!dma_desc) {
++		dev_err(&master->dev,
++			"Couldn't prepare TX DMA slave\n");
++		return -EIO;
++	}
++
++	dma_desc->callback = sun6i_spi_dma_complete;
++	dma_desc->callback_param = &sspi->tx_dma_complete;
++
++	cookie = dmaengine_submit(dma_desc);
++	return dma_submit_error(cookie);
++}
++
++static int sun6i_spi_dma_prep_rx(struct spi_master *master,
++				 struct spi_transfer *tfr)
++{
++	struct dma_async_tx_descriptor *dma_desc = NULL;
++	struct sun6i_spi *sspi = spi_master_get_devdata(master);
++	dma_cookie_t cookie;
++
++	reinit_completion(&sspi->rx_dma_complete);
++
++	dma_desc = dmaengine_prep_slave_sg(master->dma_rx,
++					   tfr->rx_sg.sgl, tfr->rx_sg.nents,
++					   DMA_FROM_DEVICE,
++					   DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
++	if (!dma_desc) {
++		dev_err(&master->dev,
++			"Couldn't prepare RX DMA slave\n");
++		return -EIO;
++	}
++
++	dma_desc->callback = sun6i_spi_dma_complete;
++	dma_desc->callback_param = &sspi->rx_dma_complete;
++
++	cookie = dmaengine_submit(dma_desc);
++	return dma_submit_error(cookie);
++}
++
++static int sun6i_spi_transfer_one_dma(struct spi_device *spi,
++				      struct spi_transfer *tfr)
++{
++	struct spi_master *master = spi->master;
++	struct sun6i_spi *sspi = spi_master_get_devdata(master);
++	long wait_status = 0;
++	int ret;
++	u32 reg, trig_level;
++
++	dev_dbg(&master->dev, "Using DMA mode for transfer\n");
++
++	reg = sun6i_spi_read(sspi, SUN6I_FIFO_CTL_REG);
++
++	/* setup DMA requests */
++	if (tfr->tx_buf) {
++		ret = sun6i_spi_dma_prep_tx(master, tfr);
++		if (ret)
++			goto err;
++
++		/* setup TX request */
++		reg |= SUN6I_FIFO_CTL_TF_DRQ_EN;
++
++		trig_level = sspi->fifo_depth / 4;
++		reg &= ~SUN6I_FIFO_CTL_TF_ERQ_TRIG_LEVEL_MASK;
++		reg |= (trig_level << SUN6I_FIFO_CTL_TF_ERQ_TRIG_LEVEL_BITS);
++	}
++
++	if (tfr->rx_buf) {
++		ret = sun6i_spi_dma_prep_rx(master, tfr);
++		if (ret)
++			goto err;
++
++		/* setup RX request */
++		reg |= SUN6I_FIFO_CTL_RF_DRQ_EN;
++
++		trig_level = 1;
++		reg &= ~SUN6I_FIFO_CTL_RF_RDY_TRIG_LEVEL_MASK;
++		reg |= (trig_level << SUN6I_FIFO_CTL_RF_RDY_TRIG_LEVEL_BITS);
++	}
++
++	/* use dedicated DMA */
++	reg |= SUN6I_FIFO_CTL_DMA_DEDICATE;
++	sun6i_spi_write(sspi, SUN6I_FIFO_CTL_REG, reg);
++
++	if (tfr->tx_buf)
++		dma_async_issue_pending(master->dma_tx);
++	if (tfr->rx_buf)
++		dma_async_issue_pending(master->dma_rx);
++
++	/* mark as DMA pending */
++	sspi->dma_pending = 1;
++
++	/* start the transfer */
++	reg = sun6i_spi_read(sspi, SUN6I_TFR_CTL_REG);
++	sun6i_spi_write(sspi, SUN6I_TFR_CTL_REG, reg | SUN6I_TFR_CTL_XCH);
++
++	if (tfr->rx_buf) {
++		/* wait only for RX callback */
++		wait_status = wait_for_completion_timeout(
++			&sspi->rx_dma_complete, SUN6I_SPI_DMA_TIMEOUT);
++
++	} else if (tfr->tx_buf) {
++		/* wait for TX callback when RX is disabled */
++		wait_status = wait_for_completion_timeout(
++			&sspi->tx_dma_complete, SUN6I_SPI_DMA_TIMEOUT);
++	}
++
++	if (!wait_status) {
++		ret = -ETIMEDOUT;
++		goto err;
++	}
++	sspi->dma_pending = 0;
++	spi_finalize_current_transfer(master);
++
++	dev_dbg(&master->dev, "DMA transfer complete\n");
++
++	return 0;
++
++err:
++	dev_dbg(&master->dev, "DMA channel teardown\n");
++
++	dmaengine_terminate_sync(master->dma_tx);
++	dmaengine_terminate_sync(master->dma_rx);
++	sspi->dma_pending = 0;
++
++	sun6i_spi_reset_hw(sspi);
++
++	return ret;
++}
++
++static int sun6i_spi_dma_setup(struct platform_device *pdev,
++			       struct resource *res)
++{
++	struct spi_master *master = platform_get_drvdata(pdev);
++	struct sun6i_spi *sspi = spi_master_get_devdata(master);
++	struct dma_slave_config dma_sconf;
++	int ret;
++
++	init_completion(&sspi->tx_dma_complete);
++	init_completion(&sspi->rx_dma_complete);
++
++	master->dma_tx = dma_request_slave_channel(&pdev->dev, "tx");
++	if (IS_ERR(master->dma_tx)) {
++		dev_err(&pdev->dev, "Unable to acquire DMA TX channel\n");
++		ret = PTR_ERR(master->dma_tx);
++		goto err_exit;
++        }
++
++	memset(&dma_sconf, 0, sizeof(dma_sconf));
++	dma_sconf.direction = DMA_MEM_TO_DEV;
++	dma_sconf.dst_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
++	dma_sconf.dst_addr = res->start + SUN6I_TXDATA_REG;
++	dma_sconf.dst_maxburst = 8;
++
++	ret = dmaengine_slave_config(master->dma_tx, &dma_sconf);
++	if (ret) {
++		dev_err(&pdev->dev, "Unable to configure DMA TX slave\n");
++		goto err_release_tx;
++	}
++
++	master->dma_rx = dma_request_slave_channel(&pdev->dev, "rx");
++	if (IS_ERR(master->dma_rx)) {
++		dev_err(&pdev->dev, "Unable to acquire DMA RX channel\n");
++		ret = PTR_ERR(master->dma_rx);
++		goto err_release_tx;
++	}
++
++	memset(&dma_sconf, 0, sizeof(dma_sconf));
++	dma_sconf.direction = DMA_DEV_TO_MEM;
++	dma_sconf.src_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
++	dma_sconf.src_addr = res->start + SUN6I_RXDATA_REG;
++	dma_sconf.src_maxburst = 8;
++
++	ret = dmaengine_slave_config(master->dma_rx, &dma_sconf);
++	if (ret) {
++		dev_err(&pdev->dev, "Unable to configure DMA RX slave\n");
++		goto err_release_rx;
++	}
++
++	/* don't set can_dma unless both channels are valid*/
++	master->can_dma = sun6i_spi_can_dma;
++
++	return 0;
++
++err_release_rx:
++	dma_release_channel(master->dma_rx);
++err_release_tx:
++	dma_release_channel(master->dma_tx);
++err_exit:
++	master->dma_tx = NULL;
++	master->dma_rx = NULL;
++
++	return ret;
++}
++
++static void sun6i_spi_dma_release(struct spi_master *master)
++{
++	if (master->can_dma) {
++		dma_release_channel(master->dma_rx);
++		dma_release_channel(master->dma_tx);
++
++		master->dma_tx = NULL;
++		master->dma_rx = NULL;
++	}
++}
++
++static int sun6i_spi_transfer_one_pio(struct spi_device *spi,
++				      struct spi_transfer *tfr)
++{
++	struct spi_master *master = spi->master;
++	struct sun6i_spi *sspi = spi_master_get_devdata(master);
++	unsigned int trig_level;
++	u32 reg;
++
++        /*
++         * Setup FIFO interrupt trigger level
++         * Here we choose 3/4 of the full fifo depth, as it's the hardcoded
++         * value used in old generation of Allwinner SPI controller.
++         * (See spi-sun4i.c)
++         */
++        trig_level = sspi->fifo_depth / 4 * 3;
++        sun6i_spi_write(sspi, SUN6I_FIFO_CTL_REG,
++                        (trig_level << SUN6I_FIFO_CTL_RF_RDY_TRIG_LEVEL_BITS));
++
++
++        /* Fill the TX FIFO */
++        sun6i_spi_fill_fifo(sspi);
++
++        /* Enable the interrupts */
++	sun6i_spi_write(sspi, SUN6I_INT_CTL_REG,
++			SUN6I_INT_CTL_TC | SUN6I_INT_CTL_RF_RDY);
++
++        /* Start the transfer */
++        reg = sun6i_spi_read(sspi, SUN6I_TFR_CTL_REG);
++        sun6i_spi_write(sspi, SUN6I_TFR_CTL_REG, reg | SUN6I_TFR_CTL_XCH);
++
++        return 1;
++}
++
++
++static int sun6i_spi_transfer_one(struct spi_master *master,
++				  struct spi_device *spi,
++				  struct spi_transfer *tfr)
++{
++	struct sun6i_spi *sspi = spi_master_get_devdata(master);
++	unsigned int mclk_rate, div, div_cdr1, div_cdr2;
++	unsigned int tx_len = 0;
++	u32 reg;
++
++	if (!master->can_dma) {
++		/* Do not support transfer larger than FIFO length */
++		if (tfr->len > sspi->fifo_depth)
++			return -EINVAL;
++
++	} else if (tfr->len > SUN6I_MAX_XFER_SIZE)
++		return -EINVAL;
++
++	sspi->tx_buf = tfr->tx_buf;
++	sspi->rx_buf = tfr->rx_buf;
++	sspi->len = tfr->len;
++
++	sun6i_spi_reset_hw(sspi);
++
++	/*
++	 * If it's a TX only transfer, we don't want to fill the RX
++	 * FIFO with bogus data
++	 */
++	reg = sun6i_spi_read(sspi, SUN6I_TFR_CTL_REG);
++	if (sspi->rx_buf)
++		reg &= ~SUN6I_TFR_CTL_DHB;
++	else
++		reg |= SUN6I_TFR_CTL_DHB;
++
++	sun6i_spi_write(sspi, SUN6I_TFR_CTL_REG, reg);
++
++
++	/* Ensure that we have a parent clock fast enough */
++	mclk_rate = clk_get_rate(sspi->mclk);
++	if (mclk_rate < (2 * tfr->speed_hz)) {
++		clk_set_rate(sspi->mclk, 2 * tfr->speed_hz);
++		mclk_rate = clk_get_rate(sspi->mclk);
++	}
++
++	/*
++	 * Setup clock divider.
++	 *
++	 * We have two choices there. Either we can use the clock
++	 * divide rate 1, which is calculated thanks to this formula:
++	 * SPI_CLK = MOD_CLK / (2 ^ cdr)
++	 * Or we can use CDR2, which is calculated with the formula:
++	 * SPI_CLK = MOD_CLK / (2 * (cdr + 1))
++	 * Wether we use the former or the latter is set through the
++	 * DRS bit.
++	 *
++	 * First try CDR2, and if we can't reach the expected
++	 * frequency, fall back to CDR1.
++	 */
++	div_cdr1 = DIV_ROUND_UP(mclk_rate, tfr->speed_hz);
++	div_cdr2 = DIV_ROUND_UP(div_cdr1, 2);
++	if (div_cdr2 <= (SUN6I_CLK_CTL_CDR2_MASK + 1)) {
++		reg = SUN6I_CLK_CTL_CDR2(div_cdr2 - 1) | SUN6I_CLK_CTL_DRS;
++		tfr->effective_speed_hz = mclk_rate / (2 * div_cdr2);
++	} else {
++		div = min(SUN6I_CLK_CTL_CDR1_MASK, order_base_2(div_cdr1));
++		reg = SUN6I_CLK_CTL_CDR1(div);
++		tfr->effective_speed_hz = mclk_rate / (1 << div);
++	}
++
++	sun6i_spi_write(sspi, SUN6I_CLK_CTL_REG, reg);
++
++	/* Setup the transfer now... */
++	if (sspi->tx_buf)
++		tx_len = tfr->len;
++
++	/* Setup the counters */
++	sun6i_spi_write(sspi, SUN6I_BURST_CNT_REG, tfr->len);
++	sun6i_spi_write(sspi, SUN6I_XMIT_CNT_REG, tx_len);
++	sun6i_spi_write(sspi, SUN6I_BURST_CTL_CNT_REG, tx_len);
++
++
++	if (master->can_dma && sun6i_spi_can_dma(master, spi, tfr))
++		return sun6i_spi_transfer_one_dma(spi, tfr);
++
++	return sun6i_spi_transfer_one_pio(spi, tfr);
++}
++
+ static int sun6i_spi_probe(struct platform_device *pdev)
+ {
+ 	struct spi_master *master;
+ 	struct sun6i_spi *sspi;
++	struct resource *res;
+ 	int ret = 0, irq;
+ 
+ 	master = spi_alloc_master(&pdev->dev, sizeof(struct sun6i_spi));
+@@ -437,7 +704,8 @@ static int sun6i_spi_probe(struct platform_device *pdev)
+ 	platform_set_drvdata(pdev, master);
+ 	sspi = spi_master_get_devdata(master);
+ 
+-	sspi->base_addr = devm_platform_ioremap_resource(pdev, 0);
++	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++	sspi->base_addr = devm_ioremap_resource(&pdev->dev, res);
+ 	if (IS_ERR(sspi->base_addr)) {
+ 		ret = PTR_ERR(sspi->base_addr);
+ 		goto err_free_master;
+@@ -449,14 +717,13 @@ static int sun6i_spi_probe(struct platform_device *pdev)
+ 		goto err_free_master;
+ 	}
+ 
+-	ret = devm_request_irq(&pdev->dev, irq, sun6i_spi_handler,
+-			       0, "sun6i-spi", sspi);
++	ret = devm_request_irq(&pdev->dev, irq, sun6i_spi_handle_irq,
++			       0, dev_name(&pdev->dev), master);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Cannot request IRQ\n");
+ 		goto err_free_master;
+ 	}
+ 
+-	sspi->master = master;
+ 	sspi->fifo_depth = (unsigned long)of_device_get_match_data(&pdev->dev);
+ 
+ 	master->max_speed_hz = 100 * 1000 * 1000;
+@@ -470,6 +737,8 @@ static int sun6i_spi_probe(struct platform_device *pdev)
+ 	master->dev.of_node = pdev->dev.of_node;
+ 	master->auto_runtime_pm = true;
+ 	master->max_transfer_size = sun6i_spi_max_transfer_size;
++	master->handle_err = sun6i_spi_handle_err;
++	master->prepare_message = sun6i_spi_prepare_message;
+ 
+ 	sspi->hclk = devm_clk_get(&pdev->dev, "ahb");
+ 	if (IS_ERR(sspi->hclk)) {
+@@ -485,8 +754,6 @@ static int sun6i_spi_probe(struct platform_device *pdev)
+ 		goto err_free_master;
+ 	}
+ 
+-	init_completion(&sspi->done);
+-
+ 	sspi->rstc = devm_reset_control_get_exclusive(&pdev->dev, NULL);
+ 	if (IS_ERR(sspi->rstc)) {
+ 		dev_err(&pdev->dev, "Couldn't get reset controller\n");
+@@ -494,6 +761,14 @@ static int sun6i_spi_probe(struct platform_device *pdev)
+ 		goto err_free_master;
+ 	}
+ 
++	ret = sun6i_spi_dma_setup(pdev, res);
++	if (ret) {
++		if (ret == -EPROBE_DEFER)
++			goto err_free_master;
++
++		dev_warn(&pdev->dev, "DMA transfers disabled\n");
++	}
++
+ 	/*
+ 	 * This wake-up/shutdown pattern is to be able to have the
+ 	 * device woken up, even if runtime_pm is disabled
+@@ -520,14 +795,20 @@ err_pm_disable:
+ 	pm_runtime_disable(&pdev->dev);
+ 	sun6i_spi_runtime_suspend(&pdev->dev);
+ err_free_master:
++	sun6i_spi_dma_release(master);
+ 	spi_master_put(master);
++
+ 	return ret;
+ }
+ 
+ static int sun6i_spi_remove(struct platform_device *pdev)
+ {
++	struct spi_master *master = platform_get_drvdata(pdev);
++
+ 	pm_runtime_force_suspend(&pdev->dev);
+ 
++	sun6i_spi_dma_release(master);
++
+ 	return 0;
+ }
+ 
+-- 
+2.25.1
+

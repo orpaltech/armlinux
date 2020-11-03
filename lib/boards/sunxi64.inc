@@ -35,7 +35,7 @@ KERNEL_OVERLAY_DIR="allwinner/overlays"
 KERNEL_MKIMAGE_WRAP="yes"
 # Use compressed (gzip) or uncompressed (none) kernel image
 KERNEL_MKIMAGE_COMPRESS="none"
-KERNEL_MKIMAGE_LOADADDR="0x40080000"
+KERNEL_MKIMAGE_LOADADDR="0x40008000"
 # Use compressed (Image.gz) or uncompressed (Image) source file
 KERNEL_IMAGE_SOURCE="Image"
 KERNEL_IMAGE_TARGET="linux.uImage"

@@ -1,0 +1,324 @@
+From 36c3533ead4b93ab7920aacdbd23e6d985d9cd93 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sun, 4 Oct 2020 20:02:21 +0300
+Subject: [PATCH] i2c: mv64xxx: Enable I2C-bus recovery when SDA stuck
+
+---
+ drivers/i2c/busses/i2c-mv64xxx.c | 205 +++++++++++++++++++++++--------
+ 1 file changed, 156 insertions(+), 49 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-mv64xxx.c b/drivers/i2c/busses/i2c-mv64xxx.c
+index 8d9d4ff..9fdc142 100644
+--- a/drivers/i2c/busses/i2c-mv64xxx.c
++++ b/drivers/i2c/busses/i2c-mv64xxx.c
+@@ -80,6 +80,15 @@
+ /* Bridge Status values */
+ #define	MV64XXX_I2C_BRIDGE_STATUS_ERROR			BIT(0)
+ 
++/* sun4i TWI LCR register */
++#define SUN4I_I2C_LCR_REG				0x20
++#define  SUN4I_I2C_LCR_SCL_STATE_MASK		BIT(5)
++#define  SUN4I_I2C_LCR_SCL_STATE(reg)		(((reg) & SUN4I_I2C_LCR_SCL_STATE_MASK) >> 5)
++#define  SUN4I_I2C_LCR_SDA_STATE_MASK		BIT(4)
++#define  SUN4I_I2C_LCR_SDA_STATE(reg)		(((reg) & SUN4I_I2C_LCR_SDA_STATE_MASK) >> 4)
++#define  SUN4I_I2C_LCR_SCL_CTL			BIT(3)
++#define  SUN4I_I2C_LCR_SCL_CTL_EN		BIT(2)
++
+ /* Driver states */
+ enum {
+ 	MV64XXX_I2C_STATE_INVALID,
+@@ -115,6 +124,18 @@ struct mv64xxx_i2c_regs {
+ 	u8	soft_reset;
+ };
+ 
++struct mv64xxx_i2c_quirks {
++	const struct mv64xxx_i2c_regs *reg_offsets;
++	const struct i2c_bus_recovery_info *recovery_info;
++
++	bool    offload_enabled;
++	/* 5us delay in order to avoid repeated start timing violation */
++	bool    errata_delay;
++	bool    irq_clear_inverted;
++	/* Clk div is 2 to the power n, not 2 to the power n + 1 */
++	bool    clk_n_base_0;
++};
++
+ struct mv64xxx_i2c_data {
+ 	struct i2c_msg		*msgs;
+ 	int			num_msgs;
+@@ -147,6 +168,8 @@ struct mv64xxx_i2c_data {
+ 	bool			irq_clear_inverted;
+ 	/* Clk div is 2 to the power n, not 2 to the power n + 1 */
+ 	bool			clk_n_base_0;
++
++	const struct i2c_bus_recovery_info *recovery_info;
+ };
+ 
+ static struct mv64xxx_i2c_regs mv64xxx_i2c_regs_mv64xxx = {
+@@ -169,6 +192,63 @@ static struct mv64xxx_i2c_regs mv64xxx_i2c_regs_sun4i = {
+ 	.soft_reset	= 0x18,
+ };
+ 
++static void sun4i_i2c_set_scl(struct i2c_adapter *adap, int val)
++{
++	struct mv64xxx_i2c_data *drv_data = i2c_get_adapdata(adap);
++
++	if (val)
++		writel(SUN4I_I2C_LCR_SCL_CTL | SUN4I_I2C_LCR_SCL_CTL_EN,
++			drv_data->reg_base + SUN4I_I2C_LCR_REG);
++	else
++		writel(SUN4I_I2C_LCR_SCL_CTL_EN, /* write 0 out of SCL */
++			drv_data->reg_base + SUN4I_I2C_LCR_REG);
++}
++
++static int sun4i_i2c_get_scl(struct i2c_adapter *adap)
++{
++	struct mv64xxx_i2c_data *drv_data = i2c_get_adapdata(adap);
++	int val;
++
++	/* read the state of SCL */
++	val = readl(drv_data->reg_base + SUN4I_I2C_LCR_REG);
++	return SUN4I_I2C_LCR_SCL_STATE(val);
++}
++
++static int sun4i_i2c_get_sda(struct i2c_adapter *adap)
++{
++	struct mv64xxx_i2c_data *drv_data = i2c_get_adapdata(adap);
++	int val;
++
++	/* read the state of SDA */
++	val = readl(drv_data->reg_base + SUN4I_I2C_LCR_REG);
++	return SUN4I_I2C_LCR_SDA_STATE(val);
++}
++
++static void sun4i_i2c_scl_prepare_recovery(struct i2c_adapter *adap)
++{
++	struct mv64xxx_i2c_data *drv_data = i2c_get_adapdata(adap);
++	int val;
++
++	/* DEBUG read the state of SCL & SDA */
++	val = readl(drv_data->reg_base + SUN4I_I2C_LCR_REG);
++	dev_err(&drv_data->adapter.dev,
++		"mv64xxx: I2C bus recovering, LCR val: 0x%0x, ", val);
++}
++
++static void sun4i_i2c_scl_unprepare_recovery(struct i2c_adapter *adap)
++{
++	struct mv64xxx_i2c_data *drv_data = i2c_get_adapdata(adap);
++	int val;
++
++	/* change back to I2C mode */
++	writel(0, drv_data->reg_base + SUN4I_I2C_LCR_REG);
++
++	/* DEBUG read the state of SCL & SDA */
++	val = readl(drv_data->reg_base + SUN4I_I2C_LCR_REG);
++	dev_err(&drv_data->adapter.dev,
++		"mv64xxx: I2C bus recovered, LCR val: 0x%0x, ", val);
++}
++
+ static void
+ mv64xxx_i2c_prepare_for_io(struct mv64xxx_i2c_data *drv_data,
+ 	struct i2c_msg *msg)
+@@ -417,6 +497,7 @@ mv64xxx_i2c_do_action(struct mv64xxx_i2c_data *drv_data)
+ 			"mv64xxx_i2c_do_action: Invalid action: %d\n",
+ 			drv_data->action);
+ 		drv_data->rc = -EIO;
++
+ 		fallthrough;
+ 	case MV64XXX_I2C_ACTION_SEND_STOP:
+ 		drv_data->cntl_bits &= ~MV64XXX_I2C_REG_CONTROL_INTEN;
+@@ -561,6 +642,8 @@ mv64xxx_i2c_wait_for_completion(struct mv64xxx_i2c_data *drv_data)
+ 				"mv64xxx: I2C bus locked, block: %d, "
+ 				"time_left: %d\n", drv_data->block,
+ 				(int)time_left);
++			if (drv_data->recovery_info)
++				i2c_recover_bus(&drv_data->adapter);
+ 			mv64xxx_i2c_hw_init(drv_data);
+ 		}
+ 	} else
+@@ -737,6 +820,43 @@ static const struct i2c_algorithm mv64xxx_i2c_algo = {
+ 	.functionality = mv64xxx_i2c_functionality,
+ };
+ 
++static struct i2c_bus_recovery_info sun4i_i2c_recovery_info = {
++	.recover_bus = i2c_generic_scl_recovery,
++	.set_scl = sun4i_i2c_set_scl,
++	.get_scl = sun4i_i2c_get_scl,
++	.get_sda = sun4i_i2c_get_sda,
++	.prepare_recovery = sun4i_i2c_scl_prepare_recovery,
++	.unprepare_recovery = sun4i_i2c_scl_unprepare_recovery,
++};
++
++static struct mv64xxx_i2c_quirks mv64xxx_i2c_quirks_mv64xxx = {
++	.reg_offsets	= &mv64xxx_i2c_regs_mv64xxx,
++};
++
++static struct mv64xxx_i2c_quirks mv64xxx_i2c_quirks_mv78230_i2c = {
++	.reg_offsets	= &mv64xxx_i2c_regs_mv64xxx,
++	.offload_enabled = true,
++	.errata_delay	= true,
++};
++
++static struct mv64xxx_i2c_quirks mv64xxx_i2c_quirks_mv78230_a0_i2c = {
++	.reg_offsets	= &mv64xxx_i2c_regs_mv64xxx,
++	.errata_delay	= true,
++};
++
++static struct mv64xxx_i2c_quirks mv64xxx_i2c_quirks_sun4i_a10 = {
++	.reg_offsets	= &mv64xxx_i2c_regs_sun4i,
++	.recovery_info	= &sun4i_i2c_recovery_info,
++	.clk_n_base_0	= true,
++};
++
++static struct mv64xxx_i2c_quirks mv64xxx_i2c_quirks_sun6i_a31 = {
++	.reg_offsets	= &mv64xxx_i2c_regs_sun4i,
++	.recovery_info	= &sun4i_i2c_recovery_info,
++	.clk_n_base_0	= true,
++	.irq_clear_inverted = true,
++};
++
+ /*
+  *****************************************************************************
+  *
+@@ -745,11 +865,11 @@ static const struct i2c_algorithm mv64xxx_i2c_algo = {
+  *****************************************************************************
+  */
+ static const struct of_device_id mv64xxx_i2c_of_match_table[] = {
+-	{ .compatible = "allwinner,sun4i-a10-i2c", .data = &mv64xxx_i2c_regs_sun4i},
+-	{ .compatible = "allwinner,sun6i-a31-i2c", .data = &mv64xxx_i2c_regs_sun4i},
+-	{ .compatible = "marvell,mv64xxx-i2c", .data = &mv64xxx_i2c_regs_mv64xxx},
+-	{ .compatible = "marvell,mv78230-i2c", .data = &mv64xxx_i2c_regs_mv64xxx},
+-	{ .compatible = "marvell,mv78230-a0-i2c", .data = &mv64xxx_i2c_regs_mv64xxx},
++	{ .compatible = "allwinner,sun4i-a10-i2c", .data = &mv64xxx_i2c_quirks_sun4i_a10},
++	{ .compatible = "allwinner,sun6i-a31-i2c", .data = &mv64xxx_i2c_quirks_sun6i_a31},
++	{ .compatible = "marvell,mv64xxx-i2c", .data = &mv64xxx_i2c_quirks_mv64xxx},
++	{ .compatible = "marvell,mv78230-i2c", .data = &mv64xxx_i2c_quirks_mv78230_i2c},
++	{ .compatible = "marvell,mv78230-a0-i2c", .data = &mv64xxx_i2c_quirks_mv78230_a0_i2c},
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(of, mv64xxx_i2c_of_match_table);
+@@ -793,38 +913,35 @@ static int
+ mv64xxx_of_config(struct mv64xxx_i2c_data *drv_data,
+ 		  struct device *dev)
+ {
+-	const struct of_device_id *device;
+ 	struct device_node *np = dev->of_node;
++	struct mv64xxx_i2c_quirks *quirks;
++	const struct of_device_id *dev_id;
+ 	u32 bus_freq, tclk;
+-	int rc = 0;
+ 
+ 	/* CLK is mandatory when using DT to describe the i2c bus. We
+ 	 * need to know tclk in order to calculate bus clock
+ 	 * factors.
+ 	 */
+-	if (IS_ERR(drv_data->clk)) {
+-		rc = -ENODEV;
+-		goto out;
+-	}
++	if (IS_ERR(drv_data->clk))
++		return -ENODEV;
++
++	dev_id = of_match_device(mv64xxx_i2c_of_match_table, dev);
++	if (!dev_id)
++		return -ENODEV;
++	quirks = dev_id->data;
++
+ 	tclk = clk_get_rate(drv_data->clk);
+ 
+ 	if (of_property_read_u32(np, "clock-frequency", &bus_freq))
+ 		bus_freq = I2C_MAX_STANDARD_MODE_FREQ; /* 100kHz by default */
+ 
+-	if (of_device_is_compatible(np, "allwinner,sun4i-a10-i2c") ||
+-	    of_device_is_compatible(np, "allwinner,sun6i-a31-i2c"))
+-		drv_data->clk_n_base_0 = true;
+-
+-	if (!mv64xxx_find_baud_factors(drv_data, bus_freq, tclk)) {
+-		rc = -EINVAL;
+-		goto out;
+-	}
++	if (!mv64xxx_find_baud_factors(drv_data, bus_freq, tclk))
++		return -EINVAL;
+ 
+ 	drv_data->rstc = devm_reset_control_get_optional_exclusive(dev, NULL);
+-	if (IS_ERR(drv_data->rstc)) {
+-		rc = PTR_ERR(drv_data->rstc);
+-		goto out;
+-	}
++	if (IS_ERR(drv_data->rstc))
++		return PTR_ERR(drv_data->rstc);
++
+ 	reset_control_deassert(drv_data->rstc);
+ 
+ 	/* Its not yet defined how timeouts will be specified in device tree.
+@@ -832,35 +949,24 @@ mv64xxx_of_config(struct mv64xxx_i2c_data *drv_data,
+ 	 */
+ 	drv_data->adapter.timeout = HZ;
+ 
+-	device = of_match_device(mv64xxx_i2c_of_match_table, dev);
+-	if (!device)
+-		return -ENODEV;
++	memcpy(&drv_data->reg_offsets, quirks->reg_offsets,
++		sizeof(drv_data->reg_offsets));
+ 
+-	memcpy(&drv_data->reg_offsets, device->data, sizeof(drv_data->reg_offsets));
++	drv_data->offload_enabled	= quirks->offload_enabled;
++	drv_data->clk_n_base_0		= quirks->clk_n_base_0;
++	drv_data->irq_clear_inverted	= quirks->irq_clear_inverted;
++	drv_data->recovery_info		= quirks->recovery_info;
++	drv_data->adapter.bus_recovery_info = quirks->recovery_info;
+ 
+ 	/*
+-	 * For controllers embedded in new SoCs activate the
+-	 * Transaction Generator support and the errata fix.
++	 * For controllers embedded in new SoCs activate
++	 * the errata fix.
+ 	 */
+-	if (of_device_is_compatible(np, "marvell,mv78230-i2c")) {
+-		drv_data->offload_enabled = true;
+-		/* The delay is only needed in standard mode (100kHz) */
+-		if (bus_freq <= I2C_MAX_STANDARD_MODE_FREQ)
+-			drv_data->errata_delay = true;
+-	}
+-
+-	if (of_device_is_compatible(np, "marvell,mv78230-a0-i2c")) {
+-		drv_data->offload_enabled = false;
+-		/* The delay is only needed in standard mode (100kHz) */
+-		if (bus_freq <= I2C_MAX_STANDARD_MODE_FREQ)
+-			drv_data->errata_delay = true;
+-	}
++	/* The delay is only needed in standard mode (100kHz) */
++	if (quirks->errata_delay && bus_freq <= I2C_MAX_STANDARD_MODE_FREQ)
++		drv_data->errata_delay = true;
+ 
+-	if (of_device_is_compatible(np, "allwinner,sun6i-a31-i2c"))
+-		drv_data->irq_clear_inverted = true;
+-
+-out:
+-	return rc;
++	return 0;
+ }
+ #else /* CONFIG_OF */
+ static int
+@@ -881,7 +987,7 @@ mv64xxx_i2c_probe(struct platform_device *pd)
+ 	if ((!pdata && !pd->dev.of_node))
+ 		return -ENODEV;
+ 
+-	drv_data = devm_kzalloc(&pd->dev, sizeof(struct mv64xxx_i2c_data),
++	drv_data = devm_kzalloc(&pd->dev, sizeof(*drv_data),
+ 				GFP_KERNEL);
+ 	if (!drv_data)
+ 		return -ENOMEM;
+@@ -916,7 +1022,8 @@ mv64xxx_i2c_probe(struct platform_device *pd)
+ 		drv_data->freq_n = pdata->freq_n;
+ 		drv_data->adapter.timeout = msecs_to_jiffies(pdata->timeout);
+ 		drv_data->offload_enabled = false;
+-		memcpy(&drv_data->reg_offsets, &mv64xxx_i2c_regs_mv64xxx, sizeof(drv_data->reg_offsets));
++		memcpy(&drv_data->reg_offsets, &mv64xxx_i2c_regs_mv64xxx,
++			sizeof(drv_data->reg_offsets));
+ 	} else if (pd->dev.of_node) {
+ 		rc = mv64xxx_of_config(drv_data, &pd->dev);
+ 		if (rc)
+-- 
+2.25.1
+

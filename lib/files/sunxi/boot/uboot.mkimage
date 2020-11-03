@@ -4,7 +4,6 @@
 #
 
 # default values
-setenv video_mode "EDID:1280x1024p60"
 setenv overlay_error "false"
 setenv kernel_file "kernel.img"
 

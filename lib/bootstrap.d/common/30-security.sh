@@ -26,16 +26,19 @@ else
 fi
 
 if [ "$ENABLE_SSHD" = yes ] ; then
+  LOCAL_SSH_DIR=/home/$CURRENT_USER/.ssh
+  mkdir -p $LOCAL_SSH_DIR
+
   # Enable password-less login
-  if [ ! -f /home/$CURRENT_USER/.ssh/id_rsa ] ; then
-  	ssh-keygen -f id_rsa -t rsa -N '' &> /dev/null
+  if [ ! -f $LOCAL_SSH_DIR/id_rsa ] ; then
+    ssh-keygen -f $LOCAL_SSH_DIR/id_rsa -t rsa -N '' &> /dev/null
   fi
 
   mkdir -p ${R}/root/.ssh
-  cat /home/$CURRENT_USER/.ssh/id_rsa.pub >> ${R}/root/.ssh/authorized_keys
+  cat $LOCAL_SSH_DIR/id_rsa.pub >> ${R}/root/.ssh/authorized_keys
 
   if [ "$ENABLE_USER" = yes ] ; then
     mkdir -p ${R}/home/$USER_NAME/.ssh
-    cat /home/$CURRENT_USER/.ssh/id_rsa.pub >> ${R}/home/$USER_NAME/.ssh/authorized_keys
+    cat $LOCAL_SSH_DIR/id_rsa.pub >> ${R}/home/$USER_NAME/.ssh/authorized_keys
   fi
 fi

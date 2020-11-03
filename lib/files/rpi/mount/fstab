@@ -1,4 +1,4 @@
-/dev/mmcblk0p2 / ext4 noatime,nodiratime,errors=remount-ro,discard,data=writeback,commit=100 0 1
-/dev/mmcblk0p1 /boot/firmware vfat defaults,noatime,nodiratime 0 2
-tmpfs /tmp tmpfs defaults,nosuid 0 0
-/var/swap none swap sw 0 0
+/dev/mmcblk0p2	/		ext4	relatime,errors=remount-ro	0	1
+/dev/mmcblk0p1	/boot/firmware	vfat	defaults,noatime,nodiratime	0	2
+tmpfs		/tmp		tmpfs	defaults,nosuid			0	0
+/var/swap	none		swap	sw				0	0

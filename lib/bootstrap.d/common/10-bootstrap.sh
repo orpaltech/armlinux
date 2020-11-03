@@ -13,11 +13,11 @@ fi
 if [ ! -f "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" ] ; then
 
   VARIANT=""
-  COMPONENTS="main"
+  COMPONENTS="main,contrib"
 
   # Use non-free Debian packages if needed
   if [ "${DEBIAN_NONFREE}" = yes ] ; then
-    COMPONENTS="${COMPONENTS},contrib,non-free"
+    COMPONENTS="${COMPONENTS},non-free"
   fi
 
   # Use minbase bootstrap variant which only includes essential packages
@@ -27,7 +27,10 @@ if [ ! -f "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" ] ; then
 
   # Base debootstrap (unpack only)
   http_proxy=${APT_PROXY} \
-    debootstrap --arch="${DEBIAN_RELEASE_ARCH}" --foreign ${VARIANT} --components="${COMPONENTS}" --include="${APT_INCLUDES}" \
+    debootstrap --arch="${DEBIAN_RELEASE_ARCH}" \
+		--foreign ${VARIANT} \
+		--components="${COMPONENTS}" \
+		--include="${APT_INCLUDES}" \
                 "${DEBIAN_RELEASE}" "${R}" "http://${APT_SERVER}/debian"
     [ $? -eq 0 ] || exit $?;
 

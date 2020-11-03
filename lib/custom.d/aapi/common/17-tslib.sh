@@ -4,11 +4,12 @@
 
 TSLIB_URL="https://github.com/kergoth/tslib.git"
 TSLIB_BRANCH="master"
+TSLIB_TAG="1.21"
 
 TSLIB_SRC_DIR=$EXTRADIR/tslib
 TSLIB_OUT_DIR=$TSLIB_SRC_DIR/build/$LINUX_PLATFORM
 
-TSLIB_FORCE_UPDATE="yes"
+TSLIB_FORCE_UPDATE="no"
 
 TSLIB_PREFIX=/usr
 
@@ -42,6 +43,11 @@ tslib_update()
 
 		# clone sources
 		git clone $TSLIB_URL -b $TSLIB_BRANCH	$TSLIB_SRC_DIR
+	fi
+
+	if [ ! -z "${TSLIB_TAG}" ] ; then
+		echo "Checking out tag: tags/${TSLIB_TAG}"
+		git -C $TSLIB_SRC_DIR checkout tags/${TSLIB_TAG}
 	fi
 }
 

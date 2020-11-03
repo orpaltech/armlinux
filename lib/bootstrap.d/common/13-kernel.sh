@@ -72,7 +72,7 @@ if [ "${KERNEL_DIR}" != "${KERNEL_SOURCE_DIR}" ] ; then
 fi
 
 # Setup kernel boot environment
-CMDLINE="${CMDLINE} consoleblank=0 loglevel=7 earlyprintk rootfstype=ext4 rootwait panic=10 rootflags=commit=60,data=writeback init=/bin/systemd"
+CMDLINE="${CMDLINE} consoleblank=0 loglevel=7 earlyprintk rootfstype=ext4 rootwait panic=10 init=/bin/systemd"
 
 # Remove IPv6 networking support
 if [ "${ENABLE_IPV6}" != yes ] ; then
@@ -96,6 +96,12 @@ fi
 
 if [ ! -z "${DMESG_BUF_LEN}" ] ; then
   EXTRAARGS="log_buf_len=${DMESG_BUF_LEN} ${EXTRAARGS}"
+fi
+
+if [ ! -z "${BOOT_PRINTK_DELAY+x}" ] ; then
+  if [[ $BOOT_PRINTK_DELAY -gt 0 ]] ; then
+    EXTRAARGS="boot_delay=${BOOT_PRINTK_DELAY} ${EXTRAARGS}"
+  fi
 fi
 
 # Install and setup fstab

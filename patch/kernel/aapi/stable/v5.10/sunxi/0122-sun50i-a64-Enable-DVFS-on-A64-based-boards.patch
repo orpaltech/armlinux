@@ -1,0 +1,129 @@
+From 82c294bbdbf2314dc3d76a312d826acd58c8d54a Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Tue, 27 Oct 2020 12:41:10 +0300
+Subject: [PATCH] sun50i: a64: Enable DVFS on A64-based boards
+
+---
+ arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi | 50 +++++++++++++++++++
+ drivers/clk/sunxi-ng/ccu-sun50i-a64.h         |  2 +-
+ include/dt-bindings/clock/sun50i-a64-ccu.h    |  2 +
+ 3 files changed, 53 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+index dc23881..2162e7d 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+@@ -41,6 +41,52 @@
+ 		};
+ 	};
+ 
++	cpu0_opp_table: opp_table0 {
++		compatible = "operating-points-v2";
++		opp-shared;
++
++		opp-648000000 {
++			opp-hz = /bits/ 64 <648000000>;
++			opp-microvolt = <1040000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-816000000 {
++		opp-hz = /bits/ 64 <816000000>;
++			opp-microvolt = <1100000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-912000000 {
++			opp-hz = /bits/ 64 <912000000>;
++			opp-microvolt = <1120000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-960000000 {
++			opp-hz = /bits/ 64 <960000000>;
++			opp-microvolt = <1160000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-1008000000 {
++			opp-hz = /bits/ 64 <1008000000>;
++			opp-microvolt = <1200000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-1056000000 {
++			opp-hz = /bits/ 64 <1056000000>;
++			opp-microvolt = <1240000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-1104000000 {
++			opp-hz = /bits/ 64 <1104000000>;
++			opp-microvolt = <1260000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-1152000000 {
++			opp-hz = /bits/ 64 <1152000000>;
++			opp-microvolt = <1300000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++	};
++
+ 	cpus {
+ 		#address-cells = <1>;
+ 		#size-cells = <0>;
+@@ -53,6 +99,7 @@
+ 			next-level-cache = <&L2>;
+ 			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
++			operating-points-v2 = <&cpu0_opp_table>;
+ 			#cooling-cells = <2>;
+ 		};
+ 
+@@ -64,6 +111,7 @@
+ 			next-level-cache = <&L2>;
+ 			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
++			operating-points-v2 = <&cpu0_opp_table>;
+ 			#cooling-cells = <2>;
+ 		};
+ 
+@@ -75,6 +123,7 @@
+ 			next-level-cache = <&L2>;
+ 			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
++			operating-points-v2 = <&cpu0_opp_table>;
+ 			#cooling-cells = <2>;
+ 		};
+ 
+@@ -86,6 +135,7 @@
+ 			next-level-cache = <&L2>;
+ 			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
++			operating-points-v2 = <&cpu0_opp_table>;
+ 			#cooling-cells = <2>;
+ 		};
+ 
+diff --git a/drivers/clk/sunxi-ng/ccu-sun50i-a64.h b/drivers/clk/sunxi-ng/ccu-sun50i-a64.h
+index 54d1f96..86171d2 100644
+--- a/drivers/clk/sunxi-ng/ccu-sun50i-a64.h
++++ b/drivers/clk/sunxi-ng/ccu-sun50i-a64.h
+@@ -30,7 +30,7 @@
+ #define CLK_PLL_PERIPH0_2X		12
+ #define CLK_PLL_PERIPH1			13
+ #define CLK_PLL_PERIPH1_2X		14
+-#define CLK_PLL_VIDEO1			15
++/* PLL_VIDEO1 exported */
+ #define CLK_PLL_GPU			16
+ #define CLK_PLL_MIPI			17
+ #define CLK_PLL_HSIC			18
+diff --git a/include/dt-bindings/clock/sun50i-a64-ccu.h b/include/dt-bindings/clock/sun50i-a64-ccu.h
+index 318eb15..162ff67 100644
+--- a/include/dt-bindings/clock/sun50i-a64-ccu.h
++++ b/include/dt-bindings/clock/sun50i-a64-ccu.h
+@@ -46,6 +46,8 @@
+ #define CLK_PLL_VIDEO0		7
+ #define CLK_PLL_PERIPH0		11
+ 
++#define CLK_PLL_VIDEO1		15
++
+ #define CLK_CPUX		21
+ #define CLK_BUS_MIPI_DSI	28
+ #define CLK_BUS_CE		29
+-- 
+2.25.1
+

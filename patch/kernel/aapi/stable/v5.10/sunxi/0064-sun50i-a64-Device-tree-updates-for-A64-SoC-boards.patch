@@ -1,0 +1,89 @@
+From d2138b73774f38acca91031a75c5b11993c84099 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Tue, 27 Oct 2020 12:29:27 +0300
+Subject: [PATCH] sun50i-a64: Device tree updates for A64 SoC boards
+
+---
+ arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi | 45 +++++++++++++++++++
+ 1 file changed, 45 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+index dc23881..e805a52 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+@@ -154,6 +154,25 @@
+ 		};
+ 	};
+ 
++	sound_spdif {
++		compatible = "simple-audio-card";
++		simple-audio-card,name = "On-board SPDIF";
++		status = "disabled";
++
++		simple-audio-card,cpu {
++			sound-dai = <&spdif>;
++		};
++
++		simple-audio-card,codec {
++			sound-dai = <&spdif_out>;
++		};
++	};
++
++	spdif_out: spdif-out {
++		#sound-dai-cells = <0>;
++		compatible = "linux,spdif-dit";
++	};
++
+ 	timer {
+ 		compatible = "arm,armv8-timer";
+ 		allwinner,erratum-unknown1;
+@@ -681,6 +700,27 @@
+ 				function = "i2c2";
+ 			};
+ 
++			i2s0_pins_mclk: i2s0-pins-mclk {
++				pins = "PB3";
++				function = "i2s0";
++			};
++			i2s0_pins_bclk: i2s0-pins-bclk {
++				pins = "PB5";
++				function = "i2s0";
++			};
++			i2s0_pins_lrck: i2s0-pins-lrck {
++				pins = "PB4";
++				function = "i2s0";
++			};
++			i2s0_pins_do0: i2s0-pins-do0 {
++				pins = "PB6";
++				function = "i2s0";
++			};
++			i2s0_pins_di: i2s0-pins-di {
++				pins = "PB7";
++				function = "i2s0";
++			};
++
+ 			/omit-if-no-ref/
+ 			lcd_rgb666_pins: lcd-rgb666-pins {
+ 				pins = "PD0", "PD1", "PD2", "PD3", "PD4",
+@@ -1049,6 +1089,9 @@
+ 			clocks = <&ccu CLK_BUS_GPU>, <&ccu CLK_GPU>;
+ 			clock-names = "bus", "core";
+ 			resets = <&ccu RST_BUS_GPU>;
++
++			assigned-clocks = <&ccu CLK_GPU>;
++			assigned-clock-rates = <432000000>;
+ 		};
+ 
+ 		gic: interrupt-controller@1c81000 {
+@@ -1229,6 +1272,8 @@
+ 			interrupts = <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&r_ccu CLK_APB0_I2C>;
+ 			resets = <&r_ccu RST_APB0_I2C>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&r_i2c_pl89_pins>;
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+-- 
+2.25.1
+

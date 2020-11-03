@@ -176,8 +176,7 @@ set +x
 display_alert "Selected platform:" "${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_ARCH}])" "info"
 
 
-APT_INCLUDES="avahi-daemon,rsync,apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,systemd"
-APT_INCLUDES="${APT_INCLUDES},psmisc,u-boot-tools,i2c-tools,usbutils,initramfs-tools,console-setup"
+APT_INCLUDES="avahi-daemon,rsync,apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,systemd,psmisc,u-boot-tools,i2c-tools,usbutils,initramfs-tools,console-setup,locales"
 
 # See if additional packages are required
 if [ ! -z "${APT_EXTRA_PACKAGES}" ] ; then

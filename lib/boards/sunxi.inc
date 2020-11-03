@@ -31,15 +31,15 @@ KERNEL_OVERLAY_DIR="overlays"
 KERNEL_MKIMAGE_WRAP="no"
 # Use compressed (gzip) or uncompressed (none) kernel image
 KERNEL_MKIMAGE_COMPRESS="none"
-KERNEL_MKIMAGE_LOADADDR="0x40080000"
+KERNEL_MKIMAGE_LOADADDR="0x40008000"
 # Use compressed (Image.gz) or uncompressed (Image) source file
 KERNEL_IMAGE_SOURCE="zImage"
 # Use wrapped (linux.uImage) or normal (linuz.img) target file
 KERNEL_IMAGE_TARGET="linuz.img"
 
-FELBOOT_KERNEL_ADDR=0x42000000
-FELBOOT_RAMDISK_ADDR=0x43300000
-FELBOOT_FDT_ADDR=0x43000000
+# FELBOOT_KERNEL_ADDR=0x42000000
+# FELBOOT_RAMDISK_ADDR=0x43300000
+# FELBOOT_FDT_ADDR=0x43000000
 
 # The option should be overriden if you want GPU support in QT5
 QT5_OPENGL_OPTION="-no-opengl"

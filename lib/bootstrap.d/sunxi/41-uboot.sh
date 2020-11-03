@@ -18,7 +18,7 @@ else
 fi
 echo "${BOOTCMD} \${kernel_addr_r} - \${fdt_addr}" >> $BOOT_SCR_CMD
 
-BOOTARGS_ENV="setenv bootargs \"${CMDLINE} hdmi.audio=EDID:0 disp.screen0_output_mode=\${video_mode} \${extraargs}\""
+BOOTARGS_ENV="setenv bootargs \"${CMDLINE} \${extraargs}\""
 sed -i "/setenv bootargs .*/c ${BOOTARGS_ENV}" $BOOT_SCR_CMD
 
 

@@ -17,17 +17,18 @@
 #
 ########################################################################
 
-REQUIRED_PACKAGES="autoconf \
+REQUIRED_PACKAGES="autoconf automake \
 bc binfmt-support bison bmap-tools \
 cmake \
 debootstrap debian-archive-keyring device-tree-compiler dialog dosfstools \
+flex \
 git \
 libssl-dev \
+ninja-build \
 qemu-user-static quilt \
 patch \
-python-dev python-mako python-minimal \
+python2.7 python-mako \
 python3 python3-pip python3-mako \
-ninja-build \
 rsync \
 sunxi-tools swig \
 texi2html texinfo \
@@ -46,7 +47,7 @@ get_host_pkgs()
 
 	# Check if all required packages are installed on the build system
 	for package in $REQUIRED_PACKAGES ; do
-		if [ "`dpkg-query -W -f='${Status}' $package`" != "install ok installed" ] ; then
+		if [ "`dpkg-query -W -f='${Status}' $package 2> /dev/null`" != "install ok installed" ] ; then
 			MISSING_PACKAGES="${MISSING_PACKAGES} $package"
 		fi
 	done

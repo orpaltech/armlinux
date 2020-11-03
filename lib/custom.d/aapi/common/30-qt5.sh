@@ -3,7 +3,7 @@
 #
 
 QT5_GIT_ROOT="git://code.qt.io/qt"
-QT5_RELEASE="5.14"
+QT5_RELEASE="5.15"
 QT5_BRANCH="${QT5_RELEASE}"
 QT5_TAG=""
 QT5_MODULES=("qtxmlpatterns" "qtimageformats" "qtgraphicaleffects" "qtsvg" "qtscript" "qtdeclarative" "qtquickcontrols" "qtquickcontrols2" "qtcharts" "qtvirtualkeyboard")
@@ -36,11 +36,11 @@ QT5_CROSS_COMPILE=${QT5_CROSS_COMPILE:="$CROSS_COMPILE"}
 echo -n -e "\n*** Build Settings ***\n"
 set -x
 
-# force clone the remote repository
+# force update sources
 QT5_UPDATE_SOURCES=${QT5_UPDATE_SOURCES:="no"}
 
-# remove all intermediate files and go for a full rebuild
-QT5_FORCE_REBUILD=${QT5_FORCE_REBUILD:="no"}
+# go for a full rebuild
+QT5_FORCE_REBUILD=${QT5_FORCE_REBUILD:="yes"}
 
 set +x
 

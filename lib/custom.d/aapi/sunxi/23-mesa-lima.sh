@@ -4,41 +4,21 @@
 
 MESA_REPO_URL="https://gitlab.freedesktop.org/mesa/mesa.git"
 MESA_BRANCH="master"
-MESA_TAG="mesa-20.0.0-rc2"
+MESA_TAG="mesa-20.2.1"
 MESA_SRC_DIR=${EXTRADIR}/mesa
 MESA_OUT_DIR=${MESA_SRC_DIR}/build/${LINUX_PLATFORM}-lima
 MESA_PREFIX=/usr
 MESA_FORCE_UPDATE="no"
 MESA_FORCE_REBUILD="yes"
 
-MESON_RELEASE="0.50.1"
-MESON_DIR=${EXTRADIR}/meson-${MESON_RELEASE}
-MESON_TAR_FILE="meson-${MESON_RELEASE}.tar.gz"
-MESON_TAR_URL="https://github.com/mesonbuild/meson/releases/download/${MESON_RELEASE}/${MESON_TAR_FILE}"
-MESON_CROSSFILE="meson-cross-file.ini"
-MESON_CROSS_PKGCONFIG="${MESA_OUT_DIR}/cross-pkg-config.sh"
-MESON_FORCE_UPDATE="no"
+MESA_CROSS_PKGCONFIG="${MESA_OUT_DIR}/cross-pkg-config.sh"
 
 # -----------------------------------------------------------------------------
 
-meson_update_src()
+
+mesa_cross_init()
 {
-	if [ ! -d $MESON_DIR ] || [ "${MESON_FORCE_UPDATE}" = yes ] ; then
-		echo "Download Meson build tool..."
-
-		rm -rf $MESON_DIR
-		local TAR_PATH="${EXTRADIR}/${MESON_TAR_FILE}"
-		[ ! -f ${TAR_PATH} ] && wget -O ${TAR_PATH} ${MESON_TAR_URL}
-		tar -xvf ${TAR_PATH} -C ${EXTRADIR}/
-		rm -f ${TAR_PATH}
-
-		echo "Done."
-	fi
-}
-
-meson_cross_init()
-{
-	cat <<-EOF > ${MESON_CROSS_PKGCONFIG}
+	cat <<-EOF > ${MESA_CROSS_PKGCONFIG}
 #!/bin/sh
 
 SYSROOT=${SYSROOT_DIR}
@@ -50,7 +30,7 @@ export PKG_CONFIG_SYSROOT_DIR=\${SYSROOT}
 exec pkg-config "\$@"
 EOF
 
-	chmod +x ${MESON_CROSS_PKGCONFIG}
+	chmod +x ${MESA_CROSS_PKGCONFIG}
 
 	cat <<-EOF > ${MESA_OUT_DIR}/${MESON_CROSSFILE}
 [binaries]
@@ -60,7 +40,7 @@ ar = '${DEV_AR}'
 ld = '${DEV_LD}'
 nm = '${DEV_NM}'
 strip = '${DEV_STRIP}'
-pkgconfig = '${MESON_CROSS_PKGCONFIG}'
+pkgconfig = '${MESA_CROSS_PKGCONFIG}'
 exe_wrapper = 'QEMU_LD_PREFIX=${SYSROOT_DIR} ${QEMU_BINARY}'
 
 [properties]
@@ -136,7 +116,7 @@ mesa_make()
 	fi
 	mkdir -p ${MESA_OUT_DIR}
 
-	meson_cross_init
+	mesa_cross_init
 
 	echo "Configure MESA..."
 
@@ -241,7 +221,6 @@ if [ "${MALI_BLOB_TYPE}" = "lima" ] ; then
 
 	echo "Building MESA library..."
 
-	meson_update_src
 	mesa_update_src
 
 	if [[ $CLEAN =~ (^|,)(mesa|lima|mesa-lima)(,|$) ]] ; then
