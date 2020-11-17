@@ -23,6 +23,7 @@ FIRMWARE_NAME="raspberrypi"
 # KERNEL_CROSS_COMPILE=                                           
 # CROSS_COMPILE= 
 
+KERNEL_BUILD_FAMILY_CONFIG="linux-mainline-rpi64.config"
 KERNEL_OVERLAY_DIR="broadcom/overlays"
 
 QEMU_BINARY="/usr/bin/qemu-aarch64-static"

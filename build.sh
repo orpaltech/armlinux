@@ -95,6 +95,21 @@ if [ -z "${CLEAN}" ] ; then
 . $LIBDIR/ui/clean-options.sh
 fi
 
+if [ -z "${UBOOT_REPO_TAG}" ] ; then
+	UBOOT_REPO_TAG="${UBOOT_RELEASE}"
+elif [ "${UBOOT_REPO_BRANCH}" = no ] ; then
+	UBOOT_REPO_TAG=""
+fi
+[[ -z "${UBOOT_REPO_BRANCH}" ]] && UBOOT_REPO_BRANCH="master"
+
+KERNEL_RELEASE="v${KERNEL_VER_MAJOR}.${KERNEL_VER_MINOR}"
+if [ -z "${KERNEL_REPO_TAG}" ] ; then
+	KERNEL_REPO_TAG="${KERNEL_RELEASE}${KERNEL_VER_BUILD}"
+elif [ "${KERNEL_REPO_TAG}" = no ] ; then
+	KERNEL_REPO_TAG=""
+fi
+[[ -z "${KERNEL_REPO_BRANCH}" ]] && KERNEL_REPO_BRANCH="master"
+
 # declare firmware directories
 [[ -z "${FIRMWARE_NAME}" ]] && FIRMWARE_NAME="${SOC_FAMILY}"
 FIRMWARE_BASE_DIR=${SRCDIR}/firmware
@@ -106,6 +121,7 @@ KERNEL_BASE_DIR=${SRCDIR}/linux/${KERNEL_REPO_NAME}
 
 # source library scripts
 . ${LIBDIR}/sources-update.sh
+. ${LIBDIR}/sources-patch.sh
 . ${LIBDIR}/compile.sh
 . ${LIBDIR}/create-image.sh
 
@@ -125,11 +141,9 @@ fi
 update_firmware
 
 update_uboot
-
 patch_uboot
 
 update_kernel
-
 patch_kernel
 
 # build u-boot & kernel & optional firmware

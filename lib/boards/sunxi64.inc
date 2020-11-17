@@ -28,7 +28,7 @@ FIRMWARE_BRANCH="master"
 FIRMWARE_NAME="mainline-atf"
 
 KERNEL_BUILD_CONFIG="defconfig"
-KERNEL_BUILD_USER_CONFIG="linux-mainline-sunxi64.config"
+KERNEL_BUILD_FAMILY_CONFIG="linux-mainline-sunxi64.config"
 
 KERNEL_OVERLAY_DIR="allwinner/overlays"
 

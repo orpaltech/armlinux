@@ -24,7 +24,7 @@ MESON_CPU="armv7hl"
 QEMU_BINARY="/usr/bin/qemu-arm-static"
 
 KERNEL_BUILD_CONFIG="sunxi_defconfig"
-KERNEL_BUILD_USER_CONFIG="linux-mainline-sunxi.config"
+KERNEL_BUILD_FAMILY_CONFIG="linux-mainline-sunxi.config"
 
 KERNEL_OVERLAY_DIR="overlays"
 

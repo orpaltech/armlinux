@@ -1,16 +1,15 @@
-From 44c14098fb007a3287bfe3aa13d526acda3c861c Mon Sep 17 00:00:00 2001
+From 0c67ca0c906af9b70104b811a37088864759ab07 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Wed, 5 Sep 2018 20:33:25 +0300
+Date: Sat, 14 Nov 2020 16:31:47 +0300
 Subject: [PATCH] sun7i-a20: add DT-overlays
 
 ---
  arch/arm/boot/dts/Makefile                    |   2 +
- arch/arm/boot/dts/overlays/Makefile           |  28 +++
+ arch/arm/boot/dts/overlays/Makefile           |  27 +++
  .../dts/overlays/README.sun7i-a20-overlays    |  17 ++
- .../dts/overlays/sun7i-a20-aapi-sound.dts     |  44 +++++
- arch/arm/boot/dts/overlays/sun7i-a20-aapi.dts |  75 ++++++++
  .../dts/overlays/sun7i-a20-analog-codec.dts   |  13 ++
  .../overlays/sun7i-a20-audioinjector-pi.dts   |  44 +++++
+ .../dts/overlays/sun7i-a20-bananapi-lcd.dts   |  76 ++++++++
  .../dts/overlays/sun7i-a20-ertft0356-drm.dts  | 132 ++++++++++++++
  .../boot/dts/overlays/sun7i-a20-fixup.scr-cmd | 165 ++++++++++++++++++
  .../overlays/sun7i-a20-gy-pcm5102-sound.dts   |  33 ++++
@@ -22,13 +21,12 @@ Subject: [PATCH] sun7i-a20: add DT-overlays
  .../boot/dts/overlays/sun7i-a20-spidev.dts    |  57 ++++++
  .../overlays/sun7i-a20-waveshare35-drm.dts    |  71 ++++++++
  .../overlays/sun7i-a20-waveshare35-fbtft.dts  |  83 +++++++++
- 18 files changed, 979 insertions(+)
+ 17 files changed, 935 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.sun7i-a20-overlays
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-aapi-sound.dts
- create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-aapi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-analog-codec.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-audioinjector-pi.dts
+ create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-bananapi-lcd.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-ertft0356-drm.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-fixup.scr-cmd
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-gy-pcm5102-sound.dts
@@ -42,28 +40,26 @@ Subject: [PATCH] sun7i-a20: add DT-overlays
  create mode 100644 arch/arm/boot/dts/overlays/sun7i-a20-waveshare35-fbtft.dts
 
 diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
-index b5bd3de..98d005e 100644
+index 4572db3..07f0dc1 100644
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -1207,3 +1207,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+@@ -1391,3 +1391,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
  	aspeed-bmc-opp-zaius.dtb \
  	aspeed-bmc-portwell-neptune.dtb \
  	aspeed-bmc-quanta-q71l.dtb
 +
-+subdir-y	:= overlays
++subdir-y := overlays
 diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
 new file mode 100644
-index 0000000..e92a80a
+index 0000000..7717ff4
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/Makefile
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,27 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
 +dtbo-$(CONFIG_MACH_SUN7I) += \
 +	sun7i-a20-analog-codec.dtbo \
-+	sun7i-a20-aapi.dtbo \
-+	sun7i-a20-aapi-sound.dtbo \
 +	sun7i-a20-audioinjector-pi.dtbo \
 +	sun7i-a20-ertft0356-drm.dtbo \
 +	sun7i-a20-gy-pcm5102-sound.dtbo \
@@ -74,7 +70,8 @@ index 0000000..e92a80a
 +	sun7i-a20-spi0-cs1.dtbo \
 +	sun7i-a20-spidev.dtbo \
 +	sun7i-a20-waveshare35-drm.dtbo \
-+	sun7i-a20-waveshare35-fbtft.dtbo
++	sun7i-a20-waveshare35-fbtft.dtbo \
++	sun7i-a20-bananapi-lcd.dtbo
 +
 +scr-$(CONFIG_MACH_SUN7I) += sun7i-a20-fixup.scr
 +
@@ -108,137 +105,6 @@ index 0000000..a01bb97
 +Reference: A20 Datasheet sections 6.3.5.1, 1.19.2
 +
 +I2C bus 0 is used for the AXP209 PMIC
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-aapi-sound.dts b/arch/arm/boot/dts/overlays/sun7i-a20-aapi-sound.dts
-new file mode 100644
-index 0000000..95935c5
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-aapi-sound.dts
-@@ -0,0 +1,44 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "allwinner,sun7i-a20";
-+
-+	fragment@0 {
-+		target = <&i2s0>;
-+		__overlay__ {
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
-+				    <&i2s0_pins_di>;
-+			status = "okay";
-+		};
-+	};
-+
-+	fragment@1 {
-+		target = <&i2c2>;
-+		__overlay__ {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			status = "okay";
-+
-+			aapi_codec: wm8731@1a {
-+				#sound-dai-cells = <0>;
-+				compatible = "wlf,wm8731";
-+				reg = <0x1a>;
-+				status = "okay";
-+			};
-+		};
-+	};
-+
-+	fragment@2 {
-+		target-path = "/soc@1c00000/";
-+		__overlay__ {
-+			sound-aapi {
-+				compatible = "orpaltech,aapi-sound";
-+				cpu-node = <&i2s0>;
-+				codec-node = <&aapi_codec>;
-+				status = "okay";
-+                        };
-+                };
-+	};
-+};
-diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-aapi.dts b/arch/arm/boot/dts/overlays/sun7i-a20-aapi.dts
-new file mode 100644
-index 0000000..1e4a616
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/sun7i-a20-aapi.dts
-@@ -0,0 +1,75 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "allwinner,sun7i-a20";
-+
-+	fragment@0 {
-+		target-path = "/soc@1c00000/";
-+		__overlay__ {
-+			vna-aapi {
-+				compatible = "orpaltech,aapi-160";
-+				clocks = <&aapi_clk 0>,
-+					 <&aapi_clk 1>;
-+				clock-names = "clk0",
-+					      "clk1";
-+				intermediate-frequency = <10031>;
-+				initial-frequency = <7000000>;
-+				status = "okay";
-+			};
-+
-+			sound-aapi {
-+				compatible = "orpaltech,aapi-sound";
-+				cpu-node = <&i2s0>;
-+				codec-node = <&aapi_codec>;
-+				status = "okay";
-+			};
-+		};
-+	};
-+
-+	fragment@1 {
-+		target = <&i2c2>;
-+		__overlay__ {
-+			/* needed to avoid dtc warning */
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			status = "okay";
-+
-+			aapi_codec: wm8731@1a {
-+				#sound-dai-cells = <0>;
-+				compatible = "wlf,wm8731";
-+				reg = <0x1a>;
-+				status = "okay";
-+			};
-+
-+			aapi_clk: clk-aapi@60 {
-+				compatible = "orpaltech,aapi-clk-si5351";
-+				reg = <0x60>;
-+				#clock-cells = <1>;
-+				status = "okay";
-+
-+				xtal-frequency = <27000000>;
-+				xtal-correction = <0 0>; /*<correction(Hz) sign>*/
-+
-+				clock-output-names = "clk0", "clk1";
-+			};
-+		};
-+	};
-+
-+	fragment@2 {
-+		target = <&i2c2_pins_a>;
-+		__overlay__ {
-+			bias-pull-up;
-+		};
-+	};
-+
-+	fragment@3 {
-+		target = <&i2s0>;
-+		__overlay__ {
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&i2s0_pins_bclk>, <&i2s0_pins_lrck>,
-+				    <&i2s0_pins_di>;
-+			status = "okay";
-+		};
-+	};
-+};
 diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-analog-codec.dts b/arch/arm/boot/dts/overlays/sun7i-a20-analog-codec.dts
 new file mode 100644
 index 0000000..e1a70c5
@@ -306,6 +172,88 @@ index 0000000..cb9406b
 +				status = "okay";
 +                        };
 +                };
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-bananapi-lcd.dts b/arch/arm/boot/dts/overlays/sun7i-a20-bananapi-lcd.dts
+new file mode 100644
+index 0000000..b257f8e
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun7i-a20-bananapi-lcd.dts
+@@ -0,0 +1,76 @@
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun7i-a20";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			lcd_panel_bl: backlight {
++				compatible = "pwm-backlight";
++				pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
++				enable-gpios = <&pio 7 9 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PH9 */
++				brightness-levels = <1 2 4 8 16 32 64 128 255>;
++				default-brightness-level = <8>;
++			};
++
++			lcd_panel: lcd-panel {
++				compatible = "bananapi,s070wv20-ct16";
++				enable-gpios = <&pio 7 12 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH12 */
++				backlight = <&lcd_panel_bl>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&lcd0_rgb888_pins>;
++
++				port {
++					#address-cells = <1>;
++					#size-cells = <0>;
++
++					lcd_panel_in: endpoint {
++						remote-endpoint = <&tcon0_out_lcd>;
++					};
++				};
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&pwm>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&pwm0_pin>;
++			status = "okay";
++		};
++	};
++
++	fragment@2 {
++		target = <&tcon0>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@3 {
++		target = <&tcon0_out>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			tcon0_out_lcd: endpoint@0 {
++				reg = <0>;
++				remote-endpoint = <&lcd_panel_in>;
++			};
++		};
++	};
++
++	fragment@4 {
++		target = <&de>;
++		__overlay__ {
++			status = "okay";
++		};
 +	};
 +};
 diff --git a/arch/arm/boot/dts/overlays/sun7i-a20-ertft0356-drm.dts b/arch/arm/boot/dts/overlays/sun7i-a20-ertft0356-drm.dts
@@ -1131,5 +1079,5 @@ index 0000000..904775f
 +	};
 +};
 -- 
-2.17.1
+2.25.1
 

@@ -1,21 +1,22 @@
-From c93d3373477bf9f20468d497111e0ef295a8492e Mon Sep 17 00:00:00 2001
+From 790ecb4d82f81baa656bcf0262ccda6537e02db1 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Wed, 12 Feb 2020 19:28:52 +0300
+Date: Wed, 11 Nov 2020 17:28:26 +0300
 Subject: [PATCH] sun6i-a31s: Device tree updates for A31 SoC boards
 
 ---
- arch/arm/boot/dts/sun6i-a31.dtsi              | 108 +++++++++++++-----
- .../boot/dts/sun6i-a31s-sinovoip-bpi-m2.dts   |  43 ++++++-
- 2 files changed, 122 insertions(+), 29 deletions(-)
+ arch/arm/boot/dts/sun6i-a31.dtsi              | 112 +++++++++++++-----
+ .../boot/dts/sun6i-a31s-sinovoip-bpi-m2.dts   |  53 ++++++++-
+ 2 files changed, 127 insertions(+), 38 deletions(-)
 
 diff --git a/arch/arm/boot/dts/sun6i-a31.dtsi b/arch/arm/boot/dts/sun6i-a31.dtsi
-index 7762fbd..0fb9233 100644
+index f3425a6..39cc80c 100644
 --- a/arch/arm/boot/dts/sun6i-a31.dtsi
 +++ b/arch/arm/boot/dts/sun6i-a31.dtsi
-@@ -105,13 +105,7 @@
+@@ -104,14 +104,7 @@
+ 			device_type = "cpu";
  			reg = <0>;
  			clocks = <&ccu CLK_CPU>;
- 			clock-latency = <244144>; /* 8 32k periods */
+-			clock-latency = <244144>; /* 8 32k periods */
 -			operating-points = <
 -				/* kHz	  uV */
 -				1008000	1200000
@@ -27,10 +28,11 @@ index 7762fbd..0fb9233 100644
  			#cooling-cells = <2>;
  		};
  
-@@ -121,13 +115,7 @@
+@@ -120,14 +113,7 @@
+ 			device_type = "cpu";
  			reg = <1>;
  			clocks = <&ccu CLK_CPU>;
- 			clock-latency = <244144>; /* 8 32k periods */
+-			clock-latency = <244144>; /* 8 32k periods */
 -			operating-points = <
 -				/* kHz	  uV */
 -				1008000	1200000
@@ -42,10 +44,11 @@ index 7762fbd..0fb9233 100644
  			#cooling-cells = <2>;
  		};
  
-@@ -137,13 +125,7 @@
+@@ -136,14 +122,7 @@
+ 			device_type = "cpu";
  			reg = <2>;
  			clocks = <&ccu CLK_CPU>;
- 			clock-latency = <244144>; /* 8 32k periods */
+-			clock-latency = <244144>; /* 8 32k periods */
 -			operating-points = <
 -				/* kHz	  uV */
 -				1008000	1200000
@@ -57,10 +60,11 @@ index 7762fbd..0fb9233 100644
  			#cooling-cells = <2>;
  		};
  
-@@ -153,17 +135,40 @@
+@@ -152,18 +131,40 @@
+ 			device_type = "cpu";
  			reg = <3>;
  			clocks = <&ccu CLK_CPU>;
- 			clock-latency = <244144>; /* 8 32k periods */
+-			clock-latency = <244144>; /* 8 32k periods */
 -			operating-points = <
 -				/* kHz	  uV */
 -				1008000	1200000
@@ -105,7 +109,7 @@ index 7762fbd..0fb9233 100644
  	thermal-zones {
  		cpu_thermal {
  			/* milliseconds */
-@@ -189,6 +194,13 @@
+@@ -189,6 +190,13 @@
  					type = "passive";
  				};
  
@@ -119,7 +123,7 @@ index 7762fbd..0fb9233 100644
  				cpu_crit: cpu_crit {
  					/* milliCelsius */
  					temperature = <100000>;
-@@ -675,6 +687,27 @@
+@@ -675,6 +683,27 @@
  				function = "i2c2";
  			};
  
@@ -147,7 +151,7 @@ index 7762fbd..0fb9233 100644
  			lcd0_rgb888_pins: lcd0-rgb888-pins {
  				pins = "PD0", "PD1", "PD2", "PD3",
  						 "PD4", "PD5", "PD6", "PD7",
-@@ -730,6 +763,25 @@
+@@ -730,6 +759,25 @@
  				bias-pull-up;
  			};
  
@@ -174,7 +178,7 @@ index 7762fbd..0fb9233 100644
  				pins = "PH28";
  				function = "spdif";
 diff --git a/arch/arm/boot/dts/sun6i-a31s-sinovoip-bpi-m2.dts b/arch/arm/boot/dts/sun6i-a31s-sinovoip-bpi-m2.dts
-index 708caee..fd419a9 100644
+index 708caee..9cb183b 100644
 --- a/arch/arm/boot/dts/sun6i-a31s-sinovoip-bpi-m2.dts
 +++ b/arch/arm/boot/dts/sun6i-a31s-sinovoip-bpi-m2.dts
 @@ -56,12 +56,24 @@
@@ -221,8 +225,21 @@ index 708caee..fd419a9 100644
  &ehci0 {
  	status = "okay";
  };
-@@ -98,10 +115,19 @@
+@@ -98,12 +115,6 @@
  	status = "okay";
+ };
+ 
+-&ir {
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&s_ir_rx_pin>;
+-	status = "okay";
+-};
+-
+ &mdio {
+ 	phy1: ethernet-phy@1 {
+ 		reg = <1>;
+@@ -113,6 +124,21 @@
+ 	};
  };
  
 +&hdmi {
@@ -235,13 +252,14 @@ index 708caee..fd419a9 100644
 +	};
 +};
 +
- &ir {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&s_ir_rx_pin>;
--	status = "okay";
- };
- 
- &mdio {
++&ir {
++	pinctrl-names = "default";
++	pinctrl-0 = <&s_ir_rx_pin>;
++};
++
+ &mmc0 {
+ 	vmmc-supply = <&reg_dcdc1>;
+ 	bus-width = <4>;
 @@ -252,6 +278,21 @@
  	status = "okay";
  };
@@ -265,5 +283,5 @@ index 708caee..fd419a9 100644
  	pinctrl-names = "default";
  	pinctrl-0 = <&uart0_ph_pins>;
 -- 
-2.17.1
+2.25.1
 

@@ -1,23 +1,24 @@
-From ec2272e7b226a82d061d1cf91b7afea2cf9b1202 Mon Sep 17 00:00:00 2001
+From 45cc739de7a75aecfca1fd94d1b01c1664489413 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <ssuloev@orpaltech.com>
-Date: Sun, 4 Oct 2020 14:33:41 +0300
+Date: Mon, 9 Nov 2020 19:22:31 +0300
 Subject: [PATCH] sun8i-a33: Add DT-overlays
 
 ---
  arch/arm/boot/dts/Makefile                    |   2 +
- arch/arm/boot/dts/overlays/Makefile           |  25 ++
+ arch/arm/boot/dts/overlays/Makefile           |  26 ++
  .../dts/overlays/README.sun8i-a33-overlays    |   1 +
  .../boot/dts/overlays/sun8i-a33-aapi-ctp.dts  |  55 ++++
  .../dts/overlays/sun8i-a33-aapi-fgauge.dts    |  22 ++
  .../boot/dts/overlays/sun8i-a33-aapi-gen.dts  |  47 ++++
- .../boot/dts/overlays/sun8i-a33-aapi-lcd.dts  |  81 ++++++
+ .../boot/dts/overlays/sun8i-a33-aapi-lcd.dts  |  98 +++++++
  .../dts/overlays/sun8i-a33-aapi-panel.dts     |  86 ++++++
  .../dts/overlays/sun8i-a33-aapi-power.dts     |  42 +++
  .../dts/overlays/sun8i-a33-aapi-sound.dts     |  47 ++++
  .../boot/dts/overlays/sun8i-a33-aapi-vna.dts  |  39 +++
  arch/arm/boot/dts/overlays/sun8i-a33-aapi.dts | 253 ++++++++++++++++++
  .../boot/dts/overlays/sun8i-a33-fixup.scr-cmd |   7 +
- 13 files changed, 707 insertions(+)
+ .../boot/dts/overlays/sun8i-a33-pwm-test.dts  |  19 ++
+ 14 files changed, 744 insertions(+)
  create mode 100644 arch/arm/boot/dts/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/overlays/README.sun8i-a33-overlays
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-a33-aapi-ctp.dts
@@ -30,12 +31,13 @@ Subject: [PATCH] sun8i-a33: Add DT-overlays
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-a33-aapi-vna.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-a33-aapi.dts
  create mode 100644 arch/arm/boot/dts/overlays/sun8i-a33-fixup.scr-cmd
+ create mode 100644 arch/arm/boot/dts/overlays/sun8i-a33-pwm-test.dts
 
 diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
-index e6a1cac..987fb22 100644
+index 4572db3..07f0dc1 100644
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
-@@ -1373,3 +1373,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+@@ -1391,3 +1391,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
  	aspeed-bmc-opp-zaius.dtb \
  	aspeed-bmc-portwell-neptune.dtb \
  	aspeed-bmc-quanta-q71l.dtb
@@ -43,10 +45,10 @@ index e6a1cac..987fb22 100644
 +subdir-y := overlays
 diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
 new file mode 100644
-index 0000000..27de34d
+index 0000000..1ef0ceb
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/Makefile
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,26 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
@@ -59,7 +61,8 @@ index 0000000..27de34d
 +	sun8i-a33-aapi-power.dtbo \
 +	sun8i-a33-aapi-sound.dtbo \
 +	sun8i-a33-aapi-vna.dtbo \
-+	sun8i-a33-aapi.dtbo
++	sun8i-a33-aapi.dtbo \
++	sun8i-a33-pwm-test.dtbo
 +
 +scr-$(CONFIG_ARCH_SUNXI) += \
 +	sun8i-a33-fixup.scr
@@ -223,10 +226,10 @@ index 0000000..6641bf3
 +};
 diff --git a/arch/arm/boot/dts/overlays/sun8i-a33-aapi-lcd.dts b/arch/arm/boot/dts/overlays/sun8i-a33-aapi-lcd.dts
 new file mode 100644
-index 0000000..c4e4638
+index 0000000..4ec24b5
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/sun8i-a33-aapi-lcd.dts
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,98 @@
 +#include <dt-bindings/gpio/gpio.h>
 +#include <dt-bindings/interrupt-controller/irq.h>
 +#include <dt-bindings/pwm/pwm.h>
@@ -244,19 +247,36 @@ index 0000000..c4e4638
 +			#size-cells = <0>;
 +			status = "okay";
 +
-+			aapi_lcd: panel-hx8394a@0 {
-+				compatible = "microtech-lcd,mtf0500hdi-22", "himax,hx8394a";
-+				label = "aapi-lcd";
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				port@0 {
++					reg = <0>;
++
++					host_dsi_out: endpoint {
++						remote-endpoint = <&panel_dsi_in>;
++					};
++				};
++			};
++
++			panel-hx8394a@0 {
++				compatible = "microtech-lcd,mtf0500hdi-22","himax,hx8394a";
 +				reg = <0>;
 +
 +				power-supply = <&reg_vdd_panel>;
 +				reset-gpios = <&r_pio 0 5 GPIO_ACTIVE_LOW>;	/*PL5*/
 +				backlight = <&aapi_bl>;
++
++				port {
++					panel_dsi_in: endpoint {
++						remote-endpoint = <&host_dsi_out>;
++					};
++				};
 +			};
 +/*
-+			aapi_lcd: panel-hx8379a@0 {
-+				compatible = "truly,tda-fwvga0500g50089", "himax,hx8379a";
-+				label = "aapi-lcd";
++			panel-hx8379a@0 {
++				compatible = "truly,tda-fwvga0500g50089","himax,hx8379a";
 +				reg = <0>;
 +
 +				power-supply = <&reg_vdd_panel>;
@@ -292,9 +312,9 @@ index 0000000..c4e4638
 +		__overlay__ {
 +			aapi_bl: backlight {
 +				compatible = "pwm-backlight";
-+				pwms = <&pwm 0 1000000 0>;      /*1000 Hz*/
-+				brightness-levels = <0 4 8 16 32 64 128 192 255>;
-+				default-brightness-level = <6>;
++				pwms = <&pwm 0 1000000 0>; /*1000 Hz*/
++				brightness-levels = <1 2 4 8 16 32 64 128 255>;
++				default-brightness-level = <8>;
 +			};
 +		};
 +	};
@@ -818,6 +838,31 @@ index 0000000..f016830
 +setenv tmp_soc_path "soc"
 +
 +env delete tmp_soc_path
+diff --git a/arch/arm/boot/dts/overlays/sun8i-a33-pwm-test.dts b/arch/arm/boot/dts/overlays/sun8i-a33-pwm-test.dts
+new file mode 100644
+index 0000000..3dd5794
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/sun8i-a33-pwm-test.dts
+@@ -0,0 +1,19 @@
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pwm/pwm.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun8i-a33";
++
++	fragment@0 {
++		target = <&pwm>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&pwm0_pin>;
++			status = "okay";
++		};
++	};
++};
 -- 
 2.25.1
 
