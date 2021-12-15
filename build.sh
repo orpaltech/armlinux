@@ -41,13 +41,17 @@ get_host_pkgs
 if [ -z "${CONFIG}" ] ; then
 . ${LIBDIR}/ui/config-select.sh
 fi
-ARMLINUX_CONF=$BASEDIR/${CONFIG}.conf
-if [ ! -f $ARMLINUX_CONF ] ; then
+ARMLINUX_CONF=${BASEDIR}/${CONFIG}.conf
+if [ ! -f ${ARMLINUX_CONF} ] ; then
     echo "No config file found. Cannot continue."
     exit 1
 fi
 set -x
 . ${ARMLINUX_CONF}
+
+if [ -f ${BASEDIR}/wlan ] ; then
+. ${BASEDIR}/wlan
+fi
 
 # alias
 VERSION=${PROD_VERSION}

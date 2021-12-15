@@ -31,16 +31,21 @@ fi
 
 LIBDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 ARMLINUX_CONF=${LIBDIR}/../${CONFIG}.conf
+WLAN_CONF=${LIBDIR}/../wlan
 
 # Fix possible clearing up variables by config
 _BOARD_="${BOARD}"
 _CLEAN_="${CLEAN}"
 
-if [ ! -f "${ARMLINUX_CONF}" ] ; then
+if [ ! -f ${ARMLINUX_CONF} ] ; then
   echo "No config file found. Cannot continue."
   exit 1
 fi
 . ${ARMLINUX_CONF}
+
+if [ -f ${WLAN_CONF} ] ; then
+. ${WLAN_CONF}
+fi
 
 VERSION=${PROD_VERSION}
 FULL_VERSION=${PROD_VERSION}-${PROD_BUILD}
