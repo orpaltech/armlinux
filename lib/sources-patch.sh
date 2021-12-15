@@ -64,6 +64,8 @@ copy_patches()
 
 patch_uboot()
 {
+if [ "${ENABLE_UBOOT}" = yes ] ; then
+
 	local PATCH_BASE_DIR=$BASEDIR/patch/u-boot
 	local PATCH_OUT_DIR=$OUTPUTDIR/patches
 
@@ -110,6 +112,7 @@ patch_uboot()
 
 		echo "Done."
 	fi
+fi
 }
 
 #-----------------------------------------------------------------------

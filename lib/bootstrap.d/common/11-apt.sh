@@ -8,11 +8,10 @@ if [ -z "${APT_PROXY}" ] ; then
   sed -i "s/\"\"/\"${APT_PROXY}\"/" "${ETC_DIR}/apt/apt.conf.d/10proxy"
 fi
 
-install_readonly "${FILES_DIR}/apt/sources.list" "${ETC_DIR}/apt/sources.list"
+install_readonly "${FILES_DIR}/apt/${DEBIAN_RELEASE}/sources.list" "${ETC_DIR}/apt/sources.list"
 
 # Use specified debian APT server and debian release
 sed -i "s/\/deb.debian.org\//\/${APT_SERVER}\//" "${ETC_DIR}/apt/sources.list"
-sed -i "s/ stretch/ ${DEBIAN_RELEASE}/" "${ETC_DIR}/apt/sources.list"
 
 
 # Allow the installation of non-free Debian packages
@@ -33,6 +32,20 @@ if [ $PKG_COUNT -gt 0 ] ; then
 fi
 
 chroot_exec apt-get -qq -y -f install $(echo "${APT_INCLUDES}" | sed -e 's/,/ /g')
+
+if [ "${ENABLE_X11}" = yes ] ; then
+  chroot_exec apt-get -qq -y -f install "libxcb-*-dev"
+fi
+
+# See if our configuration requires any packages
+if [ ! -z "${APT_CONFIG_PACKAGES}" ] ; then
+  chroot_exec apt-get -qq -y install $(echo "${APT_CONFIG_PACKAGES}" | sed -e 's/,/ /g')
+fi
+
+# See if our board requires any packages
+if [ ! -z "${APT_BOARD_PACKAGES}" ] ; then
+  chroot_exec apt-get -qq -y install $(echo "${APT_BOARD_PACKAGES}" | sed -e 's/,/ /g')
+fi
 
 if [ "${ENABLE_X11}" = yes ] ; then
   chroot_exec apt-get -qq -y -f install "libxcb-*-dev"

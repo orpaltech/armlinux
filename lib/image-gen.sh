@@ -30,7 +30,7 @@ if [ -z "${CONFIG}" ] ; then
 fi
 
 LIBDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
-ARMLINUX_CONF=$LIBDIR/../${CONFIG}.conf
+ARMLINUX_CONF=${LIBDIR}/../${CONFIG}.conf
 
 # Fix possible clearing up variables by config
 _BOARD_="${BOARD}"
@@ -40,10 +40,13 @@ if [ ! -f "${ARMLINUX_CONF}" ] ; then
   echo "No config file found. Cannot continue."
   exit 1
 fi
-. $ARMLINUX_CONF
+. ${ARMLINUX_CONF}
+
+VERSION=${PROD_VERSION}
+FULL_VERSION=${PROD_VERSION}-${PROD_BUILD}
 
 BOARD=${BOARD:="${_BOARD_}"}
-BOARD_CONF=$LIBDIR/boards/${BOARD}.conf
+BOARD_CONF=${LIBDIR}/boards/${BOARD}.conf
 CLEAN=${CLEAN:="${_CLEAN_}"}
 BASEDIR=${OUTPUTDIR:="${LIBDIR}"}
 EXTRADIR=${BUILD_EXTRA_DIR:="${BASEDIR}/extra"}
@@ -78,6 +81,8 @@ fi
 
 # Apply board configuration
 . $BOARD_CONF
+
+. $LIBDIR/toolchains.sh
 
 set_cross_compile
 
@@ -150,10 +155,9 @@ DEBIAN_MINBASE=${DEBIAN_MINBASE:="no"}
 ENABLE_REDUCE=${ENABLE_REDUCE:="no"}
 ENABLE_HARDNET=${ENABLE_HARDNET:="no"}
 ENABLE_IPTABLES=${ENABLE_IPTABLES:="no"}
+ENABLE_GDB=${ENABLE_GDB:="no"}
 
 DRM_DEBUG=${DRM_DEBUG:=""}
-
-ENABLE_GDB=${ENABLE_GDB:=""}
 
 # Kernel installation settings
 KERNEL_INSTALL_HEADERS=${KERNEL_INSTALL_HEADERS:="yes"}
@@ -167,6 +171,8 @@ REDUCE_BASH=${REDUCE_BASH:="no"}
 REDUCE_HWDB=${REDUCE_HWDB:="yes"}
 REDUCE_LOCALE=${REDUCE_LOCALE:="yes"}
 
+SWAP_SIZE_MB=${SWAP_SIZE_MB:="200"}
+
 # Chroot scripts directory
 CHROOT_SCRIPTS=${CHROOT_SCRIPTS:=""}
 
@@ -176,16 +182,11 @@ set +x
 display_alert "Selected platform:" "${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_ARCH}])" "info"
 
 
-APT_INCLUDES="avahi-daemon,rsync,apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,systemd,psmisc,u-boot-tools,i2c-tools,usbutils,initramfs-tools,console-setup,locales"
+APT_INCLUDES="avahi-daemon,rsync,apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,systemd,psmisc,u-boot-tools,i2c-tools,usbutils,initramfs-tools,console-setup,locales,sudo,software-properties-common,build-essential"
 
 # See if additional packages are required
-if [ ! -z "${APT_EXTRA_PACKAGES}" ] ; then
-  APT_INCLUDES="${APT_INCLUDES},${APT_EXTRA_PACKAGES}"
-fi
-
-# See if board requires any packages
-if [ ! -z "${APT_BOARD_PACKAGES}" ] ; then
-  APT_INCLUDES="${APT_INCLUDES},${APT_BOARD_PACKAGES}"
+if [ ! -z "${APT_CONFIG_INCLUDES}" ] ; then
+  APT_INCLUDES="${APT_INCLUDES},${APT_CONFIG_INCLUDES}"
 fi
 
 APT_FORCE_YES="--allow-downgrades --allow-remove-essential"
@@ -196,7 +197,7 @@ BOOT_DIR="${R}${BOOT_DIR}"
 # individual toolchain components
 DEV_GCC="${CROSS_COMPILE}gcc"
 DEV_CXX="${CROSS_COMPILE}g++"
-DEV_LD="${CROSS_COMPILE}ld"
+DEV_LD="${CROSS_COMPILE}ld.gold"
 DEV_AS="${CROSS_COMPILE}as"
 DEV_AR="${CROSS_COMPILE}ar"
 DEV_NM="${CROSS_COMPILE}nm"
@@ -212,11 +213,9 @@ if [ ! -e "${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_SOURCE}"
   echo "error: cannot proceed: Linux kernel must be precompiled"
   exit 1
 fi
-# Get kernel release version
-KERNEL_VERSION=$(cat "${KERNEL_SOURCE_DIR}/include/config/kernel.release")
 
 # Fail early: Is u-boot ready?
-if [ ! -e "${UBOOT_SOURCE_DIR}/u-boot.bin" ] ; then
+if [ "${ENABLE_UBOOT}" = yes ] && [ ! -e "${UBOOT_SOURCE_DIR}/u-boot.bin" ] ; then
   echo "error: cannot proceed: U-Boot must be precompiled"
   exit 1
 fi
@@ -284,7 +283,7 @@ fi
 
 # Add iptables IPv4/IPv6 package
 if [ "${ENABLE_IPTABLES}" = yes ] ; then
-  APT_INCLUDES="${APT_INCLUDES},iptables"
+  APT_INCLUDES="${APT_INCLUDES},iptables,iptables-persistent"
 fi
 
 if [ "${ENABLE_SOUND}" = yes ] ; then
@@ -300,104 +299,104 @@ if [ "${ENABLE_WLAN}" = yes ] ; then
   APT_INCLUDES="${APT_INCLUDES},wpasupplicant"
 fi
 
-SCRIPTS_DIR=$BASEDIR/scripts
-BOOTSTRAP_DIR=$(mktemp -u $SCRIPTS_DIR/bootstrap.d.XXXXXXXXX)
-CUSTOM_DIR=$(mktemp -u $SCRIPTS_DIR/custom.d.XXXXXXXXX)
-FILES_DIR=$(mktemp -u $SCRIPTS_DIR/files.XXXXXXXXX)
-DEBS_DIR=$(mktemp -u $SCRIPTS_DIR/debs.XXXXXXXXX)
 
-mkdir -p $SCRIPTS_DIR
+copy_custom_files()
+{
+  local sub_path=$1
+  local target_path=$2
+  local ext=$3
+
+  if [ -d "${sub_path}" ] ; then
+    local num_files=$(count_files "${sub_path}/common/*${ext}")
+    if [ ${num_files} -gt 0 ] ; then
+      cp -R ${sub_path}/common/*  ${target_path}/
+    fi
+
+    num_files=$(count_files "${sub_path}/${SOC_FAMILY}/*${ext}")
+    if [ ${num_files} -gt 0 ] ; then
+      cp -R ${sub_path}/${SOC_FAMILY}/*  ${target_path}/
+    fi
+
+    num_files=$(count_files "${sub_path}/${SOC_FAMILY}/${BOARD}/*${ext}")
+    if [ ${num_files} -gt 0 ] ; then
+      cp -R ${sub_path}/${SOC_FAMILY}/${BOARD}/*  ${target_path}/
+      rm -rf ${target_path}/${BOARD}
+    fi
+  fi
+}
+
+
+SCRIPTS_DIR=${BASEDIR}/scripts
+BOOTSTRAP_DIR=$(mktemp -u ${SCRIPTS_DIR}/bootstrap.d.XXXXXXXXX)
+CUSTOM_DIR=$(mktemp -u ${SCRIPTS_DIR}/custom.d.XXXXXXXXX)
+FILES_DIR=$(mktemp -u ${SCRIPTS_DIR}/files.XXXXXXXXX)
+DEBS_DIR=$(mktemp -u ${SCRIPTS_DIR}/debs.XXXXXXXXX)
+
+mkdir -p ${SCRIPTS_DIR}
 
 # Cleanup possible left-overs
-rm -rf $SCRIPTS_DIR/*
+rm -rf ${SCRIPTS_DIR}/*
 
-mkdir $FILES_DIR
-mkdir $BOOTSTRAP_DIR
-mkdir $CUSTOM_DIR
-mkdir $DEBS_DIR
+mkdir ${FILES_DIR}
+mkdir ${BOOTSTRAP_DIR}
+mkdir ${CUSTOM_DIR}
+mkdir ${DEBS_DIR}
 
-# Prepare files for bootstrapping
-FILE_COUNT=$(count_files "${FILES_D}/common/*")
-if [ $FILE_COUNT -gt 0 ] ; then
-  cp -R $FILES_D/common/* $FILES_DIR/
-fi
-FILE_COUNT=$(count_files "${FILES_D}/${SOC_FAMILY}/*")
-if [ $FILE_COUNT -gt 0 ] ; then
-  cp -R $FILES_D/$SOC_FAMILY/* $FILES_DIR/
-fi
-FILE_COUNT=$(count_files "${FILES_D}/${SOC_FAMILY}/${BOARD}/*")
-if [ $FILE_COUNT -gt 0 ] ; then
-  cp -R $FILES_D/$SOC_FAMILY/$BOARD/* $FILES_DIR/
-  rm -rf $FILES_DIR/$BOARD
-fi
+# Prepare required files
+copy_custom_files "${FILES_D}" "${FILES_DIR}"
 
 # Prepare bootstrap scripts
-FILE_COUNT=$(count_files "${BOOTSTRAP_D}/common/*")
-if [ $FILE_COUNT -gt 0 ] ; then
-  cp -R $BOOTSTRAP_D/common/* $BOOTSTRAP_DIR/
-fi
-FILE_COUNT=$(count_files "${BOOTSTRAP_D}/${SOC_FAMILY}/*")
-if [ $FILE_COUNT -gt 0 ] ; then
-  cp -R $BOOTSTRAP_D/$SOC_FAMILY/* $BOOTSTRAP_DIR/
-fi
-FILE_COUNT=$(count_files "${BOOTSTRAP_D}/${SOC_FAMILY}/${BOARD}/*")
-if [ $FILE_COUNT -gt 0 ] ; then
-  cp -R $BOOTSTRAP_D/$SOC_FAMILY/$BOARD/* $BOOTSTRAP_DIR/
-  rm -rf $BOOTSTRAP_DIR/$BOARD
-fi
+copy_custom_files "${BOOTSTRAP_D}" "${BOOTSTRAP_DIR}" ".sh"
 
-FILE_COUNT=$(count_files "${BOOTSTRAP_DIR}/*.sh")
-if [ $FILE_COUNT -gt 0 ] ; then
+# Execute bootstrapping scripts
+num_files=$(count_files "${BOOTSTRAP_DIR}/*.sh")
+if [ ${num_files} -gt 0 ] ; then
   # Execute bootstrap scripts
-  for SCRIPT in $BOOTSTRAP_DIR/*.sh; do
-    head -n 3 $SCRIPT
-    . $SCRIPT
+  for SCRIPT in ${BOOTSTRAP_DIR}/*.sh; do
+    head -n 3 ${SCRIPT}
+    . ${SCRIPT}
   done
 fi
 
+mkdir -p "${R}/chroot_scripts"
+
 if [ -d "${CUSTOM_D}" ] ; then
   # Prepare custom scripts
-  if [ -d "${CUSTOM_D}/${CONFIG}" ] ; then
-    FILE_COUNT=$(count_files "${CUSTOM_D}/${CONFIG}/common/*")
-    if [ $FILE_COUNT -gt 0 ] ; then
-      cp -R $CUSTOM_D/$CONFIG/common/* $CUSTOM_DIR/
-    fi
-    FILE_COUNT=$(count_files "${CUSTOM_D}/${CONFIG}/${SOC_FAMILY}/*")
-    if [ $FILE_COUNT -gt 0 ] ; then
-      cp -R $CUSTOM_D/$CONFIG/$SOC_FAMILY/* $CUSTOM_DIR/
-    fi
-    FILE_COUNT=$(count_files "${CUSTOM_D}/${CONFIG}/${SOC_FAMILY}/${BOARD}/*")
-    if [ $FILE_COUNT -gt 0 ] ; then
-      cp -R $CUSTOM_D/$CONFIG/$SOC_FAMILY/$BOARD/* $CUSTOM_DIR/
-      rm -rf $CUSTOM_DIR/$BOARD
-    fi
-  fi
+  copy_custom_files "${CUSTOM_D}/generic" "${CUSTOM_DIR}" ".sh"
+  copy_custom_files "${CUSTOM_D}/${CONFIG}" "${CUSTOM_DIR}" ".sh"
 
-  FILE_COUNT=$(count_files "${CUSTOM_DIR}/*.sh")
-  if [ $FILE_COUNT -gt 0 ] ; then
-    # Execute custom bootstrap scripts
-    for SCRIPT in $CUSTOM_DIR/*.sh; do
-      head -n 3 $SCRIPT
-      . $SCRIPT
+  num_chroot_files=$(count_files "${CUSTOM_DIR}/chroot-*.sh")
+  if [ ${num_chroot_files} -gt 0 ] ; then
+    for SCRIPT in ${CUSTOM_DIR}/chroot-*.sh; do
+	chmod +x ${SCRIPT}
+	mv ${SCRIPT} ${R}/chroot_scripts/
     done
   fi
-fi
 
-# Execute custom scripts in chroot
-if [ -n "${CHROOT_SCRIPTS}" ] && [ -d "${CHROOT_SCRIPTS}" ] ; then
-  cp -r "${CHROOT_SCRIPTS}" "${R}/chroot_scripts"
-  chroot_exec /bin/bash -x <<'EOF'
-for SCRIPT in /chroot_scripts/* ; do
-  if [ -f $SCRIPT -a -x $SCRIPT ] ; then
-    $SCRIPT
+  num_files=$(count_files "${CUSTOM_DIR}/*.sh")
+  if [ ${num_files} -gt 0 ] ; then
+    # Execute custom bootstrap scripts
+    for SCRIPT in $CUSTOM_DIR/*.sh; do
+      head -n 3 ${SCRIPT}
+      . ${SCRIPT}
+    done
   fi
-done
+
+
+  # Execute custom scripts in chroot
+  if [ ${num_chroot_files} -gt 0 ] ; then
+    chroot_exec /bin/bash -x <<'EOF'
+    for SCRIPT in /chroot_scripts/* ; do
+      if [ -f ${SCRIPT} -a -x ${SCRIPT} ] ; then
+        ${SCRIPT}
+      fi
+    done
 EOF
-  rm -rf "${R}/chroot_scripts"
+  fi
 fi
 
-# Remove apt-utils
-chroot_exec apt-get purge -qq -y $APT_FORCE_YES apt-utils
+rm -rf "${R}/chroot_scripts"
+
 
 # Generate required machine-id
 MACHINE_ID=$(dbus-uuidgen)

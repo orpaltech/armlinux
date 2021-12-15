@@ -1,0 +1,42 @@
+From efec17820159d9801f83674c1cf6739b9ae6a40a Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Tue, 5 Oct 2021 20:27:16 +0300
+Subject: [PATCH] arm: enable DT-overlay support
+
+---
+ arch/arm/Kconfig | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
+index b5bd328..3fc5deb 100644
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -591,6 +591,8 @@ config ARCH_BCM283X
+ 	select DM_SERIAL
+ 	select GPIO_EXTRA_HEADER
+ 	select OF_CONTROL
++	select OF_LIBFDT
++	select OF_LIBFDT_OVERLAY
+ 	select PL01X_SERIAL
+ 	select SERIAL_SEARCH_ALL
+ 	imply CMD_DM
+@@ -1007,6 +1009,8 @@ config ARCH_SUNXI
+ 	select OF_BOARD_SETUP
+ 	select OF_CONTROL
+ 	select OF_SEPARATE
++	select OF_LIBFDT
++	select OF_LIBFDT_OVERLAY
+ 	select SPECIFY_CONSOLE_INDEX
+ 	select SPL_STACK_R if SPL
+ 	select SPL_SYS_MALLOC_SIMPLE if SPL
+@@ -1027,7 +1031,6 @@ config ARCH_SUNXI
+ 	imply DISTRO_DEFAULTS
+ 	imply FAT_WRITE
+ 	imply FIT
+-	imply OF_LIBFDT_OVERLAY
+ 	imply PRE_CONSOLE_BUFFER
+ 	imply SPL_GPIO
+ 	imply SPL_LIBCOMMON_SUPPORT
+-- 
+2.25.1
+

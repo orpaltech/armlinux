@@ -20,6 +20,7 @@
 
 update_uboot()
 {
+if [ "${ENABLE_UBOOT}" = yes ] ; then
         UBOOT_SOURCE_DIR="${UBOOT_BASE_DIR}"
 
 	mkdir -p $UBOOT_BASE_DIR
@@ -74,6 +75,7 @@ update_uboot()
 	UBOOT_SOURCE_DIR="${UBOOT_BASE_DIR}${UBOOT_REPO_SUBDIR}"
 
 	echo "Done."
+fi
 }
 
 #-----------------------------------------------------------------------
@@ -134,57 +136,60 @@ update_kernel()
 	echo "Done."
 }
 
-#-----------------------------------------------------------------------
-
-update_firmware()
+fw_update()
 {
-	if [ ! -z "${FIRMWARE_URL}" ] ; then
-		mkdir -p $FIRMWARE_BASE_DIR
+	fw_branch=$3
+	fw_url=$2
+	fw_name=$1
+	fw_src_dir="${FIRMWARE_BASE_DIR}/${fw_name}"
+        if [ ! -z "${fw_url}" ] ; then
+                mkdir -p $FIRMWARE_BASE_DIR
 
-		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
-			local fw_old_url=$(git -C $FIRMWARE_SOURCE_DIR config --get remote.origin.url)
-			if [ "${fw_old_url}" != "${FIRMWARE_URL}" ] ; then
-				echo "Firmware repository has changed, clean up working dir ?"
-				pause
-				rm -rf $FIRMWARE_SOURCE_DIR
-			fi
-		fi
+                if [ -d "${fw_src_dir}" ] && [ -d "${fw_src_dir}/.git" ] ; then
+			fw_old_url=$(git -C ${fw_src_dir} config --get remote.origin.url)
+                        if [ "${fw_old_url}" != "${fw_url}" ] ; then
+                                echo "Firmware repository has changed, clean up working dir ?"
+                                pause
+                                rm -rf ${fw_src_dir}
+                        fi
+                fi
 
-		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
+                if [ -d "${fw_src_dir}" ] && [ -d "${fw_src_dir}/.git" ] ; then
 
-			# see if branch has changed
-			local cur_branch=$(git -C $FIRMWARE_SOURCE_DIR symbolic-ref --short -q HEAD)
-			[[ "${cur_branch}" != "${FIRMWARE_BRANCH}" ]] && rm -rf $FIRMWARE_SOURCE_DIR
-		fi
+                        # see if branch has changed
+			cur_branch=$(git -C ${fw_src_dir} symbolic-ref --short -q HEAD)
+                        [[ "${cur_branch}" != "${fw_branch}" ]] && rm -rf ${fw_src_dir}
+                fi
 
-		if [ -d "${FIRMWARE_SOURCE_DIR}" ] && [ -d "${FIRMWARE_SOURCE_DIR}/.git" ] ; then
-			display_alert "Updating Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"
+                if [ -d "${fw_src_dir}" ] && [ -d "${fw_src_dir}/.git" ] ; then
+                        display_alert "Updating Firmware from" "${fw_url} | ${fw_branch}" "info"
 
-			sudo chown -R ${CURRENT_USER}:${CURRENT_USER} $FIRMWARE_SOURCE_DIR
+                        sudo chown -R ${CURRENT_USER}:${CURRENT_USER} ${fw_src_dir}
 
-			 # update sources
-			git -C $FIRMWARE_SOURCE_DIR fetch origin --depth=1
-			[ $? -eq 0 ] || exit $?;
+                         # update sources
+                        git -C ${fw_src_dir} fetch origin --depth=1
+                        [ $? -eq 0 ] || exit $?;
 
-			git -C $FIRMWARE_SOURCE_DIR reset --hard
-			if [[ $CLEAN =~ (^|,)"firmware"(,|$) ]] ; then
-				git -C $FIRMWARE_SOURCE_DIR clean -fdx
-			else
-				git -C $FIRMWARE_SOURCE_DIR clean -fd
-			fi
+                        git -C ${fw_src_dir} reset --hard
+                        if [[ $CLEAN =~ (^|,)"firmware"(,|$) ]] ; then
+                                git -C ${fw_src_dir} clean -fdx
+                        else
+                                git -C ${fw_src_dir} clean -fd
+                        fi
 
-			echo "Checking out branch: ${FIRMWARE_BRANCH}"
-			git -C $FIRMWARE_SOURCE_DIR checkout -B $FIRMWARE_BRANCH origin/$FIRMWARE_BRANCH
-			git -C $FIRMWARE_SOURCE_DIR pull
-	        else
-			display_alert "Cloning Firmware from" "${FIRMWARE_URL} | ${FIRMWARE_BRANCH}" "info"
+                        echo "Checking out branch: ${fw_branch}"
+                        git -C ${fw_src_dir} checkout -B ${fw_branch} origin/${fw_branch}
+                        git -C ${fw_src_dir} pull
+                else
+                        display_alert "Cloning Firmware from" "${fw_url} | ${fw_branch}" "info"
 
-			[[ -d $FIRMWARE_SOURCE_DIR ]] && rm -rf $FIRMWARE_SOURCE_DIR
+                        [[ -d ${fw_src_dir} ]] && rm -rf ${fw_src_dir}
 
-	                git clone $FIRMWARE_URL -b $FIRMWARE_BRANCH --depth=1 $FIRMWARE_SOURCE_DIR
-			[ $? -eq 0 ] || exit $?;
-        	fi
+                        git clone ${fw_url} -b ${fw_branch} --depth=1 ${fw_src_dir}
+                        [ $? -eq 0 ] || exit $?;
+                fi
 
-		echo "Done."
-	fi
+                echo "Done."
+        fi
 }
+

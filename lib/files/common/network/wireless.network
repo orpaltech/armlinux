@@ -4,7 +4,7 @@ Name=wlan0
 [Network]
 DHCP=yes
 ## to use static IP uncomment these instead of DHCP
-# Address=192.168.1.100
+# Address=192.168.1.160
 Gateway=192.168.100.1
 DNS=192.168.100.1
 DNS=

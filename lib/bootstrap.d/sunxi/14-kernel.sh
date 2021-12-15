@@ -3,7 +3,8 @@
 #
 
 # Setup kernel boot cmdline
-CMDLINE="root=/dev/mmcblk0p1 console=tty1 ${CMDLINE}"
+CMDLINE="console=tty1 ${CMDLINE}"
+KERNEL_BOOT_ARGS="root=ROOTPARTUUID ${KERNEL_BOOT_ARGS}"
 
 # Add serial console support
 if [ "$ENABLE_CONSOLE" = yes ] ; then

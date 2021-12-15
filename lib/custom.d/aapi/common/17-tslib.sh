@@ -4,7 +4,7 @@
 
 TSLIB_URL="https://github.com/kergoth/tslib.git"
 TSLIB_BRANCH="master"
-TSLIB_TAG="1.21"
+TSLIB_TAG=
 
 TSLIB_SRC_DIR=$EXTRADIR/tslib
 TSLIB_OUT_DIR=$TSLIB_SRC_DIR/build/$LINUX_PLATFORM
@@ -66,10 +66,20 @@ tslib_build()
 	mkdir -p ./dist
 	rm -rf ./dist/*
 
-	CC="${CROSS_COMPILE}gcc" CXX="${CROSS_COMPILE}g++" \
-		$TSLIB_SRC_DIR/configure \
-				--prefix=$TSLIB_PREFIX \
-				--host=$LINUX_PLATFORM
+	export CC="${DEV_GCC}"
+	export CXX="${DEV_CXX}"
+	export AR="${DEV_AR}"
+	export NM="${DEV_NM}"
+	export STRIP="${DEV_STRIP}"
+	export RANLIB="${DEV_RANLIB}"
+	export OBJCOPY="${DEV_OBJCOPY}"
+	export OBJDUMP="${DEV_OBJDUMP}"
+	export CFLAGS="-L${SYSROOT_DIR}/lib/${LINUX_PLATFORM}"
+
+	$TSLIB_SRC_DIR/configure \
+			--prefix=$TSLIB_PREFIX \
+			--host=$LINUX_PLATFORM \
+			--with-sysroot=$SYSROOT_DIR
 
 	echo "Making TSLIB..."
 

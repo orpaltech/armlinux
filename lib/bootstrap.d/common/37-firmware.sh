@@ -2,39 +2,41 @@
 # Install firmware files
 #
 
-wlan_fw_update()
-{
-	local FW_REPO_URL=$1
-	local FW_BRANCH=$2
-	local FW_ROOT_DIR=$3
+LINUX_FIRMWARE_REPO_URL="git://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git"
 
-	if [ -d $FW_ROOT_DIR ] && [ -d $FW_ROOT_DIR/.git ] ; then
-		local OLD_URL=$(git -C $FW_ROOT_DIR config --get remote.origin.url)
-		if [ "${OLD_URL}" != "${FW_REPO_URL}" ] ; then
-			rm -rf $FW_ROOT_DIR
+repo_update()
+{
+	local repo_url=$1
+	local repo_branch=$2
+	local target_dir=$3
+
+	if [ -d $target_dir ] && [ -d $target_dir/.git ] ; then
+		local old_url=$(git -C $target_dir config --get remote.origin.url)
+		if [ "${old_url}" != "${repo_url}" ] ; then
+			rm -rf $target_dir
 		fi
 	fi
-	if [ -d $FW_ROOT_DIR ] && [ -d $FW_ROOT_DIR/.git ] ; then
+	if [ -d $target_dir ] && [ -d $target_dir/.git ] ; then
                 # update sources
-                git -C $FW_ROOT_DIR fetch origin --tags --depth=1
+                git -C $target_dir fetch origin --tags --depth=1
 
-                git -C $FW_ROOT_DIR reset --hard
-                git -C $FW_ROOT_DIR clean -fd
+                git -C $target_dir reset --hard
+                git -C $target_dir clean -fd
 
-                echo "Checking out branch: ${FW_BRANCH}"
-                git -C $FW_ROOT_DIR checkout -B $FW_BRANCH origin/$FW_BRANCH
-                git -C $FW_ROOT_DIR pull
+                echo "Checking out branch: ${repo_branch}"
+                git -C $target_dir checkout -B $repo_branch origin/$repo_branch
+                git -C $target_dir pull
         else
-                [[ -d $FW_ROOT_DIR ]] && rm -rf $FW_ROOT_DIR
+                [[ -d $target_dir ]] && rm -rf $target_dir
 
                 # clone sources
-                git clone $FW_REPO_URL -b $FW_BRANCH --depth=1 $FW_ROOT_DIR
+                git clone $repo_url -b $repo_branch --depth=1 $target_dir
 		[ $? -eq 0 ] || exit $?;
         fi
 }
 
 
-wlan_fw_update "https://github.com/RPi-Distro/firmware-nonfree.git" "master" "${EXTRADIR}/rpi-wlan-firmware"
+repo_update "${LINUX_FIRMWARE_REPO_URL}" "master" "${EXTRADIR}/rpi-wlan-firmware"
 rsync -avz "${EXTRADIR}/rpi-wlan-firmware/brcm" ${LIB_DIR}/firmware
 
 rsync -avz "${FILES_DIR}/firmware/" ${LIB_DIR}/firmware

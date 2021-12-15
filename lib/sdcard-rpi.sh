@@ -17,16 +17,17 @@
 #
 ########################################################################
 
+RESIZE_PART_NUM=2
 
 format_disk()
 {
         # makes sure it's not mounted
         sudo umount ${BLOCK_DEV}* 2> /dev/null
 
-	sudo parted -s $BLOCK_DEV \
+	sudo parted -s ${BLOCK_DEV} \
 			mklabel msdos \
-			mkpart primary fat32 1M 80M \
-			mkpart primary ext4 80M 100%
+			mkpart primary fat32 4MiB 120MiB \
+			mkpart primary ext4 120MiB 100%
 	[ $? -eq 0 ] || exit $?;
 
 	sudo mkfs.vfat ${BLOCK_DEV}${P}1
@@ -42,14 +43,25 @@ write_image()
 {
 	echo "Copy files to ${DISK_NAME}..."
 
-	sudo mkdir -p /mnt/sdcard
-	sudo mount ${BLOCK_DEV}${P}2 /mnt/sdcard
-	sudo mkdir -p /mnt/sdcard/boot/firmware
-	sudo mount ${BLOCK_DEV}${P}1 /mnt/sdcard/boot/firmware
-	sudo rsync -a --stats ${ROOTFS_DIR}/ /mnt/sdcard
+	sudo mkdir -p			/mnt/sdcard
+	sudo mount ${BLOCK_DEV}${P}2	/mnt/sdcard
+
+	sudo mkdir -p			/mnt/sdcard/boot/firmware
+	sudo mount ${BLOCK_DEV}${P}1	/mnt/sdcard/boot/firmware
+
+	sudo rsync -a --stats ${ROOTFS_DIR}/	/mnt/sdcard
+
+        local ROOT_UUID=$(sudo blkid -o value -s UUID ${BLOCK_DEV}${P}2)
+	local BOOT_UUID=$(sudo blkid -o value -s UUID ${BLOCK_DEV}${P}1)
+        # update /etc/fstab with the actual partition UUID
+        sudo sed -i "s/ROOTUUID/UUID=${ROOT_UUID}/g"	/mnt/sdcard/etc/fstab
+	sudo sed -i "s/BOOTUUID/UUID=${BOOT_UUID}/g"	/mnt/sdcard/etc/fstab
+
+        local ROOT_PARTUUID=$(sudo blkid -o value -s PARTUUID ${BLOCK_DEV}${P}2)
+        sudo sed -i "s/ROOTPARTUUID/PARTUUID=${ROOT_PARTUUID}/g" /mnt/sdcard/boot/firmware/bootEnv.txt
+	sudo sed -i "s/ROOTPARTUUID/PARTUUID=${ROOT_PARTUUID}/g" /mnt/sdcard/boot/firmware/cmdline.txt
+
 	sudo umount ${BLOCK_DEV}${P}*
 
         echo "${DISK_NAME} is ready."
 }
-
-#------------------------------------------------------------------------

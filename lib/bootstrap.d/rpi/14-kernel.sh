@@ -1,5 +1,5 @@
 #
-# Build and Setup Kernel (RPi 2/3 script)
+# Build and Setup Kernel (RPi 2/3/4 script)
 #
 
 # Fail early: Is firmware ready?
@@ -9,13 +9,14 @@ if [ ! -d "$FIRMWARE_DIR" ] ; then
 fi
 
 # Copy firmware binaries
-cp ${FIRMWARE_DIR}/boot/bootcode.bin	${BOOT_DIR}/
-cp ${FIRMWARE_DIR}/boot/fixup*.dat	${BOOT_DIR}/
-cp ${FIRMWARE_DIR}/boot/start*.elf	${BOOT_DIR}/
+cp ${FIRMWARE_DIR}/${FIRMWARE_NAME}/boot/bootcode.bin	${BOOT_DIR}/
+cp ${FIRMWARE_DIR}/${FIRMWARE_NAME}/boot/fixup*.dat	${BOOT_DIR}/
+cp ${FIRMWARE_DIR}/${FIRMWARE_NAME}/boot/start*.elf	${BOOT_DIR}/
 
 
 # Setup firmware boot cmdline
-CMDLINE="root=/dev/mmcblk0p2 console=tty1 cma=128M@256M ${CMDLINE}"
+CMDLINE="console=tty1 cma=256M@256M dwc_otg.lpm_enable=0 elevator=deadline root=ROOTPARTUUID ${CMDLINE}"
+KERNEL_BOOT_ARGS="root=ROOTPARTUUID ${KERNEL_BOOT_ARGS}"
 
 # Add serial console support
 if [ "$ENABLE_CONSOLE" = yes ] ; then

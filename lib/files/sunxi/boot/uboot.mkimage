@@ -5,15 +5,15 @@
 
 # default values
 setenv overlay_error "false"
-setenv kernel_file "kernel.img"
+setenv kernel_file "kernel_image_file"
 
 setenv load_addr 0x43000000
-setenv kernel_addr_r 0x47000000
+# setenv kernel_addr_r 0x47000000
 setenv fdt_addr 0x46000000
-setenv ramdisk_addr_r 0x48000000
+# setenv ramdisk_addr_r 0x48000000
 
 # Set device tree file
-setenv dtb_file "board.dtb"
+setenv dtb_file "board_dtb_file"
 
 echo "Boot script loaded from ${devtype}"
 
@@ -22,7 +22,7 @@ if test -e ${devtype} ${devnum} ${prefix}bootEnv.txt; then
 	env import -t ${load_addr} ${filesize}
 fi
 
-setenv bootargs "${extraargs}"
+setenv bootargs "${kernel_args}"
 
 # Load the existing Linux kernel into RAM
 load ${devtype} ${devnum} ${kernel_addr_r} ${prefix}${kernel_file}

@@ -2,11 +2,11 @@
 Name=eth0
 
 [Network]
-DHCP=no
-Address=10.0.0.100
-Gateway=10.0.0.1
-DNS=8.8.8.8
-DNS=
-Domains=
-NTP=
-NTP=
+DHCP=yes
+# Address=10.0.0.100
+# Gateway=10.0.0.1
+# DNS=8.8.8.8
+# DNS=
+# Domains=
+# NTP=
+# NTP=

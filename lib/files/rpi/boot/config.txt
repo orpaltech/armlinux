@@ -48,8 +48,30 @@ config_hdmi_boost=4
 # Uncomment for composite PAL
 #sdtv_mode=2
 
+# Set this option to 0 to prevent the firmware from trying to read an I2C HAT EEPROM (connected to pins ID_SD & ID_SC)
+# at powerup. See also disable_poe_fan.
+force_eeprom_read=0
+# Set this option to 1 to prevent control of the PoE HAT fan through I2C (on pins ID_SD & ID_SC).
+# Without this, a probe on the I2C bus will happen at startup, even when not using the PoE HAT.
+disable_poe_fan=1
+
+# Set this option to 1 to enable EEPROM write protect
+eeprom_write_protect=1
+
+# Overclocking settings
 # Uncomment to overclock the arm. 700 MHz is the default.
 #arm_freq=700
+#gpu_freq=
+#core_freq=
 
 # Uncomment to disable 7-inch LCD
 ignore_lcd=1
+
+# Set gpu_mem=16 if you do not need video decoding, or gpu_mem=64 if you need video decoding.
+gpu_mem=32
+
+# device tree file name
+device_tree=
+
+# kernel image file
+kernel=

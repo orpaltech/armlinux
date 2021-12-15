@@ -12,7 +12,7 @@
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2018 ORPAL Technology, Inc.
+# Copyright (C) 2013-2020 ORPAL Technology, Inc.
 #
 ########################################################################
 
@@ -20,14 +20,17 @@
 CLEAN_OPTIONS="uboot firmware kernel rootfs gdb qt5"
 
 CPUINFO_NUM_CORES=$(grep -c ^processor /proc/cpuinfo)
-[ $SUDO_USER ] && CURRENT_USER=$SUDO_USER || CURRENT_USER=$(whoami)
+
+[ ${SUDO_USER} ] && CURRENT_USER=${SUDO_USER} || CURRENT_USER=$(whoami)
+
 
 # ----------------------------------------------------------------------
 # void display_alert(message, outline, type)
 # ----------------------------------------------------------------------
+
 display_alert()
 {
-  # log function parameters to install.log
+  # log function parameters
   [[ -n ${LOG_DEST} ]] && echo "Displaying message: $@" >> ${LOG_DEST}/debug/output.log
 
   local tmp=""
@@ -57,6 +60,7 @@ display_alert()
 }
 
 # ----------------------------------------------------------------------
+
 sudo_init()
 {
   # Ask for the administrator password upfront
@@ -68,6 +72,7 @@ sudo_init()
 }
 
 # ----------------------------------------------------------------------
+
 pause()
 {
   local PAUSE_MSG=$1
@@ -77,6 +82,7 @@ pause()
 }
 
 # ----------------------------------------------------------------------
+
 count_files()
 {
   local FILE_PATH=$1
@@ -86,22 +92,8 @@ count_files()
 
 # ----------------------------------------------------------------------
 
-set_cross_compile()
+fn_exists()
 {
-  if [ -z "${LINUX_PLATFORM}" ] ; then
-    echo "error: variable LINUX_PLATFORM must be set!"
-    exit 1
-  fi
-
-  if [ -z "${UBOOT_CROSS_COMPILE}" ] ; then
-    UBOOT_CROSS_COMPILE="${TOOLCHAINDIR}/${UBOOT_TOOLCHAIN_VER}/${LINUX_PLATFORM}/bin/${LINUX_PLATFORM}-"
-  fi
-
-  if [ -z "${KERNEL_CROSS_COMPILE}" ] ; then
-    KERNEL_CROSS_COMPILE="${TOOLCHAINDIR}/${KERNEL_TOOLCHAIN_VER}/${LINUX_PLATFORM}/bin/${LINUX_PLATFORM}-"
-  fi
-
-  if [ -z "${CROSS_COMPILE}" ] ; then
-    CROSS_COMPILE="${TOOLCHAINDIR}/${DEFAULT_TOOLCHAIN_VER}/${LINUX_PLATFORM}/bin/${LINUX_PLATFORM}-"
-  fi
+  declare -f -F $1 > /dev/null
+  return $?
 }

@@ -1,0 +1,1582 @@
+From a97ec8ba08fefbe3594ad2a142460ff676eb348c Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Wed, 15 Dec 2021 20:47:02 +0300
+Subject: [PATCH] bcm2835: add DT-overlays
+
+---
+ arch/arm/boot/dts/Makefile                    |   2 +
+ arch/arm/boot/dts/overlays/Makefile           |  23 ++++
+ .../boot/dts/overlays/README.bcm2835-overlays |   1 +
+ .../dts/overlays/bcm2835-audioinjector-pi.dts |  41 +++++++
+ .../dts/overlays/bcm2835-cm4-io-board.dts     |  34 ++++++
+ .../dts/overlays/bcm2835-ertft0356-drm.dts    | 110 ++++++++++++++++++
+ .../boot/dts/overlays/bcm2835-fixup.scr-cmd   |  82 +++++++++++++
+ .../boot/dts/overlays/bcm2835-gpio-reset.dts  |  24 ++++
+ .../dts/overlays/bcm2835-hx8379a-panel.dts    |  29 +++++
+ .../boot/dts/overlays/bcm2835-ili9486-drm.dts |  60 ++++++++++
+ .../arm/boot/dts/overlays/bcm2835-no-hdmi.dts |  13 +++
+ .../boot/dts/overlays/bcm2835-nrf24-spi.dts   |  83 +++++++++++++
+ arch/arm/boot/dts/overlays/bcm2835-spidev.dts |  68 +++++++++++
+ .../dts/overlays/bcm2835-suptronics-x300.dts  |  22 ++++
+ .../dts/overlays/bcm2835-waveshare35-drm.dts  |  73 ++++++++++++
+ arch/arm64/boot/dts/broadcom/Makefile         |   1 +
+ .../arm64/boot/dts/broadcom/overlays/Makefile |  23 ++++
+ .../broadcom/overlays/README.bcm2835-overlays |   1 +
+ .../overlays/bcm2835-audioinjector-pi.dts     |  41 +++++++
+ .../overlays/bcm2835-cm4-io-board.dts         |  34 ++++++
+ .../overlays/bcm2835-ertft0356-drm.dts        | 110 ++++++++++++++++++
+ .../broadcom/overlays/bcm2835-fixup.scr-cmd   |  82 +++++++++++++
+ .../broadcom/overlays/bcm2835-gpio-reset.dts  |  24 ++++
+ .../overlays/bcm2835-hx8379a-panel.dts        |  29 +++++
+ .../broadcom/overlays/bcm2835-ili9486-drm.dts |  60 ++++++++++
+ .../dts/broadcom/overlays/bcm2835-no-hdmi.dts |  13 +++
+ .../broadcom/overlays/bcm2835-nrf24-spi.dts   |  83 +++++++++++++
+ .../dts/broadcom/overlays/bcm2835-spidev.dts  |  68 +++++++++++
+ .../overlays/bcm2835-suptronics-x300.dts      |  22 ++++
+ .../overlays/bcm2835-waveshare35-drm.dts      |  73 ++++++++++++
+ 30 files changed, 1329 insertions(+)
+ create mode 100644 arch/arm/boot/dts/overlays/Makefile
+ create mode 100644 arch/arm/boot/dts/overlays/README.bcm2835-overlays
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-audioinjector-pi.dts
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-cm4-io-board.dts
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-ertft0356-drm.dts
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-fixup.scr-cmd
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-gpio-reset.dts
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-hx8379a-panel.dts
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-ili9486-drm.dts
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-no-hdmi.dts
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-nrf24-spi.dts
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-spidev.dts
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-suptronics-x300.dts
+ create mode 100644 arch/arm/boot/dts/overlays/bcm2835-waveshare35-drm.dts
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/Makefile
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/README.bcm2835-overlays
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dts
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dts
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dts
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dts
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-hx8379a-panel.dts
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-ili9486-drm.dts
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dts
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dts
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-spidev.dts
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-suptronics-x300.dts
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dts
+
+diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
+index 0de64f2..b855958 100644
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -1520,3 +1520,5 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+ 	aspeed-bmc-supermicro-x11spi.dtb \
+ 	aspeed-bmc-inventec-transformers.dtb \
+ 	aspeed-bmc-tyan-s7106.dtb
++
++subdir-y	+= overlays
+diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
+new file mode 100644
+index 0000000..704e014
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/Makefile
+@@ -0,0 +1,23 @@
++# SPDX-License-Identifier: GPL-2.0
++ifeq ($(CONFIG_OF_OVERLAY),y)
++
++dtbo-$(CONFIG_ARCH_BCM2835) += \
++	bcm2835-spidev.dtbo \
++	bcm2835-gpio-reset.dtbo \
++	bcm2835-nrf24-spi.dtbo \
++	bcm2835-waveshare35-drm.dtbo \
++	bcm2835-ertft0356-drm.dtbo \
++	bcm2835-audioinjector-pi.dtbo \
++	bcm2835-no-hdmi.dtbo \
++	bcm2835-suptronics-x300.dtbo \
++	bcm2835-cm4-io-board.dtbo
++
++scr-$(CONFIG_ARCH_BCM2835) += bcm2835-fixup.scr
++
++dtbotxt-$(CONFIG_ARCH_BCM2835) += README.bcm2835-overlays
++
++targets += $(dtbo-y) $(scr-y) $(dtbotxt-y)
++
++endif
++
++extra-y	:= $(dtbo-y) $(scr-y) $(dtbotxt-y)
+diff --git a/arch/arm/boot/dts/overlays/README.bcm2835-overlays b/arch/arm/boot/dts/overlays/README.bcm2835-overlays
+new file mode 100644
+index 0000000..6573c77
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/README.bcm2835-overlays
+@@ -0,0 +1 @@
++# overlays for bcm2837
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-audioinjector-pi.dts b/arch/arm/boot/dts/overlays/bcm2835-audioinjector-pi.dts
+new file mode 100644
+index 0000000..b38c6f6
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-audioinjector-pi.dts
+@@ -0,0 +1,41 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&i2s>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&i2c1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			wm8731: wm8731@1a {
++				#sound-dai-cells = <0>;
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/";
++		__overlay__ {
++			sound_ai {
++				compatible = "flatmax,audioinjector-pi";
++				cpu-node = <&i2s>;
++				codec-node = <&wm8731>;
++				status = "okay";
++                        };
++                };
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-cm4-io-board.dts b/arch/arm/boot/dts/overlays/bcm2835-cm4-io-board.dts
+new file mode 100644
+index 0000000..c95abbe
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-cm4-io-board.dts
+@@ -0,0 +1,34 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&i2c0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2c0_gpio44>;
++			status = "okay";
++
++			rtc: pcf85063@51 {
++				compatible = "nxp,pcf85063a";
++				reg = <0x51>;
++				quartz-load-femtofarads = <12500>;
++			};
++
++			fan: emc2301@2f {
++				compatible = "smsc,emc2301";
++				reg = <0x2f>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				fan@0 {
++					reg = <0>;
++				};
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-ertft0356-drm.dts b/arch/arm/boot/dts/overlays/bcm2835-ertft0356-drm.dts
+new file mode 100644
+index 0000000..5fb2eee
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-ertft0356-drm.dts
+@@ -0,0 +1,110 @@
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pinctrl/bcm2835.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@7e204000";
++			i2c1 = "/soc/i2c@7e804000";
++		};
++	};
++
++	fragment@1 {
++		target = <&gpio>;
++		__overlay__ {
++			ertft_tp_pins: ertft_tp@17 {
++				brcm,pins = <17>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++
++			ertft_pins_rst: ertft@25 {
++				brcm,pins = <25>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++                        };
++
++			ertft_pins_dc:  ertft@24 {
++				brcm,pins = <24>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++
++			ertft_pins_bl:  ertft@23 {
++				brcm,pins = <23>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/spi@7e204000";
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&spi0_gpio7>;
++
++			ertft@0 {
++				compatible = "eastrising,er-tft035-6",
++					     "ilitek,ili9488";
++				reg = <0>;
++				spi-max-frequency = <20000000>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&ertft_pins_rst>,
++					    <&ertft_pins_dc>,
++					    <&ertft_pins_bl>;
++
++				reset-gpios = <&gpio 25 GPIO_ACTIVE_HIGH>;
++				dc-gpios = <&gpio 24 GPIO_ACTIVE_HIGH>;
++
++				rotation = <0>;
++				backlight = <&ertft_bl>;
++				status = "disabled";
++			};
++		};
++	};
++
++	fragment@3 {
++		target-path = "/soc";
++		__overlay__ {
++			ertft_bl: backlight@23 {
++				compatible = "gpio-backlight";
++				gpios = <&gpio 23 0>;
++			};
++		};
++	};
++
++	fragment@4 {
++		target-path = "/soc/i2c@7e804000";
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			ertft_tp@38 {
++				compatible = "focaltech,ft6236";
++				reg = <0x38>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&ertft_tp_pins>;
++
++				interrupt-parent = <&gpio>;
++				interrupts = <17 IRQ_TYPE_EDGE_FALLING>;
++
++				touchscreen-size-x = <320>;
++				touchscreen-size-y = <480>;
++				/*touchscreen-inverted-x;*/
++				/*touchscreen-inverted-y;*/
++				touchscreen-swapped-x-y;
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-fixup.scr-cmd b/arch/arm/boot/dts/overlays/bcm2835-fixup.scr-cmd
+new file mode 100644
+index 0000000..76328f9
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-fixup.scr-cmd
+@@ -0,0 +1,82 @@
++# overlays fixup script
++# implements (or rather substitutes) overlay arguments functionality
++# using u-boot scripting, environment variables and "fdt" command
++
++if test -n "${param_spidev_spi_bus}"; then
++	test "${param_spidev_spi_bus}" = "0" && setenv tmp_spi_path "spi@7e204000"
++	test "${param_spidev_spi_bus}" = "1" && setenv tmp_spi_path "spi@7e215080"
++	fdt set /soc/${tmp_spi_path} status "okay"
++        fdt set /soc/${tmp_spi_path}/spidev0 status "okay"
++	fdt set /soc/${tmp_spi_path}/spidev1 status "okay"
++	if test -n "${param_spidev_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/spidev0 spi-max-frequency "<${param_spidev_max_freq}>"
++		fdt set /soc/${tmp_spi_path}/spidev1 spi-max-frequency "<${param_spidev_max_freq}>"
++	fi
++	env delete tmp_spi_path
++fi
++
++if test "${param_waveshare35_spi_bus}" = "0"; then
++	setenv tmp_spi_path "spi@7e204000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/waveshare35 status "okay"
++	fdt set /soc/${tmp_spi_path}/waveshare35_ts status "okay"
++
++	if test -n "${param_waveshare35_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/waveshare35 spi-max-frequency "<${param_waveshare35_max_freq}>"
++	fi
++	if test -n "${param_waveshare35_rotation}"; then
++		fdt set /soc/${tmp_spi_path}/waveshare35 rotation "<${param_waveshare35_rotation}>"
++	fi
++	if test -n "${param_waveshare35_bgr}"; then
++		fdt set /soc/${tmp_spi_path}/waveshare35 bgr "<${param_waveshare35_bgr}>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test "${param_ertft_spi_bus}" = "0"; then
++	setenv tmp_spi_path "spi@7e204000"
++	setenv tmp_i2c_path "i2c@7e804000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/ertft status "okay"
++	fdt set /soc/${tmp_i2c_path} status "okay"
++	fdt set /soc/${tmp_i2c_path}/ertft_tp status "okay"
++
++	if test -n "${param_ertft_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/ertft spi-max-frequency "<${param_ertft_max_freq}>"
++	fi
++	if test -n "${param_ertft_rotation}"; then
++		fdt set /soc/${tmp_spi_path}/ertft rotation "<${param_ertft_rotation}>"
++	fi
++
++	if test "${param_ertft_tp_inverted_x}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-inverted-x
++	fi
++	if test "${param_ertft_tp_inverted_y}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-inverted-y
++	fi
++	if test "${param_ertft_tp_swapped_x_y}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-swapped-x-y
++	fi
++
++	env delete tmp_spi_path
++	env delete tmp_i2c_path
++fi
++
++if test -n "${param_nrf24_spi_bus}"; then
++	test "${param_nrf24_spi_bus}" = "0" && setenv tmp_spi_path "spi@7e204000"
++	test "${param_nrf24_spi_bus}" = "1" && setenv tmp_spi_path "spi@7e215080"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/nrf24 status "okay"
++
++	if test -n "${param_nrf24_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/nrf24 spi-max-frequency "<${param_nrf24_max_freq}>"
++	fi
++	if test "${param_nrf24_spi_cs}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/nrf24 reg "<1>"
++	fi
++	env delete tmp_spi_path
++fi
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-gpio-reset.dts b/arch/arm/boot/dts/overlays/bcm2835-gpio-reset.dts
+new file mode 100644
+index 0000000..0fa8744
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-gpio-reset.dts
+@@ -0,0 +1,24 @@
++#include <dt-bindings/gpio/gpio.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			rstc_gpio: rstc-gpio@0 {
++				compatible = "linux,gpio-reset-controller";
++				#reset-cells = <1>;
++
++				panel0-reset {
++					gpios = <&gpio 24 GPIO_ACTIVE_LOW>;
++					duration-ms = <20 5 20>;
++					max-resets = <1>;
++				};
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-hx8379a-panel.dts b/arch/arm/boot/dts/overlays/bcm2835-hx8379a-panel.dts
+new file mode 100644
+index 0000000..6b55c71
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-hx8379a-panel.dts
+@@ -0,0 +1,29 @@
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pwm/pwm.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&dsi>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			aapi_lcd: panel-hx8379a@0 {
++				compatible = "truly,tda-fwvga0500g50089","himax,hx8379a";
++				label = "aapi-lcd";
++				reg = <0>;
++
++				power-supply = <&reg_vdd_panel>;
++				reset-gpios = <&r_pio 0 12 GPIO_ACTIVE_LOW>; /*PL12*/
++				backlight = <&aapi_bl>;
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-ili9486-drm.dts b/arch/arm/boot/dts/overlays/bcm2835-ili9486-drm.dts
+new file mode 100644
+index 0000000..1526311
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-ili9486-drm.dts
+@@ -0,0 +1,60 @@
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pinctrl/bcm2835.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&gpio>;
++		__overlay__ {
++			ws35_pins: ws35_pins {
++				brcm,pins = <17 24 25>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN BCM2835_FSEL_GPIO_OUT BCM2835_FSEL_GPIO_OUT>;
++			};
++		};
++	};
++
++	fragment@1 {
++		target-path = "/soc/spi@7e204000";
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			ili9486_lcd: ili9486-lcd@0 {
++				compatible = "waveshare,rpi-lcd-35a","ilitek,ili9486";
++				reg = <0>;
++
++				spi-max-frequency = <20000000>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&ws35_pins>;
++
++				reset-gpios = <&gpio 25 0>;
++				dc-gpios = <&gpio 24 0>;
++				rotation = <0>;
++
++				status = "disabled";
++			};
++
++			xpt2046_ts: xpt2046-ts@1 {
++				compatible = "ti,ads7846";
++				reg = <1>;
++
++				spi-max-frequency = <2000000>;
++
++				interrupt-parent = <&gpio>;
++				interrupts = <17 IRQ_TYPE_EDGE_FALLING>;
++
++				pendown-gpio = <&gpio 17 0>;
++				ti,x-plate-ohms = /bits/ 16 <60>;
++				ti,pressure-max = /bits/ 16 <255>;
++
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-no-hdmi.dts b/arch/arm/boot/dts/overlays/bcm2835-no-hdmi.dts
+new file mode 100644
+index 0000000..1e6b7a8
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-no-hdmi.dts
+@@ -0,0 +1,13 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&hdmi>;
++		__overlay__ {
++			status = "disabled";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-nrf24-spi.dts b/arch/arm/boot/dts/overlays/bcm2835-nrf24-spi.dts
+new file mode 100644
+index 0000000..ed6bc42
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-nrf24-spi.dts
+@@ -0,0 +1,83 @@
++#include <dt-bindings/pinctrl/bcm2835.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@7e204000";
++			spi1 = "/soc/spi@7e215080";
++		};
++	};
++
++	fragment@1 {
++                target = <&gpio>;
++                __overlay__ {
++                        nrf24_int0: nrf24_int0 {
++				brcm,pins = <24>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++
++			nrf24_ce0: nrf24_ce0 {
++				brcm,pins = <25>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++
++			nrf24_int1: nrf24_int1 {
++				brcm,pins = <17>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++
++			nrf24_ce1: nrf24_ce1 {
++				brcm,pins = <27>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/spi@7e204000";
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			nrf24@0 {
++				compatible = "nordic,nrf24";
++				reg = <0>;			/* CS0 */
++				spi-max-frequency = <5000000>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_int0 &nrf24_ce0>;
++				interrupt-parent = <&gpio>;
++				interrupts = <24 2>;		/* irq, falling edge */
++				irq-gpios = <&gpio 24 0>;
++				ce-gpios = <&gpio 25 0>;
++				status = "disabled";
++			};
++		};
++	};
++
++	fragment@3 {
++		target-path = "/soc/spi@7e215080";
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			nrf24@0 {
++				compatible = "nordic,nrf24";
++				reg = <0>;			/* CS0 */
++				spi-max-frequency = <5000000>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_int1 &nrf24_ce1>;
++				interrupt-parent = <&gpio>;
++				interrupts = <17 2>;		/* irq, falling edge */
++				irq-gpios = <&gpio 17 0>;
++				ce-gpios = <&gpio 27 0>;
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-spidev.dts b/arch/arm/boot/dts/overlays/bcm2835-spidev.dts
+new file mode 100644
+index 0000000..9d491ea
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-spidev.dts
+@@ -0,0 +1,68 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@7e204000";
++			spi1 = "/soc/spi@7e215080";
++		};
++	};
++
++	fragment@1 {
++                target-path = "/soc/spi@7e204000";
++                __overlay__ {
++                        /* needed to avoid dtc warning */
++                        #address-cells = <1>;
++                        #size-cells = <0>;
++
++                        spidev@0 {
++                                compatible = "spidev";
++                                reg = <0>;              /* CE0 */
++                                #address-cells = <1>;
++                                #size-cells = <0>;
++                                spi-max-frequency = <2000000>;
++				status = "disabled";
++                        };
++
++			spidev@1 {
++                                compatible = "spidev";
++                                reg = <1>;              /* CE1 */
++                                #address-cells = <1>;
++                                #size-cells = <0>;
++                                spi-max-frequency = <2000000>;
++				status = "disabled";
++                        };
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/spi@7e215080";
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			spidev@0 {
++				compatible = "spidev";
++				reg = <0>;		/* CE0 */
++				#address-cells = <1>;
++				#size-cells = <0>;
++				spi-max-frequency = <2000000>;
++				status = "disabled";
++			};
++
++			spidev@1 {
++				compatible = "spidev";
++				reg = <1>;		/* CE1 */
++				#address-cells = <1>;
++				#size-cells = <0>;
++				spi-max-frequency = <2000000>;
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-suptronics-x300.dts b/arch/arm/boot/dts/overlays/bcm2835-suptronics-x300.dts
+new file mode 100644
+index 0000000..02737c1
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-suptronics-x300.dts
+@@ -0,0 +1,22 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&i2c1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clock-frequency = <100000>;
++			status = "okay";
++
++			x300_rtc: ds3231@68 {
++				compatible = "maxim,ds3231";
++				reg = <0x68>;
++				status = "okay";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/bcm2835-waveshare35-drm.dts b/arch/arm/boot/dts/overlays/bcm2835-waveshare35-drm.dts
+new file mode 100644
+index 0000000..bf96b3c
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/bcm2835-waveshare35-drm.dts
+@@ -0,0 +1,73 @@
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pinctrl/bcm2835.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@7e204000";
++		};
++	};
++
++	fragment@1 {
++		target = <&gpio>;
++		__overlay__ {
++			ws35_irq_pin: w35_irq_pin {
++				brcm,pins = <17>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++			ws35_rst_pin: ws35_rst_pin {
++				brcm,pins = <25>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++			ws35_dc_pin: waveshare35a_dc {
++				brcm,pins = <24>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/spi@7e204000";
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			ws35_lcd: ws35-lcd@0 {
++				compatible = "waveshare,rpi-lcd-35","ilitek,ili9486";
++				reg = <0>;
++
++				spi-max-frequency = <20000000>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&ws35_irq_pin &ws35_rst_pin &ws35_dc_pin>;
++
++				reset-gpios = <&gpio 25 0>;
++				dc-gpios = <&gpio 24 0>;
++				rotation = <0>;
++			};
++
++			ws35_ts: ws35-ts@1 {
++				compatible = "ti,ads7846";
++				reg = <1>;
++
++				spi-max-frequency = <2000000>;
++
++				interrupt-parent = <&gpio>;
++				interrupts = <17 IRQ_TYPE_EDGE_FALLING>;
++
++				pendown-gpios = <&gpio 17 0>;
++
++				ti,x-plate-ohms = /bits/ 16 <60>;
++				ti,pressure-max = /bits/ 16 <255>;
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/Makefile b/arch/arm64/boot/dts/broadcom/Makefile
+index c688203..a18d195 100644
+--- a/arch/arm64/boot/dts/broadcom/Makefile
++++ b/arch/arm64/boot/dts/broadcom/Makefile
+@@ -10,3 +10,4 @@ dtb-$(CONFIG_ARCH_BCM2835) += bcm2711-rpi-400.dtb \
+ subdir-y	+= bcm4908
+ subdir-y	+= northstar2
+ subdir-y	+= stingray
++subdir-y	+= overlays
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/Makefile b/arch/arm64/boot/dts/broadcom/overlays/Makefile
+new file mode 100644
+index 0000000..704e014
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/Makefile
+@@ -0,0 +1,23 @@
++# SPDX-License-Identifier: GPL-2.0
++ifeq ($(CONFIG_OF_OVERLAY),y)
++
++dtbo-$(CONFIG_ARCH_BCM2835) += \
++	bcm2835-spidev.dtbo \
++	bcm2835-gpio-reset.dtbo \
++	bcm2835-nrf24-spi.dtbo \
++	bcm2835-waveshare35-drm.dtbo \
++	bcm2835-ertft0356-drm.dtbo \
++	bcm2835-audioinjector-pi.dtbo \
++	bcm2835-no-hdmi.dtbo \
++	bcm2835-suptronics-x300.dtbo \
++	bcm2835-cm4-io-board.dtbo
++
++scr-$(CONFIG_ARCH_BCM2835) += bcm2835-fixup.scr
++
++dtbotxt-$(CONFIG_ARCH_BCM2835) += README.bcm2835-overlays
++
++targets += $(dtbo-y) $(scr-y) $(dtbotxt-y)
++
++endif
++
++extra-y	:= $(dtbo-y) $(scr-y) $(dtbotxt-y)
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/README.bcm2835-overlays b/arch/arm64/boot/dts/broadcom/overlays/README.bcm2835-overlays
+new file mode 100644
+index 0000000..6573c77
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/README.bcm2835-overlays
+@@ -0,0 +1 @@
++# overlays for bcm2837
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dts
+new file mode 100644
+index 0000000..b38c6f6
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dts
+@@ -0,0 +1,41 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&i2s>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&i2c1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			wm8731: wm8731@1a {
++				#sound-dai-cells = <0>;
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/";
++		__overlay__ {
++			sound_ai {
++				compatible = "flatmax,audioinjector-pi";
++				cpu-node = <&i2s>;
++				codec-node = <&wm8731>;
++				status = "okay";
++                        };
++                };
++	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dts
+new file mode 100644
+index 0000000..c95abbe
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dts
+@@ -0,0 +1,34 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&i2c0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2c0_gpio44>;
++			status = "okay";
++
++			rtc: pcf85063@51 {
++				compatible = "nxp,pcf85063a";
++				reg = <0x51>;
++				quartz-load-femtofarads = <12500>;
++			};
++
++			fan: emc2301@2f {
++				compatible = "smsc,emc2301";
++				reg = <0x2f>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				fan@0 {
++					reg = <0>;
++				};
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dts
+new file mode 100644
+index 0000000..5fb2eee
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dts
+@@ -0,0 +1,110 @@
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pinctrl/bcm2835.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@7e204000";
++			i2c1 = "/soc/i2c@7e804000";
++		};
++	};
++
++	fragment@1 {
++		target = <&gpio>;
++		__overlay__ {
++			ertft_tp_pins: ertft_tp@17 {
++				brcm,pins = <17>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++
++			ertft_pins_rst: ertft@25 {
++				brcm,pins = <25>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++                        };
++
++			ertft_pins_dc:  ertft@24 {
++				brcm,pins = <24>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++
++			ertft_pins_bl:  ertft@23 {
++				brcm,pins = <23>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/spi@7e204000";
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&spi0_gpio7>;
++
++			ertft@0 {
++				compatible = "eastrising,er-tft035-6",
++					     "ilitek,ili9488";
++				reg = <0>;
++				spi-max-frequency = <20000000>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&ertft_pins_rst>,
++					    <&ertft_pins_dc>,
++					    <&ertft_pins_bl>;
++
++				reset-gpios = <&gpio 25 GPIO_ACTIVE_HIGH>;
++				dc-gpios = <&gpio 24 GPIO_ACTIVE_HIGH>;
++
++				rotation = <0>;
++				backlight = <&ertft_bl>;
++				status = "disabled";
++			};
++		};
++	};
++
++	fragment@3 {
++		target-path = "/soc";
++		__overlay__ {
++			ertft_bl: backlight@23 {
++				compatible = "gpio-backlight";
++				gpios = <&gpio 23 0>;
++			};
++		};
++	};
++
++	fragment@4 {
++		target-path = "/soc/i2c@7e804000";
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			ertft_tp@38 {
++				compatible = "focaltech,ft6236";
++				reg = <0x38>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&ertft_tp_pins>;
++
++				interrupt-parent = <&gpio>;
++				interrupts = <17 IRQ_TYPE_EDGE_FALLING>;
++
++				touchscreen-size-x = <320>;
++				touchscreen-size-y = <480>;
++				/*touchscreen-inverted-x;*/
++				/*touchscreen-inverted-y;*/
++				touchscreen-swapped-x-y;
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
+new file mode 100644
+index 0000000..76328f9
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
+@@ -0,0 +1,82 @@
++# overlays fixup script
++# implements (or rather substitutes) overlay arguments functionality
++# using u-boot scripting, environment variables and "fdt" command
++
++if test -n "${param_spidev_spi_bus}"; then
++	test "${param_spidev_spi_bus}" = "0" && setenv tmp_spi_path "spi@7e204000"
++	test "${param_spidev_spi_bus}" = "1" && setenv tmp_spi_path "spi@7e215080"
++	fdt set /soc/${tmp_spi_path} status "okay"
++        fdt set /soc/${tmp_spi_path}/spidev0 status "okay"
++	fdt set /soc/${tmp_spi_path}/spidev1 status "okay"
++	if test -n "${param_spidev_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/spidev0 spi-max-frequency "<${param_spidev_max_freq}>"
++		fdt set /soc/${tmp_spi_path}/spidev1 spi-max-frequency "<${param_spidev_max_freq}>"
++	fi
++	env delete tmp_spi_path
++fi
++
++if test "${param_waveshare35_spi_bus}" = "0"; then
++	setenv tmp_spi_path "spi@7e204000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/waveshare35 status "okay"
++	fdt set /soc/${tmp_spi_path}/waveshare35_ts status "okay"
++
++	if test -n "${param_waveshare35_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/waveshare35 spi-max-frequency "<${param_waveshare35_max_freq}>"
++	fi
++	if test -n "${param_waveshare35_rotation}"; then
++		fdt set /soc/${tmp_spi_path}/waveshare35 rotation "<${param_waveshare35_rotation}>"
++	fi
++	if test -n "${param_waveshare35_bgr}"; then
++		fdt set /soc/${tmp_spi_path}/waveshare35 bgr "<${param_waveshare35_bgr}>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test "${param_ertft_spi_bus}" = "0"; then
++	setenv tmp_spi_path "spi@7e204000"
++	setenv tmp_i2c_path "i2c@7e804000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/ertft status "okay"
++	fdt set /soc/${tmp_i2c_path} status "okay"
++	fdt set /soc/${tmp_i2c_path}/ertft_tp status "okay"
++
++	if test -n "${param_ertft_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/ertft spi-max-frequency "<${param_ertft_max_freq}>"
++	fi
++	if test -n "${param_ertft_rotation}"; then
++		fdt set /soc/${tmp_spi_path}/ertft rotation "<${param_ertft_rotation}>"
++	fi
++
++	if test "${param_ertft_tp_inverted_x}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-inverted-x
++	fi
++	if test "${param_ertft_tp_inverted_y}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-inverted-y
++	fi
++	if test "${param_ertft_tp_swapped_x_y}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-swapped-x-y
++	fi
++
++	env delete tmp_spi_path
++	env delete tmp_i2c_path
++fi
++
++if test -n "${param_nrf24_spi_bus}"; then
++	test "${param_nrf24_spi_bus}" = "0" && setenv tmp_spi_path "spi@7e204000"
++	test "${param_nrf24_spi_bus}" = "1" && setenv tmp_spi_path "spi@7e215080"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/nrf24 status "okay"
++
++	if test -n "${param_nrf24_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/nrf24 spi-max-frequency "<${param_nrf24_max_freq}>"
++	fi
++	if test "${param_nrf24_spi_cs}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/nrf24 reg "<1>"
++	fi
++	env delete tmp_spi_path
++fi
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dts
+new file mode 100644
+index 0000000..0fa8744
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dts
+@@ -0,0 +1,24 @@
++#include <dt-bindings/gpio/gpio.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target-path = "/soc/";
++		__overlay__ {
++			rstc_gpio: rstc-gpio@0 {
++				compatible = "linux,gpio-reset-controller";
++				#reset-cells = <1>;
++
++				panel0-reset {
++					gpios = <&gpio 24 GPIO_ACTIVE_LOW>;
++					duration-ms = <20 5 20>;
++					max-resets = <1>;
++				};
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-hx8379a-panel.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-hx8379a-panel.dts
+new file mode 100644
+index 0000000..6b55c71
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-hx8379a-panel.dts
+@@ -0,0 +1,29 @@
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pwm/pwm.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&dsi>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			aapi_lcd: panel-hx8379a@0 {
++				compatible = "truly,tda-fwvga0500g50089","himax,hx8379a";
++				label = "aapi-lcd";
++				reg = <0>;
++
++				power-supply = <&reg_vdd_panel>;
++				reset-gpios = <&r_pio 0 12 GPIO_ACTIVE_LOW>; /*PL12*/
++				backlight = <&aapi_bl>;
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ili9486-drm.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ili9486-drm.dts
+new file mode 100644
+index 0000000..1526311
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ili9486-drm.dts
+@@ -0,0 +1,60 @@
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pinctrl/bcm2835.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&gpio>;
++		__overlay__ {
++			ws35_pins: ws35_pins {
++				brcm,pins = <17 24 25>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN BCM2835_FSEL_GPIO_OUT BCM2835_FSEL_GPIO_OUT>;
++			};
++		};
++	};
++
++	fragment@1 {
++		target-path = "/soc/spi@7e204000";
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			ili9486_lcd: ili9486-lcd@0 {
++				compatible = "waveshare,rpi-lcd-35a","ilitek,ili9486";
++				reg = <0>;
++
++				spi-max-frequency = <20000000>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&ws35_pins>;
++
++				reset-gpios = <&gpio 25 0>;
++				dc-gpios = <&gpio 24 0>;
++				rotation = <0>;
++
++				status = "disabled";
++			};
++
++			xpt2046_ts: xpt2046-ts@1 {
++				compatible = "ti,ads7846";
++				reg = <1>;
++
++				spi-max-frequency = <2000000>;
++
++				interrupt-parent = <&gpio>;
++				interrupts = <17 IRQ_TYPE_EDGE_FALLING>;
++
++				pendown-gpio = <&gpio 17 0>;
++				ti,x-plate-ohms = /bits/ 16 <60>;
++				ti,pressure-max = /bits/ 16 <255>;
++
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dts
+new file mode 100644
+index 0000000..1e6b7a8
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dts
+@@ -0,0 +1,13 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&hdmi>;
++		__overlay__ {
++			status = "disabled";
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dts
+new file mode 100644
+index 0000000..ed6bc42
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dts
+@@ -0,0 +1,83 @@
++#include <dt-bindings/pinctrl/bcm2835.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@7e204000";
++			spi1 = "/soc/spi@7e215080";
++		};
++	};
++
++	fragment@1 {
++                target = <&gpio>;
++                __overlay__ {
++                        nrf24_int0: nrf24_int0 {
++				brcm,pins = <24>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++
++			nrf24_ce0: nrf24_ce0 {
++				brcm,pins = <25>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++
++			nrf24_int1: nrf24_int1 {
++				brcm,pins = <17>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++
++			nrf24_ce1: nrf24_ce1 {
++				brcm,pins = <27>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/spi@7e204000";
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			nrf24@0 {
++				compatible = "nordic,nrf24";
++				reg = <0>;			/* CS0 */
++				spi-max-frequency = <5000000>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_int0 &nrf24_ce0>;
++				interrupt-parent = <&gpio>;
++				interrupts = <24 2>;		/* irq, falling edge */
++				irq-gpios = <&gpio 24 0>;
++				ce-gpios = <&gpio 25 0>;
++				status = "disabled";
++			};
++		};
++	};
++
++	fragment@3 {
++		target-path = "/soc/spi@7e215080";
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			nrf24@0 {
++				compatible = "nordic,nrf24";
++				reg = <0>;			/* CS0 */
++				spi-max-frequency = <5000000>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_int1 &nrf24_ce1>;
++				interrupt-parent = <&gpio>;
++				interrupts = <17 2>;		/* irq, falling edge */
++				irq-gpios = <&gpio 17 0>;
++				ce-gpios = <&gpio 27 0>;
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-spidev.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-spidev.dts
+new file mode 100644
+index 0000000..9d491ea
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-spidev.dts
+@@ -0,0 +1,68 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@7e204000";
++			spi1 = "/soc/spi@7e215080";
++		};
++	};
++
++	fragment@1 {
++                target-path = "/soc/spi@7e204000";
++                __overlay__ {
++                        /* needed to avoid dtc warning */
++                        #address-cells = <1>;
++                        #size-cells = <0>;
++
++                        spidev@0 {
++                                compatible = "spidev";
++                                reg = <0>;              /* CE0 */
++                                #address-cells = <1>;
++                                #size-cells = <0>;
++                                spi-max-frequency = <2000000>;
++				status = "disabled";
++                        };
++
++			spidev@1 {
++                                compatible = "spidev";
++                                reg = <1>;              /* CE1 */
++                                #address-cells = <1>;
++                                #size-cells = <0>;
++                                spi-max-frequency = <2000000>;
++				status = "disabled";
++                        };
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/spi@7e215080";
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			spidev@0 {
++				compatible = "spidev";
++				reg = <0>;		/* CE0 */
++				#address-cells = <1>;
++				#size-cells = <0>;
++				spi-max-frequency = <2000000>;
++				status = "disabled";
++			};
++
++			spidev@1 {
++				compatible = "spidev";
++				reg = <1>;		/* CE1 */
++				#address-cells = <1>;
++				#size-cells = <0>;
++				spi-max-frequency = <2000000>;
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-suptronics-x300.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-suptronics-x300.dts
+new file mode 100644
+index 0000000..02737c1
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-suptronics-x300.dts
+@@ -0,0 +1,22 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target = <&i2c1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			clock-frequency = <100000>;
++			status = "okay";
++
++			x300_rtc: ds3231@68 {
++				compatible = "maxim,ds3231";
++				reg = <0x68>;
++				status = "okay";
++			};
++		};
++	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dts b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dts
+new file mode 100644
+index 0000000..bf96b3c
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dts
+@@ -0,0 +1,73 @@
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pinctrl/bcm2835.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@7e204000";
++		};
++	};
++
++	fragment@1 {
++		target = <&gpio>;
++		__overlay__ {
++			ws35_irq_pin: w35_irq_pin {
++				brcm,pins = <17>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++			ws35_rst_pin: ws35_rst_pin {
++				brcm,pins = <25>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++			ws35_dc_pin: waveshare35a_dc {
++				brcm,pins = <24>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/spi@7e204000";
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			ws35_lcd: ws35-lcd@0 {
++				compatible = "waveshare,rpi-lcd-35","ilitek,ili9486";
++				reg = <0>;
++
++				spi-max-frequency = <20000000>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&ws35_irq_pin &ws35_rst_pin &ws35_dc_pin>;
++
++				reset-gpios = <&gpio 25 0>;
++				dc-gpios = <&gpio 24 0>;
++				rotation = <0>;
++			};
++
++			ws35_ts: ws35-ts@1 {
++				compatible = "ti,ads7846";
++				reg = <1>;
++
++				spi-max-frequency = <2000000>;
++
++				interrupt-parent = <&gpio>;
++				interrupts = <17 IRQ_TYPE_EDGE_FALLING>;
++
++				pendown-gpios = <&gpio 17 0>;
++
++				ti,x-plate-ohms = /bits/ 16 <60>;
++				ti,pressure-max = /bits/ 16 <255>;
++			};
++		};
++	};
++};
+-- 
+2.25.1
+

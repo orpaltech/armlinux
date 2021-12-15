@@ -25,11 +25,11 @@ fi
 install_readonly "${FILES_DIR}/network/interfaces" "${ETC_DIR}/network/interfaces"
 
 # Install configuration for interfaces
-install_readonly "${FILES_DIR}/network/eth.network" "${ETC_DIR}/systemd/network/eth.network"
+install_readonly "${FILES_DIR}/network/eth.network" "${ETC_DIR}/systemd/network/10-eth.network"
 
 if [ "${ENABLE_WLAN}" = yes ] ; then
   # Install configuration for interface wlan0
-  install_readonly "${FILES_DIR}/network/wireless.network" "${ETC_DIR}/systemd/network/wireless.network"
+  install_readonly "${FILES_DIR}/network/wireless.network" "${ETC_DIR}/systemd/network/00-wireless.network"
 
 cat << EOF > ${ETC_DIR}/wpa_supplicant/wpa_supplicant-wlan0.conf
 ctrl_interface=/var/run/wpa-supplicant
@@ -64,4 +64,21 @@ fi
 # Enable time sync
 if [ "${NET_NTP_1}" != "" ] ; then
   chroot_exec systemctl --no-reload enable systemd-timesyncd.service
+fi
+
+
+chroot_exec update-ca-certificates -f
+
+
+if [ "${ENABLE_IPTABLES}" = yes ] ; then
+  # Add exceptions to enable HTTP protocol connections
+  chroot_exec iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+  chroot_exec iptables -I INPUT -p tcp --dport 443 -j ACCEPT
+  # Add exception for homeassistant default HTTP port
+  chroot_exec iptables -I INPUT -p tcp --dport 8123 -j ACCEPT
+
+  chroot_exec iptables-save > /etc/iptables/rules.v4
+  chroot_exec ip6tables-save > /etc/iptables/rules.v6
+
+  chroot_exec systemctl --no-reload enable netfilter-persistent.service
 fi

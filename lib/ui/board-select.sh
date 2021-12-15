@@ -21,7 +21,7 @@ BOARD=$(dialog  --clear \
 		--shadow \
 		--backtitle "${LABEL_BACKTITLE}" \
 		--title "${LABEL_TITLE}" \
-		--menu "${LABEL_MENU}" 24 96 16 \
+		--menu "${LABEL_MENU}" 24 110 16 \
 		"${board_options[@]}" \
 		2>&1 >/dev/tty)
 

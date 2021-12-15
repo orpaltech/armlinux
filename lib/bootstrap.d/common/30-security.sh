@@ -11,6 +11,7 @@ if [ "$ENABLE_USER" = yes ] ; then
   chroot_exec adduser --gecos $USER_NAME --add_extra_groups \
 	--disabled-password $USER_NAME
   chroot_exec usermod -p "${ENCRYPTED_PASSWORD}" $USER_NAME
+  chroot_exec usermod -aG sudo $USER_NAME
 fi
 
 # Setup root password
@@ -26,19 +27,20 @@ else
 fi
 
 if [ "$ENABLE_SSHD" = yes ] ; then
-  LOCAL_SSH_DIR=/home/$CURRENT_USER/.ssh
-  mkdir -p $LOCAL_SSH_DIR
+  LOCAL_SSH_DIR=/home/${CURRENT_USER}/.ssh
+  mkdir -p ${LOCAL_SSH_DIR}
 
   # Enable password-less login
-  if [ ! -f $LOCAL_SSH_DIR/id_rsa ] ; then
-    ssh-keygen -f $LOCAL_SSH_DIR/id_rsa -t rsa -N '' &> /dev/null
+  if [ ! -f "${LOCAL_SSH_DIR}/id_rsa" ] ; then
+    ssh-keygen -f "${LOCAL_SSH_DIR}/id_rsa" -t rsa -N '' &> /dev/null
   fi
+  chown ${CURRENT_USER}:${CURRENT_USER} ${LOCAL_SSH_DIR}/id_rsa
 
   mkdir -p ${R}/root/.ssh
-  cat $LOCAL_SSH_DIR/id_rsa.pub >> ${R}/root/.ssh/authorized_keys
+  cat ${LOCAL_SSH_DIR}/id_rsa.pub >> ${R}/root/.ssh/authorized_keys
 
   if [ "$ENABLE_USER" = yes ] ; then
-    mkdir -p ${R}/home/$USER_NAME/.ssh
-    cat $LOCAL_SSH_DIR/id_rsa.pub >> ${R}/home/$USER_NAME/.ssh/authorized_keys
+    mkdir -p ${R}/home/${USER_NAME}/.ssh
+    cat ${LOCAL_SSH_DIR}/id_rsa.pub >> ${R}/home/${USER_NAME}/.ssh/authorized_keys
   fi
 fi

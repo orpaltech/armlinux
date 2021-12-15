@@ -2,7 +2,7 @@
 # Debootstrap basic system
 #
 
-ROOTFS_PKG="rootfs-${DEBIAN_RELEASE}-${DEBIAN_RELEASE_ARCH}-${SOC_FAMILY}-${CONFIG}-${VERSION}"
+ROOTFS_PKG="rootfs-${DEBIAN_RELEASE}_${PROD_VERSION}-${CONFIG}_${DEBIAN_RELEASE_ARCH}"
 
 mkdir -p ${BASEDIR}/debs
 
@@ -51,6 +51,7 @@ if [ ! -f "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" ] ; then
 else
 
   echo "Rootfs '${ROOTFS_PKG}' already exists, extract it"
+  rm -rf ${R}/*
   tar -C "${R}/" --strip-components=1 -xzf "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz"
 fi
 echo "Done."

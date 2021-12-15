@@ -1,0 +1,308 @@
+From 684cc538e803e8811239e9ccef64dbb0b0933233 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sun, 10 Jan 2021 15:09:13 +0300
+Subject: [PATCH] drm/sun4i: Add bridge support to MIPI-DSI driver
+
+---
+ drivers/gpu/drm/bridge/panel.c         |   4 +-
+ drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c | 143 ++++++++++++-------------
+ drivers/gpu/drm/sun4i/sun6i_mipi_dsi.h |   3 +-
+ 3 files changed, 73 insertions(+), 77 deletions(-)
+
+diff --git a/drivers/gpu/drm/bridge/panel.c b/drivers/gpu/drm/bridge/panel.c
+index 0ddc375..6473d33 100644
+--- a/drivers/gpu/drm/bridge/panel.c
++++ b/drivers/gpu/drm/bridge/panel.c
+@@ -79,8 +79,8 @@ static int panel_bridge_attach(struct drm_bridge *bridge,
+ 		return ret;
+ 	}
+ 
+-	drm_connector_attach_encoder(&panel_bridge->connector,
+-					  bridge->encoder);
++	drm_connector_attach_encoder(connector, bridge->encoder);
++	connector->funcs->reset(connector);
+ 
+ 	return 0;
+ }
+diff --git a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+index 4f5efca..a288a68 100644
+--- a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
++++ b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+@@ -6,6 +6,8 @@
+  * Maxime Ripard <maxime.ripard@bootlin.com>
+  */
+ 
++#define DEBUG
++
+ #include <linux/clk.h>
+ #include <linux/component.h>
+ #include <linux/crc-ccitt.h>
+@@ -20,7 +22,9 @@
+ #include <linux/slab.h>
+ 
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_bridge.h>
+ #include <drm/drm_mipi_dsi.h>
++#include <drm/drm_of.h>
+ #include <drm/drm_panel.h>
+ #include <drm/drm_print.h>
+ #include <drm/drm_probe_helper.h>
+@@ -769,8 +773,7 @@ static void sun6i_dsi_encoder_enable(struct drm_encoder *encoder)
+ 	phy_configure(dsi->dphy, &opts);
+ 	phy_power_on(dsi->dphy);
+ 
+-	if (dsi->panel)
+-		drm_panel_prepare(dsi->panel);
++	drm_bridge_chain_pre_enable(dsi->bridge);
+ 
+ 	/*
+ 	 * FIXME: This should be moved after the switch to HS mode.
+@@ -784,8 +787,7 @@ static void sun6i_dsi_encoder_enable(struct drm_encoder *encoder)
+ 	 * ordering on the panels I've tested it with, so I guess this
+ 	 * will do for now, until that IP is better understood.
+ 	 */
+-	if (dsi->panel)
+-		drm_panel_enable(dsi->panel);
++	drm_bridge_chain_enable(dsi->bridge);
+ 
+ 	sun6i_dsi_start(dsi, DSI_START_HSC);
+ 
+@@ -800,10 +802,8 @@ static void sun6i_dsi_encoder_disable(struct drm_encoder *encoder)
+ 
+ 	DRM_DEBUG_DRIVER("Disabling DSI output\n");
+ 
+-	if (dsi->panel) {
+-		drm_panel_disable(dsi->panel);
+-		drm_panel_unprepare(dsi->panel);
+-	}
++	drm_bridge_chain_disable(dsi->bridge);
++	drm_bridge_chain_post_disable(dsi->bridge);
+ 
+ 	phy_power_off(dsi->dphy);
+ 	phy_exit(dsi->dphy);
+@@ -813,35 +813,6 @@ static void sun6i_dsi_encoder_disable(struct drm_encoder *encoder)
+ 	regulator_disable(dsi->regulator);
+ }
+ 
+-static int sun6i_dsi_get_modes(struct drm_connector *connector)
+-{
+-	struct sun6i_dsi *dsi = connector_to_sun6i_dsi(connector);
+-
+-	return drm_panel_get_modes(dsi->panel, connector);
+-}
+-
+-static const struct drm_connector_helper_funcs sun6i_dsi_connector_helper_funcs = {
+-	.get_modes	= sun6i_dsi_get_modes,
+-};
+-
+-static enum drm_connector_status
+-sun6i_dsi_connector_detect(struct drm_connector *connector, bool force)
+-{
+-	struct sun6i_dsi *dsi = connector_to_sun6i_dsi(connector);
+-
+-	return dsi->panel ? connector_status_connected :
+-			    connector_status_disconnected;
+-}
+-
+-static const struct drm_connector_funcs sun6i_dsi_connector_funcs = {
+-	.detect			= sun6i_dsi_connector_detect,
+-	.fill_modes		= drm_helper_probe_single_connector_modes,
+-	.destroy		= drm_connector_cleanup,
+-	.reset			= drm_atomic_helper_connector_reset,
+-	.atomic_duplicate_state	= drm_atomic_helper_connector_duplicate_state,
+-	.atomic_destroy_state	= drm_atomic_helper_connector_destroy_state,
+-};
+-
+ static const struct drm_encoder_helper_funcs sun6i_dsi_enc_helper_funcs = {
+ 	.disable	= sun6i_dsi_encoder_disable,
+ 	.enable		= sun6i_dsi_encoder_enable,
+@@ -963,17 +934,42 @@ static int sun6i_dsi_attach(struct mipi_dsi_host *host,
+ 			    struct mipi_dsi_device *device)
+ {
+ 	struct sun6i_dsi *dsi = host_to_sun6i_dsi(host);
+-	struct drm_panel *panel = of_drm_find_panel(device->dev.of_node);
++	struct drm_device *drm = dsi->encoder.dev;
++	struct drm_panel *panel;
++	struct drm_bridge *bridge;
++	int ret;
+ 
+-	if (IS_ERR(panel))
+-		return PTR_ERR(panel);
+-	if (!dsi->drm || !dsi->drm->registered)
+-		return -EPROBE_DEFER;
++	dev_dbg(dsi->dev, "%s\n", __func__);
+ 
+-	dsi->panel = panel;
+ 	dsi->device = device;
+ 
+-	drm_kms_helper_hotplug_event(dsi->drm);
++	ret = drm_of_find_panel_or_bridge(host->dev->of_node, 0, 0,
++					  &panel, &bridge);
++	if (ret) {
++		dev_err(dsi->dev,
++			"Couldn't find panel or bridge (ret = %d)\n",ret);
++		return ret;
++	}
++	if (panel) {
++		bridge = devm_drm_panel_bridge_add_typed(host->dev, panel,
++							 DRM_MODE_CONNECTOR_DSI);
++		if (IS_ERR(bridge)) {
++			ret = PTR_ERR(bridge);
++			dev_err(dsi->dev,
++				"Can't add panel bridge (ret = %d)\n", ret);
++			return ret;
++		}
++	}
++
++	ret = drm_bridge_attach(&dsi->encoder, bridge, NULL, 0);
++	if (ret) {
++		dev_err(dsi->dev, "Failed to attach bridge (ret = %d)\n", ret);
++		return ret;
++	}
++
++	dsi->bridge = bridge;
++
++	drm_kms_helper_hotplug_event(drm);
+ 
+ 	dev_info(host->dev, "Attached device %s\n", device->name);
+ 
+@@ -984,11 +980,18 @@ static int sun6i_dsi_detach(struct mipi_dsi_host *host,
+ 			    struct mipi_dsi_device *device)
+ {
+ 	struct sun6i_dsi *dsi = host_to_sun6i_dsi(host);
++	struct drm_device *drm = dsi->encoder.dev;
+ 
+-	dsi->panel = NULL;
++	dev_dbg(host->dev, "%s\n", __func__);
++
++	if (dsi->bridge->funcs->detach)
++		dsi->bridge->funcs->detach(dsi->bridge);
++	dsi->bridge = NULL;
++
++	dev_info(host->dev, "Detached device %s\n", device->name);
+ 	dsi->device = NULL;
+ 
+-	drm_kms_helper_hotplug_event(dsi->drm);
++	drm_kms_helper_hotplug_event(drm);
+ 
+ 	return 0;
+ }
+@@ -1048,50 +1051,51 @@ static const struct regmap_config sun6i_dsi_regmap_config = {
+ };
+ 
+ static int sun6i_dsi_bind(struct device *dev, struct device *master,
+-			 void *data)
++			  void *data)
+ {
+ 	struct drm_device *drm = data;
+ 	struct sun6i_dsi *dsi = dev_get_drvdata(dev);
+ 	int ret;
+ 
+-	drm_encoder_helper_add(&dsi->encoder,
+-			       &sun6i_dsi_enc_helper_funcs);
++	dev_dbg(dev, "%s\n", __func__);
++
+ 	ret = drm_simple_encoder_init(drm, &dsi->encoder,
+ 				      DRM_MODE_ENCODER_DSI);
+ 	if (ret) {
+-		dev_err(dsi->dev, "Couldn't initialise the DSI encoder\n");
++		dev_err(dev, "Couldn't initialise the DSI encoder\n");
+ 		return ret;
+ 	}
++
++	drm_encoder_helper_add(&dsi->encoder,
++			       &sun6i_dsi_enc_helper_funcs);
++
+ 	dsi->encoder.possible_crtcs = BIT(0);
+ 
+-	drm_connector_helper_add(&dsi->connector,
+-				 &sun6i_dsi_connector_helper_funcs);
+-	ret = drm_connector_init(drm, &dsi->connector,
+-				 &sun6i_dsi_connector_funcs,
+-				 DRM_MODE_CONNECTOR_DSI);
++	ret = mipi_dsi_host_register(&dsi->host);
+ 	if (ret) {
+-		dev_err(dsi->dev,
+-			"Couldn't initialise the DSI connector\n");
+-		goto err_cleanup_connector;
++		dev_err(dev, "Couldn't register MIPI-DSI host\n");
++		goto err_cleanup;
+ 	}
+ 
+-	drm_connector_attach_encoder(&dsi->connector, &dsi->encoder);
+-
+-	dsi->drm = drm;
++	dev_dbg(dev, "%s success\n", __func__);
+ 
+ 	return 0;
+ 
+-err_cleanup_connector:
++err_cleanup:
+ 	drm_encoder_cleanup(&dsi->encoder);
+ 	return ret;
+ }
+ 
+ static void sun6i_dsi_unbind(struct device *dev, struct device *master,
+-			    void *data)
++			     void *data)
+ {
+ 	struct sun6i_dsi *dsi = dev_get_drvdata(dev);
+ 
+-	dsi->drm = NULL;
++	dev_dbg(dsi->dev, "%s\n", __func__);
++
++	drm_encoder_cleanup(&dsi->encoder);
++
++	mipi_dsi_host_unregister(&dsi->host);
+ }
+ 
+ static const struct component_ops sun6i_dsi_ops = {
+@@ -1178,22 +1182,14 @@ static int sun6i_dsi_probe(struct platform_device *pdev)
+ 		goto err_unprotect_clk;
+ 	}
+ 
+-	ret = mipi_dsi_host_register(&dsi->host);
+-	if (ret) {
+-		dev_err(dev, "Couldn't register MIPI-DSI host\n");
+-		goto err_unprotect_clk;
+-	}
+-
+ 	ret = component_add(&pdev->dev, &sun6i_dsi_ops);
+ 	if (ret) {
+ 		dev_err(dev, "Couldn't register our component\n");
+-		goto err_remove_dsi_host;
++		goto err_unprotect_clk;
+ 	}
+ 
+ 	return 0;
+ 
+-err_remove_dsi_host:
+-	mipi_dsi_host_unregister(&dsi->host);
+ err_unprotect_clk:
+ 	clk_rate_exclusive_put(dsi->mod_clk);
+ err_attach_clk:
+@@ -1208,7 +1204,6 @@ static int sun6i_dsi_remove(struct platform_device *pdev)
+ 	struct sun6i_dsi *dsi = dev_get_drvdata(dev);
+ 
+ 	component_del(&pdev->dev, &sun6i_dsi_ops);
+-	mipi_dsi_host_unregister(&dsi->host);
+ 	clk_rate_exclusive_put(dsi->mod_clk);
+ 
+ 	if (!IS_ERR(dsi->bus_clk))
+diff --git a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.h b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.h
+index c863900..635e545 100644
+--- a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.h
++++ b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.h
+@@ -30,7 +30,8 @@ struct sun6i_dsi {
+ 	struct device		*dev;
+ 	struct mipi_dsi_device	*device;
+ 	struct drm_device	*drm;
+-	struct drm_panel	*panel;
++
++	struct drm_bridge	*bridge;
+ };
+ 
+ static inline struct sun6i_dsi *host_to_sun6i_dsi(struct mipi_dsi_host *host)
+-- 
+2.25.1
+

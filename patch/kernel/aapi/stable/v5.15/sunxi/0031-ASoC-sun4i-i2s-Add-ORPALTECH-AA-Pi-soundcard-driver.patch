@@ -1,0 +1,251 @@
+From dacd9ce7b190954e2d0b86c92e5ea0f0f822606a Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sun, 10 Jan 2021 14:00:27 +0300
+Subject: [PATCH] ASoC: sun4i-i2s: Add ORPALTECH AA-Pi soundcard driver
+
+---
+ sound/soc/sunxi/Kconfig                |   7 +
+ sound/soc/sunxi/Makefile               |   4 +
+ sound/soc/sunxi/orpal-aapi-soundcard.c | 202 +++++++++++++++++++++++++
+ 3 files changed, 213 insertions(+)
+ create mode 100644 sound/soc/sunxi/orpal-aapi-soundcard.c
+
+diff --git a/sound/soc/sunxi/Kconfig b/sound/soc/sunxi/Kconfig
+index ddcaaa9..024e8c4 100644
+--- a/sound/soc/sunxi/Kconfig
++++ b/sound/soc/sunxi/Kconfig
+@@ -60,4 +60,11 @@ config SND_SUN8I_ADDA_PR_REGMAP
+ 	tristate
+ 	select REGMAP
+ 
++config SND_ORPAL_AAPI
++	tristate "ORPAL-AA-Pi Soundcard driver for Allwinner SoCs"
++	depends on SND_SUN4I_I2S
++	select SND_SOC_WM8731
++	help
++	  Say Y or M if you want to add support for ORPAL-AA-Pi Soundcard.
++
+ endmenu
+diff --git a/sound/soc/sunxi/Makefile b/sound/soc/sunxi/Makefile
+index a86be34..fbbaee9 100644
+--- a/sound/soc/sunxi/Makefile
++++ b/sound/soc/sunxi/Makefile
+@@ -6,3 +6,7 @@ obj-$(CONFIG_SND_SUN8I_CODEC_ANALOG) += sun8i-codec-analog.o
+ obj-$(CONFIG_SND_SUN50I_CODEC_ANALOG) += sun50i-codec-analog.o
+ obj-$(CONFIG_SND_SUN8I_CODEC) += sun8i-codec.o
+ obj-$(CONFIG_SND_SUN8I_ADDA_PR_REGMAP) += sun8i-adda-pr-regmap.o
++
++# ORPAL-AA-Pi Soundcard Support
++snd-soc-orpal-aapi-objs := orpal-aapi-soundcard.o
++obj-$(CONFIG_SND_ORPAL_AAPI) += snd-soc-orpal-aapi.o
+diff --git a/sound/soc/sunxi/orpal-aapi-soundcard.c b/sound/soc/sunxi/orpal-aapi-soundcard.c
+new file mode 100644
+index 0000000..7a48be0
+--- /dev/null
++++ b/sound/soc/sunxi/orpal-aapi-soundcard.c
+@@ -0,0 +1,202 @@
++/*
++ * ASoC Driver for ORPAL-AA-Pi soundcard (capture only).
++ *
++ *  Created on:	15-Apr-2018
++ *  	Author:	Sergey Suloev <ssuloev@orpaltech.com>
++ *
++ * Copyright (C) 2017-2018 ORPAL Technology, Inc.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#include <linux/module.h>
++#include <linux/types.h>
++
++#include <sound/core.h>
++#include <sound/soc.h>
++#include <sound/pcm_params.h>
++#include <sound/control.h>
++
++#include "../codecs/wm8731.h"
++
++/*
++ * This is fixed on the board
++ */
++#define BOARD_XTAL_FREQ	12288000
++
++static const unsigned int sun4i_i2s_rates[] = {
++	8000, 32000, 48000, 96000,
++};
++
++/* Setup constraints, because there is a 12.288 MHz XTAL on the board */
++static struct snd_pcm_hw_constraint_list sun4i_i2s_constraints = {
++	.list	= sun4i_i2s_rates,
++	.count	= ARRAY_SIZE(sun4i_i2s_rates),
++};
++
++static int orpal_aapi_wm8731_init(struct snd_soc_pcm_runtime *rtd)
++{
++	return 0;
++}
++
++static int orpal_aapi_soundcard_startup(struct snd_pcm_substream *substream)
++{
++	snd_pcm_hw_constraint_list(substream->runtime, 0,
++				   SNDRV_PCM_HW_PARAM_RATE,
++				   &sun4i_i2s_constraints);
++	return 0;
++}
++
++static int orpal_aapi_soundcard_hw_params(struct snd_pcm_substream *substream,
++					  struct snd_pcm_hw_params *params)
++{
++	struct snd_soc_pcm_runtime *rtd = substream->private_data;
++	struct snd_soc_card *card = rtd->card;
++	struct snd_soc_dai *cpu_dai = rtd->dais[0];
++	struct snd_soc_dai *codec_dai = rtd->dais[rtd->num_cpus];
++	int ret;
++
++	/* WM8731 will use BCLK = 64 * FS  */
++	ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 64);
++	if (ret < 0) {
++		dev_err(card->dev, "failed to set BCLK ratio: %d\n", ret);
++		return ret;
++	}
++
++	/* Set codec sysclk */
++	ret = snd_soc_dai_set_sysclk(codec_dai, WM8731_SYSCLK_XTAL,
++				     BOARD_XTAL_FREQ,
++				     SND_SOC_CLOCK_IN);
++	if (ret < 0) {
++		dev_err(card->dev, "Failed to set WM8731 SYSCLK: %d\n", ret);
++		return ret;
++	}
++
++	return 0;
++}
++
++/* machine stream operations */
++static struct snd_soc_ops orpal_aapi_soundcard_ops = {
++	.startup   = orpal_aapi_soundcard_startup,
++	.hw_params = orpal_aapi_soundcard_hw_params,
++};
++
++static const struct snd_soc_dapm_widget orpal_aapi_soundcard_widgets[] = {
++	SND_SOC_DAPM_LINE("Line In Jacks", NULL),
++};
++
++static const struct snd_soc_dapm_route orpal_aapi_soundcard_routes[] = {
++	{ "LLINEIN", NULL, "Line In Jacks" },
++	{ "RLINEIN", NULL, "Line In Jacks" }
++};
++
++static int orpal_aapi_soundcard_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct snd_soc_card *card;
++	struct snd_soc_dai_link *dai;
++	struct device_node *codec_np, *cpu_np;
++	struct snd_soc_dai_link_component *comp;
++	int ret;
++
++	if (!dev->of_node)
++		return -ENODEV;
++
++	card = devm_kzalloc(dev, sizeof(*card), GFP_KERNEL);
++	dai = devm_kzalloc(dev, sizeof(*dai), GFP_KERNEL);
++	comp = devm_kzalloc(dev, 3 * sizeof(*comp), GFP_KERNEL);
++	if (!dai || !card)
++		return -ENOMEM;
++
++	card->dev = dev;
++	card->name = "orpal-aapi-soundcard";
++	card->owner = THIS_MODULE;
++	card->dai_link = dai;
++	card->num_links = 1;
++	card->dapm_widgets = orpal_aapi_soundcard_widgets;
++	card->num_dapm_widgets = ARRAY_SIZE(orpal_aapi_soundcard_widgets);
++	card->dapm_routes = orpal_aapi_soundcard_routes;
++	card->num_dapm_routes = ARRAY_SIZE(orpal_aapi_soundcard_routes);
++
++	dai->cpus = &comp[0];
++	dai->num_cpus = 1;
++	dai->codecs = &comp[1];
++	dai->num_codecs = 1;
++	dai->platforms = &comp[2];
++	dai->num_platforms = 1;
++
++	dai->name = "AAPI WM8731";
++	dai->stream_name = "AAPI WM8731 PCM";
++	dai->codecs->dai_name = "wm8731-hifi";
++	dai->init = orpal_aapi_wm8731_init;
++	dai->ops = &orpal_aapi_soundcard_ops;
++	dai->dai_fmt = SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_I2S |
++		       SND_SOC_DAIFMT_NB_NF;
++
++
++	codec_np = of_parse_phandle(dev->of_node, "orpal,audio-codec", 0);
++	if (!codec_np) {
++		dev_err(dev, "orpal,audio-codec node missing\n");
++		return -EINVAL;
++	}
++	dai->codecs->of_node = codec_np;
++
++
++	cpu_np = of_parse_phandle(dev->of_node, "orpal,i2s-controller", 0);
++	if (!cpu_np) {
++		dev_err(dev, "orpal,i2s-controller node missing\n");
++		of_node_put(codec_np);
++		return -EINVAL;
++	}
++	dai->cpus->of_node = cpu_np;
++	dai->platforms->of_node = cpu_np;
++
++	/* release node counters */
++	of_node_put(codec_np);
++	of_node_put(cpu_np);
++
++
++	ret = snd_soc_register_card(card);
++	if (ret == -EPROBE_DEFER)
++		return ret;
++	if (ret < 0) {
++		dev_err(dev, "register card failed: (%d)\n", ret);
++		return ret;
++	}
++
++	dev_dbg(dev, "%s ok\n", __func__);
++
++	return 0;
++}
++
++static int orpal_aapi_soundcard_remove(struct platform_device *pdev)
++{
++	struct snd_soc_card *card = platform_get_drvdata(pdev);
++
++	return snd_soc_unregister_card(card);
++
++}
++
++static const struct of_device_id orpal_aapi_soundcard_of_match[] = {
++	{ .compatible = "orpaltech,aapi-wm8731-sound", },
++	{ /*sentinel*/ },
++};
++MODULE_DEVICE_TABLE(of, orpal_aapi_soundcard_of_match);
++
++static struct platform_driver orpal_aapi_soundcard_driver = {
++	.probe	= orpal_aapi_soundcard_probe,
++	.remove	= orpal_aapi_soundcard_remove,
++	.driver	= {
++		.name		= "orpal-aapi-soundcard",
++		.of_match_table	= orpal_aapi_soundcard_of_match,
++	},
++};
++module_platform_driver(orpal_aapi_soundcard_driver);
++
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
++MODULE_DESCRIPTION("ORPAL-AA-Pi soundcard driver");
++MODULE_LICENSE("GPL v2");
++MODULE_ALIAS("platform:orpal-aapi-soundcard");
+-- 
+2.25.1
+
