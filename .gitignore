@@ -4,3 +4,5 @@ toolchains
 patching
 *.save
 wlan
+*.disabled
+*log

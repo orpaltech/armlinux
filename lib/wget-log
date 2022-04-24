@@ -1,3 +1,0 @@
-Read error (Connection timed out) in headers.
-utime(/home/sergey/Projects/armlinux/output/images/stretch/build/chroot//var/cache/apt/archives/partial/libapt-pkg5.0_1.4.10_armhf.deb): No such file or directory
-2021-01-12 21:34:24 URL:http://deb.debian.org/debian/pool/main/a/apt/libapt-pkg5.0_1.4.10_armhf.deb [852038/852038] -> "/home/sergey/Projects/armlinux/output/images/stretch/build/chroot//var/cache/apt/archives/partial/libapt-pkg5.0_1.4.10_armhf.deb" [3]
