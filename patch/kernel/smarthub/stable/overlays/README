@@ -1,7 +1,0 @@
-Patches in this folder must follow the naming rule below:
-
-<any number>-<OVERLAY_PREFIX>-<any text>.patch
-
-!!! Only ONE PATCH will be applied based on the OVERLAY_PREFIX variable !!!
-
-If there is no OVERLAY_PREFIX variable set then there will be NO PATCH applied.

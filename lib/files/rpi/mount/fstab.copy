@@ -1,4 +1,0 @@
-ROOTUUID	/			ext4		defaults,errors=remount-ro		0	1
-BOOTUUID	/boot/firmware		vfat		defaults				0	1
-tmpfs		/tmp			tmpfs		defaults,nosuid				0	0
-/var/swap	none			swap		sw					0	0
