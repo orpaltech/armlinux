@@ -29,14 +29,10 @@ get_linaro()
 
 	declare -A TOOLCHAIN_VERSIONS
 	TOOLCHAIN_VERSIONS["7.5-2019.12"]="7"
-	TOOLCHAIN_VERSIONS["5.5-2017.10"]="5"
 	TOOLCHAIN_ARCHS=("arm-linux-gnueabihf" "aarch64-linux-gnu")
 
 	local TOOLCHAIN_7_VER="7.5.0-2019.12-x86_64"
 	local TOOLCHAIN_7_FILES=("gcc-linaro-${TOOLCHAIN_7_VER}_arm-linux-gnueabihf" "gcc-linaro-${TOOLCHAIN_7_VER}_aarch64-linux-gnu")
-
-	local TOOLCHAIN_5_VER="5.5.0-2017.10-x86_64"
-	local TOOLCHAIN_5_FILES=("gcc-linaro-${TOOLCHAIN_5_VER}_arm-linux-gnueabihf" "gcc-linaro-${TOOLCHAIN_5_VER}_aarch64-linux-gnu")
 
 
 	for TOOLCHAIN_VER in "${!TOOLCHAIN_VERSIONS[@]}" ; do
@@ -145,8 +141,8 @@ get_openrisc()
 	if [ ! -d "${OPENRISC_DIR}/${OPENRISC_CROSS}" ] ; then
 		cd ${OPENRISC_DIR}
 		curl -fsSL "http://musl.cc/or1k-linux-musl-cross.tgz" -o ${OPENRISC_CROSS}.tgz
-
-		tar zxvf ${OPENRISC_CROSS}.tgz
+		tar -zxvf ${OPENRISC_CROSS}.tgz
+		rm -f ${OPENRISC_CROSS}.tgz
 	fi
 
 	echo "Done."
