@@ -3,39 +3,25 @@
 #
 
 if [ "${ENABLE_IPTABLES}" = yes ] ; then
+  chroot_exec update-alternatives --set iptables /usr/sbin/iptables-legacy
+
   # Create iptables configuration directory
   mkdir -p "${ETC_DIR}/iptables"
 
-  # Install iptables systemd service
-  install_readonly ${FILES_DIR}/iptables/iptables.service "${ETC_DIR}/systemd/system/iptables.service"
-
-  # Install flush-table script called by iptables service
-  install_exec ${FILES_DIR}/iptables/flush-iptables.sh "${ETC_DIR}/iptables/flush-iptables.sh"
-
-  # Install iptables rule file
-  install_readonly ${FILES_DIR}/iptables/iptables.rules "${ETC_DIR}/iptables/iptables.rules"
-
   # Reload systemd configuration and enable iptables service
+  chroot_exec systemctl --no-reload enable netfilter-persistent.service
   chroot_exec systemctl daemon-reload
-  chroot_exec systemctl enable iptables.service
 
   if [ "${ENABLE_IPV6}" = yes ] ; then
-    # Install ip6tables systemd service
-    install_readonly ${FILES_DIR}/iptables/ip6tables.service "${ETC_DIR}/systemd/system/ip6tables.service"
-
-    # Install ip6tables file
-    install_exec ${FILES_DIR}/iptables/flush-ip6tables.sh "${ETC_DIR}/iptables/flush-ip6tables.sh"
-
-    install_readonly ${FILES_DIR}/iptables/ip6tables.rules "${ETC_DIR}/iptables/ip6tables.rules"
+    chroot_exec update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 
     # Reload systemd configuration and enable iptables service
     chroot_exec systemctl daemon-reload
-    chroot_exec systemctl enable ip6tables.service
   fi
 fi
 
-if [ "$ENABLE_SSHD" != yes ] ; then
+#if [ "$ENABLE_SSHD" != yes ] ; then
  # Remove SSHD related iptables rules
- sed -i "/^#/! {/SSH/ s/^/# /}" "${ETC_DIR}/iptables/iptables.rules" 2> /dev/null
- sed -i "/^#/! {/SSH/ s/^/# /}" "${ETC_DIR}/iptables/ip6tables.rules" 2> /dev/null
-fi
+# sed -i "/^#/! {/SSH/ s/^/# /}" "${ETC_DIR}/iptables/iptables.rules" 2> /dev/null
+# sed -i "/^#/! {/SSH/ s/^/# /}" "${ETC_DIR}/iptables/ip6tables.rules" 2> /dev/null
+#fi

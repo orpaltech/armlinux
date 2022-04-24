@@ -1,7 +1,7 @@
 logger -t "rc.firstboot" "Resizing rootfs..."
 
-BLOCK_DEV=/dev/sdX
-PART_NUM=1
+BLOCK_DEV=${BLOCK_DEV:="/dev/sdX"}
+PART_NUM=${PART_NUM:="1"}
 START=$(fdisk -l ${BLOCK_DEV}|grep ${BLOCK_DEV}p${PART_NUM}|awk '{print $2}')
 
 fdisk ${BLOCK_DEV} <<EOF

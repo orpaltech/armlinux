@@ -1,0 +1,29 @@
+From d3d47a554acf54e3ecc862cef15a1c9c365c7da4 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Wed, 18 Nov 2020 17:20:35 +0300
+Subject: [PATCH] drm/sun4i: Fixed issue with setting DMA offset
+
+---
+ drivers/gpu/drm/sun4i/sun4i_backend.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/sun4i/sun4i_backend.c b/drivers/gpu/drm/sun4i/sun4i_backend.c
+index 77497b4..f017229 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_backend.c
++++ b/drivers/gpu/drm/sun4i/sun4i_backend.c
+@@ -816,8 +816,10 @@ static int sun4i_backend_bind(struct device *dev, struct device *master,
+ 		 * to the device tree.
+ 		 */
+ 		ret = dma_direct_set_offset(drm->dev, PHYS_OFFSET, 0, SZ_4G);
+-		if (ret)
+-			return ret;
++		if (ret) {
++			dev_warn(dev, "Couldn't set DMA offset (ret = %d)\n", ret);
++/*			return ret;*/
++		}
+ 	}
+ 
+ 	backend->engine.node = dev->of_node;
+-- 
+2.25.1
+

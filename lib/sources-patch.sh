@@ -13,7 +13,7 @@
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2020 ORPAL Technology, Inc.
+# Copyright (C) 2013-2022 ORPAL Technology, Inc.
 #
 ########################################################################
 
@@ -66,13 +66,13 @@ patch_uboot()
 {
 if [ "${ENABLE_UBOOT}" = yes ] ; then
 
-	local PATCH_BASE_DIR=$BASEDIR/patch/u-boot
-	local PATCH_OUT_DIR=$OUTPUTDIR/patches
+	local PATCH_BASE_DIR=${BASEDIR}/patch/u-boot
+	local PATCH_OUT_DIR=${OUTPUTDIR}/patches
 
-	rm -rf $PATCH_OUT_DIR/u-boot.*
+	rm -rf ${PATCH_OUT_DIR}/u-boot.*
 
 	if [ "${UBOOT_PATCH_DISABLE}" != yes ]  && [ -d "${PATCH_BASE_DIR}" ] ; then
-		local PATCH_TMP_DIR=$(mktemp -u $PATCH_OUT_DIR/u-boot.XXXXXXXXX)
+		local PATCH_TMP_DIR=$(mktemp -u ${PATCH_OUT_DIR}/u-boot.XXXXXXXXX)
 
 		# Prepare files for patching
 		mkdir -p $PATCH_TMP_DIR

@@ -1,0 +1,60 @@
+From a43ccbb707cb703bbded4284d8dab87204694ea8 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sun, 19 May 2019 20:01:04 +0300
+Subject: [PATCH] qtbase: Fix mkspecs for Raspberry-Pi
+
+---
+ mkspecs/devices/linux-rasp-pi3-g++/qmake.conf     |  4 ++--
+ mkspecs/devices/linux-rasp-pi3-vc4-g++/qmake.conf | 12 ++++++------
+ 2 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/mkspecs/devices/linux-rasp-pi3-g++/qmake.conf b/mkspecs/devices/linux-rasp-pi3-g++/qmake.conf
+index b215833..7af012d 100644
+--- a/mkspecs/devices/linux-rasp-pi3-g++/qmake.conf
++++ b/mkspecs/devices/linux-rasp-pi3-g++/qmake.conf
+@@ -13,7 +13,7 @@ QMAKE_RPATHLINKDIR_POST += $$[QT_SYSROOT]/opt/vc/lib
+ VC_LIBRARY_PATH         = /opt/vc/lib
+ VC_INCLUDE_PATH         = =/opt/vc/include
+ 
+-VC_LINK_LINE            = -L=$${VC_LIBRARY_PATH}
++VC_LINK_LINE            = -L=$${VC_LIBRARY_PATH} -Wl,-rpath,$${VC_LIBRARY_PATH}
+ 
+ QMAKE_LIBDIR_OPENGL_ES2 = =$${VC_LIBRARY_PATH}
+ QMAKE_LIBDIR_EGL        = $$QMAKE_LIBDIR_OPENGL_ES2
+@@ -35,7 +35,7 @@ QMAKE_LIBDIR_BCM_HOST   = $$VC_LIBRARY_PATH
+ QMAKE_INCDIR_BCM_HOST   = $$VC_INCLUDE_PATH
+ QMAKE_LIBS_BCM_HOST     = -lbcm_host
+ 
+-QMAKE_CFLAGS            = -march=armv8-a -mtune=cortex-a53 -mfpu=crypto-neon-fp-armv8
++QMAKE_CFLAGS            = -march=armv7-a -marm -mthumb-interwork -mfpu=vfpv4 -mtune=cortex-a53
+ QMAKE_CXXFLAGS          = $$QMAKE_CFLAGS
+ 
+ DISTRO_OPTS            += hard-float
+diff --git a/mkspecs/devices/linux-rasp-pi3-vc4-g++/qmake.conf b/mkspecs/devices/linux-rasp-pi3-vc4-g++/qmake.conf
+index 75b6ad7..5e5a658 100644
+--- a/mkspecs/devices/linux-rasp-pi3-vc4-g++/qmake.conf
++++ b/mkspecs/devices/linux-rasp-pi3-vc4-g++/qmake.conf
+@@ -28,14 +28,14 @@
+ 
+ include(../common/linux_device_pre.conf)
+ 
+-QMAKE_LIBS_EGL         += -lEGL
+-QMAKE_LIBS_OPENGL_ES2  += -lGLESv2 -lEGL
++QMAKE_LIBS_EGL		+= -lEGL
++QMAKE_LIBS_OPENGL_ES2	+= -lGLESv2 -lEGL
+ 
+-QMAKE_CFLAGS            = -march=armv8-a -mtune=cortex-a53 -mfpu=crypto-neon-fp-armv8
+-QMAKE_CXXFLAGS          = $$QMAKE_CFLAGS
++QMAKE_LIBS	+= -lrt -lpthread -ldl -lz
++COMPILER_FLAGS	+= -march=armv7-a -marm -mthumb-interwork -mfpu=vfpv4 -mtune=cortex-a53
+ 
+-DISTRO_OPTS            += hard-float
+-DISTRO_OPTS            += deb-multi-arch
++DISTRO_OPTS	+= hard-float
++DISTRO_OPTS	+= deb-multi-arch
+ 
+ EGLFS_DEVICE_INTEGRATION = eglfs_kms
+ 
+-- 
+2.17.1
+

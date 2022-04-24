@@ -13,7 +13,7 @@
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2020 ORPAL Technology, Inc.
+# Copyright (C) 2013-2022 ORPAL Technology, Inc.
 #
 ########################################################################
 
@@ -100,34 +100,34 @@ update_kernel()
 		sudo chown -R ${CURRENT_USER}:${CURRENT_USER} $KERNEL_SOURCE_DIR
 
 		# update sources
-		git -C $KERNEL_SOURCE_DIR fetch origin --tags --depth=1
+		git -C ${KERNEL_SOURCE_DIR} fetch origin --tags --depth=1
 		[ $? -eq 0 ] || exit $?;
 
-		git -C $KERNEL_SOURCE_DIR reset --hard
-		if [[ $CLEAN =~ (^|,)"kernel"(,|$) ]] ; then
-			git -C $KERNEL_SOURCE_DIR clean -fdx
+		git -C ${KERNEL_SOURCE_DIR} reset --hard
+		if [[ ${CLEAN} =~ (^|,)"kernel"(,|$) ]] ; then
+			git -C ${KERNEL_SOURCE_DIR} clean -fdx
 		else
-			git -C $KERNEL_SOURCE_DIR clean -fd
+			git -C ${KERNEL_SOURCE_DIR} clean -fd
 		fi
 
 		echo "Checking out branch: ${KERNEL_REPO_BRANCH}"
-                git -C $KERNEL_SOURCE_DIR checkout -B $KERNEL_REPO_BRANCH origin/$KERNEL_REPO_BRANCH
-                git -C $KERNEL_SOURCE_DIR pull
+                git -C ${KERNEL_SOURCE_DIR} checkout -B ${KERNEL_REPO_BRANCH} origin/${KERNEL_REPO_BRANCH}
+                git -C ${KERNEL_SOURCE_DIR} pull
 	else
 		display_alert "Cloning kernel from" "${KERNEL_REPO_NAME} | ${KERNEL_REPO_URL} | ${KERNEL_REPO_BRANCH}" "info"
 
-		[[ -d $KERNEL_SOURCE_DIR ]] && rm -rf $KERNEL_SOURCE_DIR
+		[[ -d ${KERNEL_SOURCE_DIR} ]] && rm -rf ${KERNEL_SOURCE_DIR}
 
-		git clone $KERNEL_REPO_URL -b $KERNEL_REPO_BRANCH --depth=1 $KERNEL_SOURCE_DIR
+		git clone ${KERNEL_REPO_URL} -b ${KERNEL_REPO_BRANCH} --depth=1 ${KERNEL_SOURCE_DIR}
 		[ $? -eq 0 ] || exit $?;
 
-		git -C $KERNEL_SOURCE_DIR fetch origin --tags --depth=1
+		git -C ${KERNEL_SOURCE_DIR} fetch origin --tags --depth=1
 		[ $? -eq 0 ] || exit $?;
 	fi
 
 	if [ -n "${KERNEL_REPO_TAG}" ] ; then
 		display_alert "Checking out kernel tag" "tags/${KERNEL_REPO_TAG}" "info"
-		git -C $KERNEL_SOURCE_DIR checkout tags/$KERNEL_REPO_TAG
+		git -C ${KERNEL_SOURCE_DIR} checkout tags/${KERNEL_REPO_TAG}
 		[ $? -eq 0 ] || exit $?;
 	fi
 
@@ -138,28 +138,34 @@ update_kernel()
 
 fw_update()
 {
-	fw_branch=$3
-	fw_url=$2
 	fw_name=$1
+	fw_url=$2
+	fw_branch=$3
+	fw_force=$4
 	fw_src_dir="${FIRMWARE_BASE_DIR}/${fw_name}"
-        if [ ! -z "${fw_url}" ] ; then
-                mkdir -p $FIRMWARE_BASE_DIR
 
-                if [ -d "${fw_src_dir}" ] && [ -d "${fw_src_dir}/.git" ] ; then
+	mkdir -p ${FIRMWARE_BASE_DIR}
+
+	if [ -d "${fw_src_dir}" ] && [ "${fw_force}" = yes ] ; then
+		rm -rf ${fw_src_dir}
+	fi
+
+	if [ ! -z "${fw_url}" ] ; then
+
+		if [ -d "${fw_src_dir}" ] && [ -d "${fw_src_dir}/.git" ] ; then
 			fw_old_url=$(git -C ${fw_src_dir} config --get remote.origin.url)
-                        if [ "${fw_old_url}" != "${fw_url}" ] ; then
+			if [ "${fw_old_url}" != "${fw_url}" ] ; then
                                 echo "Firmware repository has changed, clean up working dir ?"
                                 pause
                                 rm -rf ${fw_src_dir}
-                        fi
-                fi
+			fi
+		fi
 
-                if [ -d "${fw_src_dir}" ] && [ -d "${fw_src_dir}/.git" ] ; then
-
-                        # see if branch has changed
+		if [ -d "${fw_src_dir}" ] && [ -d "${fw_src_dir}/.git" ] ; then
+			# see if branch has changed
 			cur_branch=$(git -C ${fw_src_dir} symbolic-ref --short -q HEAD)
-                        [[ "${cur_branch}" != "${fw_branch}" ]] && rm -rf ${fw_src_dir}
-                fi
+			[[ "${cur_branch}" != "${fw_branch}" ]] && rm -rf ${fw_src_dir}
+		fi
 
                 if [ -d "${fw_src_dir}" ] && [ -d "${fw_src_dir}/.git" ] ; then
                         display_alert "Updating Firmware from" "${fw_url} | ${fw_branch}" "info"
@@ -171,6 +177,7 @@ fw_update()
                         [ $? -eq 0 ] || exit $?;
 
                         git -C ${fw_src_dir} reset --hard
+
                         if [[ $CLEAN =~ (^|,)"firmware"(,|$) ]] ; then
                                 git -C ${fw_src_dir} clean -fdx
                         else

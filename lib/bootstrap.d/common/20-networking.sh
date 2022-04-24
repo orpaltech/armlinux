@@ -68,17 +68,3 @@ fi
 
 
 chroot_exec update-ca-certificates -f
-
-
-if [ "${ENABLE_IPTABLES}" = yes ] ; then
-  # Add exceptions to enable HTTP protocol connections
-  chroot_exec iptables -I INPUT -p tcp --dport 80 -j ACCEPT
-  chroot_exec iptables -I INPUT -p tcp --dport 443 -j ACCEPT
-  # Add exception for homeassistant default HTTP port
-  chroot_exec iptables -I INPUT -p tcp --dport 8123 -j ACCEPT
-
-  chroot_exec iptables-save > /etc/iptables/rules.v4
-  chroot_exec ip6tables-save > /etc/iptables/rules.v6
-
-  chroot_exec systemctl --no-reload enable netfilter-persistent.service
-fi

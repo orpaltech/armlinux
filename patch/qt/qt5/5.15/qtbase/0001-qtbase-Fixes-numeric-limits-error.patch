@@ -1,0 +1,24 @@
+From 693c891d58ce4e3a07d674606dad0935fa0a584d Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Wed, 9 Mar 2022 02:19:51 +0300
+Subject: [PATCH] qtbase: Fixes numeric limits error
+
+---
+ src/corelib/global/qglobal.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/corelib/global/qglobal.h b/src/corelib/global/qglobal.h
+index 501c542..dc773e2 100644
+--- a/src/corelib/global/qglobal.h
++++ b/src/corelib/global/qglobal.h
+@@ -45,6 +45,7 @@
+ #  include <type_traits>
+ #  include <cstddef>
+ #  include <utility>
++#  include <limits>
+ #endif
+ #ifndef __ASSEMBLER__
+ #  include <assert.h>
+-- 
+2.25.1
+

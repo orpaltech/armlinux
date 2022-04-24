@@ -1,0 +1,170 @@
+From b91e488da31a68268fc9c11a605ef5acfa4b043b Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Fri, 24 Apr 2020 14:57:37 +0300
+Subject: [PATCH] sunxi: h3-h5: Add DVFS and thermal settings
+
+---
+ .../boot/dts/sun8i-h2-plus-orangepi-zero.dts  |  5 ++-
+ arch/arm/boot/dts/sun8i-h3-orangepi-lite.dts  | 21 ++++++++++
+ arch/arm/boot/dts/sun8i-h3-orangepi-one.dts   |  5 ++-
+ arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts    |  2 +-
+ arch/arm/boot/dts/sun8i-h3.dtsi               | 42 +++++++++++++++++--
+ 5 files changed, 67 insertions(+), 8 deletions(-)
+
+diff --git a/arch/arm/boot/dts/sun8i-h2-plus-orangepi-zero.dts b/arch/arm/boot/dts/sun8i-h2-plus-orangepi-zero.dts
+index f19ed98..d82811c 100644
+--- a/arch/arm/boot/dts/sun8i-h2-plus-orangepi-zero.dts
++++ b/arch/arm/boot/dts/sun8i-h2-plus-orangepi-zero.dts
+@@ -95,14 +95,15 @@
+ 		regulator-type = "voltage";
+ 		regulator-boot-on;
+ 		regulator-always-on;
+-		regulator-min-microvolt = <1100000>;
++		regulator-min-microvolt = <1000000>;
+ 		regulator-max-microvolt = <1300000>;
+ 		regulator-ramp-delay = <50>; /* 4ms */
+ 
+ 		gpios = <&r_pio 0 6 GPIO_ACTIVE_HIGH>; /* PL6 */
+ 		enable-active-high;
+ 		gpios-states = <1>;
+-		states = <1100000 0>, <1300000 1>;
++		states = <1000000 0
++			  1300000 1>;
+ 	};
+ 
+ 	wifi_pwrseq: wifi_pwrseq {
+diff --git a/arch/arm/boot/dts/sun8i-h3-orangepi-lite.dts b/arch/arm/boot/dts/sun8i-h3-orangepi-lite.dts
+index 6f9c97a..eb8698f 100644
+--- a/arch/arm/boot/dts/sun8i-h3-orangepi-lite.dts
++++ b/arch/arm/boot/dts/sun8i-h3-orangepi-lite.dts
+@@ -96,6 +96,27 @@
+ 			gpios = <&r_pio 0 3 GPIO_ACTIVE_LOW>;
+ 		};
+ 	};
++
++	reg_sy8113b: gpio-regulator {
++		compatible = "regulator-gpio";
++		regulator-name = "vdd-cpux";
++		regulator-type = "voltage";
++		regulator-boot-on;
++		regulator-always-on;
++		regulator-min-microvolt = <1000000>;
++		regulator-max-microvolt = <1300000>;
++		regulator-ramp-delay = <50>; /* 4ms */
++
++		gpios = <&r_pio 0 6 GPIO_ACTIVE_HIGH>; /* PL6 */
++		enable-active-high;
++		gpios-states = <1>;
++		states = <1000000 0x0
++			  1300000 0x1>;
++	};
++};
++
++&cpu0 {
++	cpu-supply = <&reg_sy8113b>;
+ };
+ 
+ &de {
+diff --git a/arch/arm/boot/dts/sun8i-h3-orangepi-one.dts b/arch/arm/boot/dts/sun8i-h3-orangepi-one.dts
+index 4759ba3..381b634 100644
+--- a/arch/arm/boot/dts/sun8i-h3-orangepi-one.dts
++++ b/arch/arm/boot/dts/sun8i-h3-orangepi-one.dts
+@@ -102,14 +102,15 @@
+ 		regulator-type = "voltage";
+ 		regulator-boot-on;
+ 		regulator-always-on;
+-		regulator-min-microvolt = <1100000>;
++		regulator-min-microvolt = <1000000>;
+ 		regulator-max-microvolt = <1300000>;
+ 		regulator-ramp-delay = <50>; /* 4ms */
+ 
+ 		gpios = <&r_pio 0 6 GPIO_ACTIVE_HIGH>; /* PL6 */
+ 		enable-active-high;
+ 		gpios-states = <0x1>;
+-		states = <1100000 0>, <1300000 1>;
++		states = <1000000 0x0
++			  1300000 0x1>;
+ 	};
+ };
+ 
+diff --git a/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts b/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts
+index 5aff8ec..0ff6d62 100644
+--- a/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts
++++ b/arch/arm/boot/dts/sun8i-h3-orangepi-pc.dts
+@@ -193,7 +193,7 @@
+ 		 * Use 1.0V as the minimum voltage instead.
+ 		 */
+ 		regulator-min-microvolt = <1000000>;
+-		regulator-max-microvolt = <1300000>;
++		regulator-max-microvolt = <1320000>;
+ 		regulator-boot-on;
+ 		regulator-always-on;
+ 	};
+diff --git a/arch/arm/boot/dts/sun8i-h3.dtsi b/arch/arm/boot/dts/sun8i-h3.dtsi
+index e83aa68..4af0653 100644
+--- a/arch/arm/boot/dts/sun8i-h3.dtsi
++++ b/arch/arm/boot/dts/sun8i-h3.dtsi
+@@ -48,21 +48,57 @@
+ 		compatible = "operating-points-v2";
+ 		opp-shared;
+ 
++		opp@480000000 {
++			opp-hz = /bits/ 64 <480000000>;
++			opp-microvolt = <980000 980000 1320000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
+ 		opp-648000000 {
+ 			opp-hz = /bits/ 64 <648000000>;
+-			opp-microvolt = <1040000 1040000 1300000>;
++			opp-microvolt = <1000000 1000000 1320000>;
+ 			clock-latency-ns = <244144>; /* 8 32k periods */
+ 		};
+ 
+ 		opp-816000000 {
+ 			opp-hz = /bits/ 64 <816000000>;
+-			opp-microvolt = <1100000 1100000 1300000>;
++			opp-microvolt = <1020000 1020000 1320000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp@912000000 {
++			opp-hz = /bits/ 64 <912000000>;
++			opp-microvolt = <1040000 1040000 1320000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp@960000000 {
++			opp-hz = /bits/ 64 <960000000>;
++			opp-microvolt = <1080000 1080000 1320000>;
+ 			clock-latency-ns = <244144>; /* 8 32k periods */
+ 		};
+ 
+ 		opp-1008000000 {
+ 			opp-hz = /bits/ 64 <1008000000>;
+-			opp-microvolt = <1200000 1200000 1300000>;
++			opp-microvolt = <1140000 1140000 1320000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp@1104000000 {
++			opp-hz = /bits/ 64 <1104000000>;
++			opp-microvolt = <1180000 1180000 1320000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp@1200000000 {
++			opp-hz = /bits/ 64 <1200000000>;
++			opp-microvolt = <1240000 1240000 1320000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp@1296000000 {
++			opp-hz = /bits/ 64 <1296000000>;
++			opp-microvolt = <1320000 1320000 1320000>;
+ 			clock-latency-ns = <244144>; /* 8 32k periods */
+ 		};
+ 	};
+-- 
+2.17.1
+

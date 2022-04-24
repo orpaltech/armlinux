@@ -18,6 +18,14 @@ cat ${FILES_DIR}/firstboot/24-generate-machineid.sh >> ${ETC_DIR}/rc.firstboot
 # Create /etc/resolv.conf symlink
 cat ${FILES_DIR}/firstboot/25-create-resolv-symlink.sh >> ${ETC_DIR}/rc.firstboot
 
+if [ "${ENABLE_IPTABLES}" = yes ] ; then
+  # Save iptables configuration
+  cat ${FILES_DIR}/firstboot/26-iptables.sh >> ${ETC_DIR}/rc.firstboot
+  if [ "${ENABLE_IPV6}" = yes ] ; then
+    cat ${FILES_DIR}/firstboot/27-ip6tables.sh >> ${ETC_DIR}/rc.firstboot
+  fi
+fi
+
 # Resize rootfs partition
 sed -i "s#^\(BLOCK_DEV=\).*#\1${DEST_BLOCK_DEV}#"  ${FILES_DIR}/firstboot/40-resize-rootfs.sh
 sed -i "s#^\(PART_NUM=\).*#\1${RESIZE_PART_NUM}#"  ${FILES_DIR}/firstboot/40-resize-rootfs.sh

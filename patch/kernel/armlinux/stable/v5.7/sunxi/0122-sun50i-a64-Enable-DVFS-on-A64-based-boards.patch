@@ -1,0 +1,150 @@
+From 84880595d5a91bbe43813eb61b25c50edee932ad Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Wed, 12 Feb 2020 20:08:02 +0300
+Subject: [PATCH] sun50i: a64: Enable DVFS on A64-based boards
+
+---
+ arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi | 58 +++++++++++++++++--
+ drivers/clk/sunxi-ng/ccu-sun50i-a64.h         |  7 ++-
+ include/dt-bindings/clock/sun50i-a64-ccu.h    |  1 +
+ 3 files changed, 61 insertions(+), 5 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+index 862b47d..5205899 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+@@ -41,6 +41,52 @@
+ 		};
+ 	};
+ 
++	cpu0_opp_table: opp_table0 {
++		compatible = "operating-points-v2";
++		opp-shared;
++
++		opp-648000000 {
++			opp-hz = /bits/ 64 <648000000>;
++			opp-microvolt = <1040000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-816000000 {
++			opp-hz = /bits/ 64 <816000000>;
++			opp-microvolt = <1100000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-912000000 {
++			opp-hz = /bits/ 64 <912000000>;
++			opp-microvolt = <1120000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-960000000 {
++			opp-hz = /bits/ 64 <960000000>;
++			opp-microvolt = <1160000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-1008000000 {
++			opp-hz = /bits/ 64 <1008000000>;
++			opp-microvolt = <1200000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-1056000000 {
++			opp-hz = /bits/ 64 <1056000000>;
++			opp-microvolt = <1240000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-1104000000 {
++			opp-hz = /bits/ 64 <1104000000>;
++			opp-microvolt = <1260000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++		opp-1152000000 {
++			opp-hz = /bits/ 64 <1152000000>;
++			opp-microvolt = <1300000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++	};
++
+ 	cpus {
+ 		#address-cells = <1>;
+ 		#size-cells = <0>;
+@@ -51,8 +97,9 @@
+ 			reg = <0>;
+ 			enable-method = "psci";
+ 			next-level-cache = <&L2>;
+-			clocks = <&ccu 21>;
++			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
++			operating-points-v2 = <&cpu0_opp_table>;
+ 			#cooling-cells = <2>;
+ 		};
+ 
+@@ -62,8 +109,9 @@
+ 			reg = <1>;
+ 			enable-method = "psci";
+ 			next-level-cache = <&L2>;
+-			clocks = <&ccu 21>;
++			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
++			operating-points-v2 = <&cpu0_opp_table>;
+ 			#cooling-cells = <2>;
+ 		};
+ 
+@@ -73,8 +121,9 @@
+ 			reg = <2>;
+ 			enable-method = "psci";
+ 			next-level-cache = <&L2>;
+-			clocks = <&ccu 21>;
++			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
++			operating-points-v2 = <&cpu0_opp_table>;
+ 			#cooling-cells = <2>;
+ 		};
+ 
+@@ -84,8 +133,9 @@
+ 			reg = <3>;
+ 			enable-method = "psci";
+ 			next-level-cache = <&L2>;
+-			clocks = <&ccu 21>;
++			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
++			operating-points-v2 = <&cpu0_opp_table>;
+ 			#cooling-cells = <2>;
+ 		};
+ 
+diff --git a/drivers/clk/sunxi-ng/ccu-sun50i-a64.h b/drivers/clk/sunxi-ng/ccu-sun50i-a64.h
+index 116e6f8..1b55671 100644
+--- a/drivers/clk/sunxi-ng/ccu-sun50i-a64.h
++++ b/drivers/clk/sunxi-ng/ccu-sun50i-a64.h
+@@ -30,12 +30,17 @@
+ #define CLK_PLL_PERIPH0_2X		12
+ #define CLK_PLL_PERIPH1			13
+ #define CLK_PLL_PERIPH1_2X		14
+-#define CLK_PLL_VIDEO1			15
++
++/* PLL_VIDEO1 exported */
++
+ #define CLK_PLL_GPU			16
+ #define CLK_PLL_MIPI			17
+ #define CLK_PLL_HSIC			18
+ #define CLK_PLL_DE			19
+ #define CLK_PLL_DDR1			20
++
++/* CLK_CPUX exported */
++
+ #define CLK_AXI				22
+ #define CLK_APB				23
+ #define CLK_AHB1			24
+diff --git a/include/dt-bindings/clock/sun50i-a64-ccu.h b/include/dt-bindings/clock/sun50i-a64-ccu.h
+index e512a1c..f4e38c5 100644
+--- a/include/dt-bindings/clock/sun50i-a64-ccu.h
++++ b/include/dt-bindings/clock/sun50i-a64-ccu.h
+@@ -45,6 +45,7 @@
+ 
+ #define CLK_PLL_VIDEO0		7
+ #define CLK_PLL_PERIPH0		11
++#define CLK_PLL_VIDEO1		15
+ 
+ #define CLK_CPUX		21
+ #define CLK_BUS_MIPI_DSI	28
+-- 
+2.17.1
+

@@ -1,0 +1,406 @@
+From 231c65d2c5c3036bda77c3f8cc4ebff0d890a88f Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Wed, 12 Jun 2019 01:13:23 +0300
+Subject: [PATCH] iio: adc: Add mcp3422 oneshot conversion mode
+
+---
+ drivers/iio/adc/mcp3422.c | 246 +++++++++++++++++++++++++++++++-------
+ 1 file changed, 200 insertions(+), 46 deletions(-)
+
+diff --git a/drivers/iio/adc/mcp3422.c b/drivers/iio/adc/mcp3422.c
+index ea24d7c..a4c252e 100644
+--- a/drivers/iio/adc/mcp3422.c
++++ b/drivers/iio/adc/mcp3422.c
+@@ -13,20 +13,22 @@
+  * voltage unit is nV.
+  */
+ 
++#include <linux/bits.h>
++#include <linux/delay.h>
+ #include <linux/err.h>
+ #include <linux/i2c.h>
+-#include <linux/module.h>
+-#include <linux/delay.h>
+-#include <linux/sysfs.h>
+-#include <linux/of.h>
+-
+ #include <linux/iio/iio.h>
+ #include <linux/iio/sysfs.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/sysfs.h>
+ 
+ /* Masks */
+-#define MCP3422_CHANNEL_MASK	0x60
+-#define MCP3422_PGA_MASK	0x03
+-#define MCP3422_SRATE_MASK	0x0C
++#define MCP3422_READY_BIT	BIT(7)
++#define MCP3422_CHANNEL_MASK	GENMASK(6,5)
++#define MCP3422_PGA_MASK	GENMASK(1,0)
++#define MCP3422_SRATE_MASK	GENMASK(3,2)
++#define MCP3422_ADC_MODE_MASK	BIT(4)
+ #define MCP3422_SRATE_240	0x0
+ #define MCP3422_SRATE_60	0x1
+ #define MCP3422_SRATE_15	0x2
+@@ -35,14 +37,17 @@
+ #define MCP3422_PGA_2	1
+ #define MCP3422_PGA_4	2
+ #define MCP3422_PGA_8	3
+-#define MCP3422_CONT_SAMPLING	0x10
++#define MCP3422_ADC_ONE_SHOT	0
++#define MCP3422_ADC_CONTINUOUS	1
+ 
++#define MCP3422_ADC_MODE(config)	(((config) & MCP3422_ADC_MODE_MASK) >> 4)
+ #define MCP3422_CHANNEL(config)	(((config) & MCP3422_CHANNEL_MASK) >> 5)
+ #define MCP3422_PGA(config)	((config) & MCP3422_PGA_MASK)
+ #define MCP3422_SAMPLE_RATE(config)	(((config) & MCP3422_SRATE_MASK) >> 2)
+ 
+-#define MCP3422_CHANNEL_VALUE(value) (((value) << 5) & MCP3422_CHANNEL_MASK)
+-#define MCP3422_PGA_VALUE(value) ((value) & MCP3422_PGA_MASK)
++#define MCP3422_ADC_MODE_VALUE(mode)	(((mode) << 4) & MCP3422_ADC_MODE_MASK)
++#define MCP3422_CHANNEL_VALUE(value)	(((value) << 5) & MCP3422_CHANNEL_MASK)
++#define MCP3422_PGA_VALUE(value)	((value) & MCP3422_PGA_MASK)
+ #define MCP3422_SAMPLE_RATE_VALUE(value) ((value << 2) & MCP3422_SRATE_MASK)
+ 
+ #define MCP3422_CHAN(_index) \
+@@ -55,18 +60,37 @@
+ 		.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SAMP_FREQ), \
+ 	}
+ 
++
++struct mcp3422_adc_mode {
++	const char *name;
++	u8 val;
++};
++
++static struct mcp3422_adc_mode mcp3422_adc_modes[] = {
++	{ .val = MCP3422_ADC_ONE_SHOT,	.name = "oneshot", },
++	{ .val = MCP3422_ADC_CONTINUOUS, .name = "continuous", }
++};
++
++/*
++ * Scales are calculated from the reference voltage 2.048V
++ * (see datasheet http://ww1.microchip.com/downloads/en/devicedoc/22088c.pdf)
++ *
++ * SCALE = ( 2.048V / pow(2, N-1) ) / PGA, where N - ADC bit resolution
++ *
++ * Example, calculate 1st row of mcp3422_scales array:
++ *
++ *	SCALE(ADC=12bit,PGA=1) = ( 2048 / pow(2, 11) ) / 1 = 1
++ *      SCALE(ADC=12bit,PGA=2) = ( 2048 / pow(2, 11) ) / 2 = 0.5
++ *	SCALE(ADC=12bit,PGA=4) = ( 2048 / pow(2, 11) ) / 4 = 0.25
++ *	SCALE(ADC=12bit,PGA=8) = ( 2048 / pow(2, 11) ) / 8 = 0.125
++ *
++ */
++
+ static const int mcp3422_scales[4][4] = {
+-	{ 1000000, 500000, 250000, 125000 },
+-	{ 250000,  125000, 62500,  31250  },
+-	{ 62500,   31250,  15625,  7812   },
+-	{ 15625,   7812,   3906,   1953   } };
+-
+-/* Constant msleep times for data acquisitions */
+-static const int mcp3422_read_times[4] = {
+-	[MCP3422_SRATE_240] = 1000 / 240,
+-	[MCP3422_SRATE_60] = 1000 / 60,
+-	[MCP3422_SRATE_15] = 1000 / 15,
+-	[MCP3422_SRATE_3] = 1000 / 3 };
++	{ 1000000000, 500000000, 250000000, 125000000 },
++	{ 250000000,  125000000, 62500000,  31250000  },
++	{ 62500000,   31250000,  15625000,  7812500   },
++	{ 15625000,   7812500,   3906250,   1953125   } };
+ 
+ /* sample rates to integer conversion table */
+ static const int mcp3422_sample_rates[4] = {
+@@ -75,6 +99,13 @@ static const int mcp3422_sample_rates[4] = {
+ 	[MCP3422_SRATE_15] = 15,
+ 	[MCP3422_SRATE_3] = 3 };
+ 
++/* Constant sleep times for data acquisition (us) */
++static const int mcp3422_read_delays[4] = {
++	[MCP3422_SRATE_240] = 1000000 / 240,
++	[MCP3422_SRATE_60] = 1000000 / 60,
++	[MCP3422_SRATE_15] = 1000000 / 15,
++	[MCP3422_SRATE_3] = 1000000 / 3 };
++
+ /* sample rates to sign extension table */
+ static const int mcp3422_sign_extend[4] = {
+ 	[MCP3422_SRATE_240] = 11,
+@@ -101,6 +132,9 @@ static int mcp3422_update_config(struct mcp3422 *adc, u8 newconfig)
+ 	if (ret > 0) {
+ 		adc->config = newconfig;
+ 		ret = 0;
++
++		dev_dbg(&adc->i2c->dev, "%s: new config set = 0x%02x",
++                	__func__, adc->config);
+ 	}
+ 
+ 	mutex_unlock(&adc->lock);
+@@ -110,46 +144,94 @@ static int mcp3422_update_config(struct mcp3422 *adc, u8 newconfig)
+ 
+ static int mcp3422_read(struct mcp3422 *adc, int *value, u8 *config)
+ {
+-	int ret = 0;
++	int i, len, ret;
+ 	u8 sample_rate = MCP3422_SAMPLE_RATE(adc->config);
+ 	u8 buf[4] = {0, 0, 0, 0};
+ 	u32 temp;
+ 
+-	if (sample_rate == MCP3422_SRATE_3) {
+-		ret = i2c_master_recv(adc->i2c, buf, 4);
+-		temp = buf[0] << 16 | buf[1] << 8 | buf[2];
+-		*config = buf[3];
+-	} else {
+-		ret = i2c_master_recv(adc->i2c, buf, 3);
+-		temp = buf[0] << 8 | buf[1];
+-		*config = buf[2];
+-	}
++	len = (sample_rate == MCP3422_SRATE_3) ? 4 : 3;
++
++	ret = i2c_master_recv(adc->i2c, buf, len);
++	if (ret < 0)
++		return ret;
++
++	/* config byte is always the last */
++	*config = buf[--len];
++
++	/* format returned value */
++	for (i = 0, temp = 0; len > 0; i+=8)
++		temp |= ((u32)buf[--len] << i);
++
++	dev_dbg(&adc->i2c->dev,
++		"%s: i2c read: value = 0x%08x, config = 0x%02x\n",
++		__func__, temp, *config);
+ 
+ 	*value = sign_extend32(temp, mcp3422_sign_extend[sample_rate]);
+ 
+-	return ret;
++	return 0;
+ }
+ 
+-static int mcp3422_read_channel(struct mcp3422 *adc,
+-				struct iio_chan_spec const *channel, int *value)
++static int mcp3422_read_or_poll(struct mcp3422 *adc, u32 delay_us, int *value)
+ {
++	int i, steps, step_us = 10000; /*10ms*/
+ 	int ret;
+ 	u8 config;
++
++	if (!delay_us)
++		return mcp3422_read(adc, value, &config);
++
++	steps = delay_us / step_us + ((delay_us % step_us) ? 1 : 0);
++	for (i = 0; i < steps; i++) {
++		ret = mcp3422_read(adc, value, &config);
++		if (ret)
++			return ret;
++		if (!(config & MCP3422_READY_BIT)) {
++			dev_dbg(&adc->i2c->dev, "%s: ready bit cleared at step = %d",
++				__func__, i);
++			return 0;
++		}
++		usleep_range(step_us, step_us + 100);
++	}
++	return -ETIMEDOUT;
++}
++
++static int mcp3422_read_channel(struct mcp3422 *adc,
++				struct iio_chan_spec const *channel,
++				int *value)
++{
+ 	u8 req_channel = channel->channel;
++	u8 mode	= MCP3422_ADC_MODE(adc->config);
++	u8 sample_rate = MCP3422_SAMPLE_RATE(adc->config);
++	u32 delay_us = 0;
++	int ret, i;
++	u8 config;
++
++	dev_dbg(&adc->i2c->dev, "%s: config = 0x%02x, mode = %d, req_channel = %d",
++		__func__, adc->config,  mode, req_channel);
+ 
+-	if (req_channel != MCP3422_CHANNEL(adc->config)) {
++	if (req_channel != MCP3422_CHANNEL(adc->config)
++		|| mode == MCP3422_ADC_ONE_SHOT) {
+ 		config = adc->config;
+ 		config &= ~MCP3422_CHANNEL_MASK;
+ 		config |= MCP3422_CHANNEL_VALUE(req_channel);
+ 		config &= ~MCP3422_PGA_MASK;
+ 		config |= MCP3422_PGA_VALUE(adc->pga[req_channel]);
++
++		if (mode == MCP3422_ADC_ONE_SHOT)
++			/* one-shot mode: signal READY bit to perform ADC */
++			config |= MCP3422_READY_BIT;
++		else
++			config &= ~MCP3422_READY_BIT;
++
+ 		ret = mcp3422_update_config(adc, config);
+ 		if (ret < 0)
+ 			return ret;
+-		msleep(mcp3422_read_times[MCP3422_SAMPLE_RATE(adc->config)]);
++
++		/* wait for next sample to be converted */
++		delay_us = mcp3422_read_delays[sample_rate];
+ 	}
+ 
+-	return mcp3422_read(adc, value, &config);
++	return mcp3422_read_or_poll(adc, delay_us, value);
+ }
+ 
+ static int mcp3422_read_raw(struct iio_dev *iio,
+@@ -158,9 +240,9 @@ static int mcp3422_read_raw(struct iio_dev *iio,
+ {
+ 	struct mcp3422 *adc = iio_priv(iio);
+ 	int err;
+-
++	u8 req_channel = channel->channel;
+ 	u8 sample_rate = MCP3422_SAMPLE_RATE(adc->config);
+-	u8 pga		 = MCP3422_PGA(adc->config);
++	u8 pga		= adc->pga[req_channel];
+ 
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_RAW:
+@@ -187,8 +269,8 @@ static int mcp3422_read_raw(struct iio_dev *iio,
+ }
+ 
+ static int mcp3422_write_raw(struct iio_dev *iio,
+-			struct iio_chan_spec const *channel, int val1,
+-			int val2, long mask)
++			     struct iio_chan_spec const *channel,
++			     int val1, int val2, long mask)
+ {
+ 	struct mcp3422 *adc = iio_priv(iio);
+ 	u8 temp;
+@@ -210,6 +292,8 @@ static int mcp3422_write_raw(struct iio_dev *iio,
+ 				config |= MCP3422_CHANNEL_VALUE(req_channel);
+ 				config &= ~MCP3422_PGA_MASK;
+ 				config |= MCP3422_PGA_VALUE(adc->pga[req_channel]);
++				/* clear ready bit, no ADC is needed */
++				config &= ~MCP3422_READY_BIT;
+ 
+ 				return mcp3422_update_config(adc, config);
+ 			}
+@@ -240,6 +324,8 @@ static int mcp3422_write_raw(struct iio_dev *iio,
+ 		config |= MCP3422_CHANNEL_VALUE(req_channel);
+ 		config &= ~MCP3422_SRATE_MASK;
+ 		config |= MCP3422_SAMPLE_RATE_VALUE(temp);
++		/* clear ready bit, no ADC is needed */
++		config &= ~MCP3422_READY_BIT;
+ 
+ 		return mcp3422_update_config(adc, config);
+ 
+@@ -287,14 +373,73 @@ static ssize_t mcp3422_show_scales(struct device *dev,
+ 		mcp3422_scales[sample_rate][3]);
+ }
+ 
++static ssize_t mcp3422_adc_mode_show(struct device *dev,
++                struct device_attribute *attr, char *buf)
++{
++	struct mcp3422 *adc = iio_priv(dev_to_iio_dev(dev));
++	u8 mode	= MCP3422_ADC_MODE(adc->config);
++	int i;
++
++	for (i = 0; i< ARRAY_SIZE(mcp3422_adc_modes); i++) {
++		if (mode == mcp3422_adc_modes[i].val)
++			return sprintf(buf, "%s\n",
++				mcp3422_adc_modes[i].name);
++	}
++	return -EINVAL;
++}
++
++static int mcp3422_parse_mode_string(const char *str_mode, u8 *mode)
++{
++	int i;
++
++	for (i = 0; i< ARRAY_SIZE(mcp3422_adc_modes); i++) {
++		if (sysfs_streq(str_mode, mcp3422_adc_modes[i].name)) {
++			*mode = mcp3422_adc_modes[i].val;
++			return 0;
++		}
++	}
++	return -EINVAL;
++}
++
++static ssize_t mcp3422_adc_mode_set(struct device *dev,
++				struct device_attribute *attr,
++				const char *buf, size_t len)
++{
++	struct mcp3422 *adc = iio_priv(dev_to_iio_dev(dev));
++	u8 mode, newconfig;
++	int ret;
++
++	ret = mcp3422_parse_mode_string(buf, &mode);
++	if (ret) {
++		dev_err(&adc->i2c->dev, "can't parse mode value\n");
++		return ret;
++	}
++
++	/* update mode bit */
++	newconfig = adc->config;
++	newconfig &= ~MCP3422_ADC_MODE_MASK;
++	newconfig |= MCP3422_ADC_MODE_VALUE(mode);
++	/* clear ready bit, no ADC is needed */
++	newconfig &= ~MCP3422_READY_BIT;
++
++	ret = mcp3422_update_config(adc, newconfig);
++	if (ret < 0)
++		return ret;
++
++	return len;
++}
++
+ static IIO_DEVICE_ATTR(sampling_frequency_available, S_IRUGO,
+ 		mcp3422_show_samp_freqs, NULL, 0);
+ static IIO_DEVICE_ATTR(in_voltage_scale_available, S_IRUGO,
+ 		mcp3422_show_scales, NULL, 0);
++static IIO_DEVICE_ATTR(conversion_mode, S_IRUGO|S_IWUSR,
++		mcp3422_adc_mode_show, mcp3422_adc_mode_set, 0);
+ 
+ static struct attribute *mcp3422_attributes[] = {
+ 	&iio_dev_attr_sampling_frequency_available.dev_attr.attr,
+ 	&iio_dev_attr_in_voltage_scale_available.dev_attr.attr,
++	&iio_dev_attr_conversion_mode.dev_attr.attr,
+ 	NULL,
+ };
+ 
+@@ -331,7 +476,8 @@ static int mcp3422_probe(struct i2c_client *client,
+ 	struct iio_dev *indio_dev;
+ 	struct mcp3422 *adc;
+ 	int err;
+-	u8 config;
++	u8 config, mode;
++        const char *str_mode;
+ 
+ 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C))
+ 		return -EOPNOTSUPP;
+@@ -372,8 +518,16 @@ static int mcp3422_probe(struct i2c_client *client,
+ 		break;
+ 	}
+ 
++	if (!device_property_read_string(&client->dev,
++				"conversion-mode", &str_mode)) {
++		err = mcp3422_parse_mode_string(str_mode, &mode);
++		if (err < 0)
++			return err;
++	} else
++		mode = MCP3422_ADC_CONTINUOUS;
++
+ 	/* meaningful default configuration */
+-	config = (MCP3422_CONT_SAMPLING
++	config = (MCP3422_ADC_MODE_VALUE(mode)
+ 		| MCP3422_CHANNEL_VALUE(0)
+ 		| MCP3422_PGA_VALUE(MCP3422_PGA_1)
+ 		| MCP3422_SAMPLE_RATE_VALUE(MCP3422_SRATE_240));
+@@ -405,8 +559,8 @@ MODULE_DEVICE_TABLE(i2c, mcp3422_id);
+ 
+ #ifdef CONFIG_OF
+ static const struct of_device_id mcp3422_of_match[] = {
+-	{ .compatible = "mcp3422" },
+-	{ }
++	{ .compatible = "microchip,mcp3422" },
++	{ /*sentinel*/ }
+ };
+ MODULE_DEVICE_TABLE(of, mcp3422_of_match);
+ #endif
+-- 
+2.17.1
+

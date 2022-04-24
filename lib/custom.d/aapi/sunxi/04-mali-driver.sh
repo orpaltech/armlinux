@@ -1,5 +1,5 @@
 #
-# Build Mali Utgard GPU Kernel module (sunxi)
+# Mali GPU Kernel module (sunxi)
 #
 
 SUNXI_DIR="${EXTRADIR}/drivers/sunxi"

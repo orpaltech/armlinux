@@ -18,15 +18,15 @@
 
 
 BASEDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
-SRCDIR=$BASEDIR/sources
-LIBDIR=$BASEDIR/lib
-TOOLCHAINDIR=$BASEDIR/toolchains
-OUTPUTDIR=$BASEDIR/output
+SRCDIR=${BASEDIR}/sources
+LIBDIR=${BASEDIR}/lib
+TOOLCHAINDIR=${BASEDIR}/toolchains
+OUTPUTDIR=${BASEDIR}/output
 DEFAULT_CONFIG="armlinux"
 WITH_UBOOT=yes
 
-. $LIBDIR/common.sh
-. $LIBDIR/packages-update.sh
+. ${LIBDIR}/common.sh
+. ${LIBDIR}/packages-update.sh
 
 # start background sudo monitor
 display_alert "This script requires root privileges, entering sudo" "" "wrn"
@@ -76,7 +76,10 @@ fi
 
 # board configuration
 if [ -z "${BOARD}" ] ; then
-. $LIBDIR/ui/board-select.sh
+. ${LIBDIR}/ui/board-select.sh
+elif [[ -n "${BOARDS_SUPPORTED}" ]] && [[ ! ${BOARDS_SUPPORTED} =~ (^|,)${BOARD}(,|$) ]] ; then
+  echo "error: board not supported by configuration!"
+  exit 1
 fi
 if [ -z "${BOARD}" ] ; then
   echo "error: board must be specified!"

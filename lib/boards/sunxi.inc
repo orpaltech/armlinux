@@ -15,10 +15,10 @@ LINUX_PLATFORM="arm-linux-gnueabihf"
 MESON_CPU_FAMILY="arm"
 MESON_CPU="armv7hl"
 
-# you can directly specify tolchains
-# UBOOT_CROSS_COMPILE=${TOOLCHAINDIR}/armv7-eabihf--glibc--stable-2020.08-1/bin/arm-linux-
-# KERNEL_CROSS_COMPILE=${TOOLCHAINDIR}/armv7-eabihf--glibc--stable-2020.08-1/bin/arm-linux-                             
-# CROSS_COMPILE=${TOOLCHAINDIR}/armv7-eabihf--glibc--stable-2020.08-1/bin/arm-linux-
+# You can directly specify tolchain paths
+#UBOOT_CROSS_COMPILE=  
+#KERNEL_CROSS_COMPILE=
+#CROSS_COMPILE=
 
 QEMU_BINARY="/usr/bin/qemu-arm-static"
 
@@ -50,7 +50,7 @@ KERNEL_IMAGE_TARGET="linuz.img"
 # FELBOOT_FDT_ADDR=0x43000000
 
 # The option should be overriden if you want GPU support in QT5
-QT5_OPENGL_OPTION="-no-opengl"
+QT_OPENGL_OPTION="-no-opengl"
 
 #
 # Custom EDID binary for DRM

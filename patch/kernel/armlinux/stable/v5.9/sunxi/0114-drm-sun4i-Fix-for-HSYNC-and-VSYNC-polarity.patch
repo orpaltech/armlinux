@@ -1,0 +1,31 @@
+From e027d99ed4cf30db6e18cce7da949233c430d4f8 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Mon, 23 Nov 2020 11:08:35 +0300
+Subject: [PATCH] drm/sun4i: Fix for HSYNC and VSYNC polarity
+
+---
+ drivers/gpu/drm/sun4i/sun4i_tcon.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.c b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+index e40c542..b3e6e79 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.c
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+@@ -485,10 +485,12 @@ static void sun4i_tcon0_mode_set_lvds(struct sun4i_tcon *tcon,
+ 	regmap_write(tcon->regs, SUN4I_TCON0_LVDS_IF_REG, reg);
+ 
+ 	/* Setup the polarity of the various signals */
+-	if (!(mode->flags & DRM_MODE_FLAG_PHSYNC))
++/*	if (!(mode->flags & DRM_MODE_FLAG_PHSYNC))*/
++	if (mode->flags & DRM_MODE_FLAG_PHSYNC)
+ 		val |= SUN4I_TCON0_IO_POL_HSYNC_POSITIVE;
+ 
+-	if (!(mode->flags & DRM_MODE_FLAG_PVSYNC))
++/*	if (!(mode->flags & DRM_MODE_FLAG_PVSYNC))*/
++	if (mode->flags & DRM_MODE_FLAG_PVSYNC)
+ 		val |= SUN4I_TCON0_IO_POL_VSYNC_POSITIVE;
+ 
+ 	regmap_write(tcon->regs, SUN4I_TCON0_IO_POL_REG, val);
+-- 
+2.25.1
+

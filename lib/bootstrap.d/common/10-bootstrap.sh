@@ -49,10 +49,10 @@ if [ ! -f "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" ] ; then
   tar -czf "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz" -C "${BUILDDIR}/" "chroot"
 
 else
-
   echo "Rootfs '${ROOTFS_PKG}' already exists, extract it"
   rm -rf ${R}/*
   tar -C "${R}/" --strip-components=1 -xzf "${BASEDIR}/debs/${ROOTFS_PKG}.tar.gz"
+
 fi
 echo "Done."
 

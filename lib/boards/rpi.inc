@@ -47,8 +47,8 @@ KERNEL_MKIMAGE_LOADADDR=0x00008000
 KERNEL_IMAGE_SOURCE=zImage
 KERNEL_IMAGE_TARGET=linuz.img
 
-# The option should be overriden to change GPU support in QT5
-QT5_OPENGL_OPTION="-opengl es2"
+# The option should be overriden to change GPU support in QT
+QT_OPENGL_OPTION="-opengl es2"
 
 # Extra debian packages to be installed for RaspberryPi
 APT_BOARD_PACKAGES="rng-tools fbset"

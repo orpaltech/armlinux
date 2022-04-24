@@ -1,9 +1,9 @@
 #
-# Build and Setup Kernel (RPi 2/3/4 script)
+# Setup Kernel (RPi 2/3/4 script)
 #
 
 # Fail early: Is firmware ready?
-if [ ! -d "$FIRMWARE_DIR" ] ; then
+if [ ! -d "${FIRMWARE_DIR}" ] ; then
   echo "error: firmware directory not specified or not found!"
   exit 1
 fi

@@ -19,26 +19,26 @@
 
 GCC_VERSION=10
 
-REQUIRED_PACKAGES="autoconf automake \
-bc binfmt-support bison bmap-tools \
-cmake \
-debootstrap debian-archive-keyring device-tree-compiler dialog dosfstools \
-flex \
-git \
-libmpc-dev \
-libssl-dev \
-ninja-build \
-qemu-user-static quilt \
-patch \
-python2.7 python-mako \
-python3 python3-pip python3-mako \
-rsync \
-sunxi-tools swig \
-texi2html texinfo \
-u-boot-tools \
-whois \
-gcc-${GCC_VERSION} g++-${GCC_VERSION}"
+REQUIRED_PACKAGES="autoconf automake bc binfmt-support bison bmap-tools "\
+"cmake "\
+"debootstrap debian-archive-keyring device-tree-compiler dialog dosfstools "\
+"flex "\
+"git "\
+"libmpc-dev "\
+"libssl-dev "\
+"ninja-build "\
+"qemu-user-static quilt "\
+"patch "\
+"python2.7 python-mako python3 python3-pip python3-mako "\
+"rsync "\
+"sunxi-tools swig "\
+"texi2html texinfo "\
+"u-boot-tools "\
+"whois "\
+"xz-utils "\
+"gcc-${GCC_VERSION} g++-${GCC_VERSION}"
 
+# will find out missing required packages
 MISSING_PACKAGES=""
 
 #-----------------------------------------------------------------------

@@ -13,7 +13,7 @@
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2020 ORPAL Technology, Inc.
+# Copyright (C) 2013-2022 ORPAL Technology, Inc.
 #
 ########################################################################
 
@@ -22,6 +22,7 @@
 NUM_CPU_CORES=$((CPUINFO_NUM_CORES / 2))
 
 [[ "${KERNEL_VERBOSE}" = yes ]] && KERNEL_V_OPTION="V=1"
+[[ -z "${KERNEL_MAKE_DEB_PKG}" ]] && KERNEL_MAKE_DEB_PKG="yes"
 [[ -z "${KERNEL_DEB_COMPRESS}" ]] && KERNEL_DEB_COMPRESS="none"
 
 . ${LIBDIR}/sources-update.sh
@@ -48,7 +49,7 @@ if [ "${ENABLE_UBOOT}" = yes ] ; then
 	export CROSS_COMPILE="${UBOOT_CROSS_COMPILE}"
 	export USE_PRIVATE_LIBGCC="yes"
 
-        cd $UBOOT_SOURCE_DIR
+        cd ${UBOOT_SOURCE_DIR}
 
 	if [[ $CLEAN =~ (^|,)"uboot"(,|$) ]] ; then
 		echo "Clean u-boot directory"
@@ -73,13 +74,12 @@ if [ "${ENABLE_UBOOT}" = yes ] ; then
 	[ $? -eq 0 ] || exit $?;
 
 	# Concatenate u-boot outputs for sunxi boards with ATF
-	if [[ $SOC_FAMILY =~ ^sun([0-9]+|x)i$ ]] && [[ "${SUNXI_ATF_USED}" = "yes" ]] && [[ ! -f ${UBOOT_SOURCE_DIR}/u-boot-sunxi-with-spl.bin ]] ; then
-		cat $UBOOT_SOURCE_DIR/spl/sunxi-spl.bin $UBOOT_SOURCE_DIR/u-boot.itb > "${UBOOT_SOURCE_DIR}/u-boot-sunxi-with-spl.bin"
+	if [[ ${SOC_FAMILY} =~ ^sun([0-9]+|x)i$ ]] && [[ "${SUNXI_ATF_USED}" = yes ]] && [[ ! -f ${UBOOT_SOURCE_DIR}/u-boot-sunxi-with-spl.bin ]] ; then
+		cat ${UBOOT_SOURCE_DIR}/spl/sunxi-spl.bin ${UBOOT_SOURCE_DIR}/u-boot.itb > "${UBOOT_SOURCE_DIR}/u-boot-sunxi-with-spl.bin"
 		echo "Created binary ${UBOOT_SOURCE_DIR}/u-boot-sunxi-with-spl.bin"
 	fi
 
-
-#	echo "Create U-Boot deb package..."
+	echo "Create U-Boot deb package..."
 
 	# create directory structure for the .deb package
 #	UBOOT_DEB_PKG_VER="${UBOOT_RELEASE}-${UBOOT_ARCH}"
@@ -96,8 +96,7 @@ if [ "${ENABLE_UBOOT}" = yes ] ; then
 	# TODO: create u-boot deb package
 	#
 
-
-	echo "Done."
+	echo "[To be]Done."
 fi
 }
 
@@ -141,39 +140,53 @@ compile_kernel()
 		${KERNEL_V_OPTION}
 	[ $? -eq 0 ] || exit $?;
 
+
 	# read kernel release version
 #	KERNEL_VERSION=$(make kernelversion)
 	KERNEL_VERSION=$(cat "${KERNEL_SOURCE_DIR}/include/config/kernel.release")
-
-
-	echo "Create Kernel DEB-packages..."
-
-	# create directory structure for the .deb package
-#	if [ -z "${KERNEL_REPO_TAG}" ] ; then
-#		KERNEL_DEB_PKG_VER="${KERNEL_REPO_TAG}-${KERNEL_ARCH}"
-#	else
-#		KERNEL_DEB_PKG_VER="${KERNEL_RELEASE}-${KERNEL_BRANCH}-${KERNEL_ARCH}"
-#	fi
 	KERNEL_DEB_PKG_VER="${PROD_VERSION}-${CONFIG}-${KERNEL_VERSION}-${KERNEL_REPO_NAME}"
-#	KERNEL_NAME="${KERNEL_REPO_NAME}-${KERNEL_DEB_PKG_VER}-${VERSION}"
-#	KERNEL_DEB_PKG="kernel-${KERNEL_NAME}"
-#	KERNEL_DEB_DIR="${DEBS_DIR}/${KERNEL_DEB_PKG}-deb"
 
-#	mkdir -p ${KERNEL_DEB_DIR}
-#	rm -rf ${KERNEL_DEB_DIR}/*
-#	mkdir -p ${KERNEL_DEB_DIR}/usr/lib/${UBOOT_NAME}
-#	mkdir ${KERNEL_DEB_DIR}/DEBIAN
+	if [ "${KERNEL_MAKE_DEB_PKG}" = yes ] ; then
+		echo "Create Kernel DEB-packages..."
 
-	chrt -i 0 make -j${NUM_CPU_CORES} bindeb-pkg \
-		KDEB_SOURCENAME="linux-${KERNEL_REPO_NAME}" \
-		KDEB_PKGVERSION="${KERNEL_DEB_PKG_VER}" \
-		KDEB_COMPRESS=${KERNEL_DEB_COMPRESS} \
-		KBUILD_DEBARCH=${DEBIAN_RELEASE_ARCH} \
-		DEBFULLNAME=${MAINTAINER_NAME} \
-		DEBEMAIL=${MAINTAINER_EMAIL}
+		# TODO: cleanup here
+		#
+		# create directory structure for the .deb package
+	#	if [ -z "${KERNEL_REPO_TAG}" ] ; then
+	#		KERNEL_DEB_PKG_VER="${KERNEL_REPO_TAG}-${KERNEL_ARCH}"
+	#	else
+	#		KERNEL_DEB_PKG_VER="${KERNEL_RELEASE}-${KERNEL_BRANCH}-${KERNEL_ARCH}"
+	#	fi
 
-	rsync --remove-source-files -rq ../*.deb "${OUTPUTDIR}/debs/"
-	[ $? -eq 0 ] || exit $?;
+	#	KERNEL_NAME="${KERNEL_REPO_NAME}-${KERNEL_DEB_PKG_VER}-${VERSION}"
+	#	KERNEL_DEB_PKG="kernel-${KERNEL_NAME}"
+	#	KERNEL_DEB_DIR="${DEBS_DIR}/${KERNEL_DEB_PKG}-deb"
+
+	#	mkdir -p ${KERNEL_DEB_DIR}
+	#	rm -rf ${KERNEL_DEB_DIR}/*
+	#	mkdir -p ${KERNEL_DEB_DIR}/usr/lib/${UBOOT_NAME}
+	#	mkdir ${KERNEL_DEB_DIR}/DEBIAN
+
+#			KDEB_SOURCENAME="linux-${KERNEL_REPO_NAME}" \
+#                        KDEB_PKGVERSION=${KERNEL_DEB_PKG_VER} \
+#                        KDEB_COMPRESS=${KERNEL_DEB_COMPRESS} \
+#                        KBUILD_DEBARCH=${DEBIAN_RELEASE_ARCH} \
+#                        DEBFULLNAME=${MAINTAINER_NAME} \
+#                        DEBEMAIL=${MAINTAINER_EMAIL}
+
+		export KDEB_SOURCENAME="linux-${KERNEL_REPO_NAME}"
+		export KDEB_PKGVERSION=${KERNEL_DEB_PKG_VER}
+		export KDEB_COMPRESS=${KERNEL_DEB_COMPRESS}
+		export KBUILD_DEBARCH=${DEBIAN_RELEASE_ARCH}
+		export DEBFULLNAME=${MAINTAINER_NAME}
+		export DEBEMAIL=${MAINTAINER_EMAIL}
+
+		chrt -i 0 make -j${NUM_CPU_CORES} bindeb-pkg
+		[ $? -eq 0 ] || exit $?;
+
+		rsync --remove-source-files -rq ../*.deb "${OUTPUTDIR}/debs/"
+		[ $? -eq 0 ] || exit $?;
+	fi
 
 	echo "Done."
 }

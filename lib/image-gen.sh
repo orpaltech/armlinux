@@ -30,6 +30,7 @@ if [ -z "${CONFIG}" ] ; then
 fi
 
 LIBDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
+PATCHDIR=$(realpath -s "${LIBDIR}/../patch")
 ARMLINUX_CONF=${LIBDIR}/../${CONFIG}.conf
 WLAN_CONF=${LIBDIR}/../wlan
 
@@ -94,12 +95,11 @@ set_cross_compile
 [[ "${SUPPORT_WLAN}" != "yes" ]] && ENABLE_WLAN="no"
 
 # Introduce settings
-set -e
-
 echo -n -e "\n#\n# Bootstrap Settings\n#\n"
 set -x
 
-NUM_CPU_CORES=$CPUINFO_NUM_CORES
+# (!!!) Do not overload CPU, use only half of CPU cores
+NUM_CPU_CORES=$((CPUINFO_NUM_CORES / 2))
 
 # Debian release
 DEBIAN_RELEASE=${DEBIAN_RELEASE:="stretch"}
@@ -161,12 +161,16 @@ ENABLE_REDUCE=${ENABLE_REDUCE:="no"}
 ENABLE_HARDNET=${ENABLE_HARDNET:="no"}
 ENABLE_IPTABLES=${ENABLE_IPTABLES:="no"}
 ENABLE_GDB=${ENABLE_GDB:="no"}
+ENABLE_QT=${ENABLE_QT:="no"}
+
+# Allows for installation of experimental/unstable Debian packages
+DEBIAN_EXPERIMENTAL=${DEBIAN_EXPERIMENTAL:="no"}
 
 DRM_DEBUG=${DRM_DEBUG:=""}
 
 # Kernel installation settings
 KERNEL_INSTALL_HEADERS=${KERNEL_INSTALL_HEADERS:="yes"}
-KERNEL_INSTALL_SOURCE=${KERNEL_INSTALL_SOURCE:="yes"}
+KERNEL_INSTALL_SOURCE=${KERNEL_INSTALL_SOURCE:="no"}
 
 # Reduce disk usage settings
 REDUCE_APT=${REDUCE_APT:="yes"}
@@ -187,7 +191,7 @@ set +x
 display_alert "Selected platform:" "${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_ARCH}])" "info"
 
 
-APT_INCLUDES="avahi-daemon,rsync,apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,systemd,psmisc,u-boot-tools,i2c-tools,usbutils,initramfs-tools,console-setup,locales,sudo,software-properties-common,build-essential"
+APT_INCLUDES="avahi-daemon,rsync,apt-transport-https,apt-utils,ca-certificates,debian-archive-keyring,systemd,systemd-timesyncd,psmisc,u-boot-tools,i2c-tools,usbutils,initramfs-tools,console-setup,sudo,software-properties-common,swupdate"
 
 # See if additional packages are required
 if [ ! -z "${APT_CONFIG_INCLUDES}" ] ; then
@@ -330,6 +334,7 @@ copy_custom_files()
   fi
 }
 
+set -e
 
 SCRIPTS_DIR=${BASEDIR}/scripts
 BOOTSTRAP_DIR=$(mktemp -u ${SCRIPTS_DIR}/bootstrap.d.XXXXXXXXX)
@@ -353,13 +358,16 @@ copy_custom_files "${FILES_D}" "${FILES_DIR}"
 # Prepare bootstrap scripts
 copy_custom_files "${BOOTSTRAP_D}" "${BOOTSTRAP_DIR}" ".sh"
 
+
 # Execute bootstrapping scripts
 num_files=$(count_files "${BOOTSTRAP_DIR}/*.sh")
 if [ ${num_files} -gt 0 ] ; then
   # Execute bootstrap scripts
   for SCRIPT in ${BOOTSTRAP_DIR}/*.sh; do
     head -n 3 ${SCRIPT}
+    set -e
     . ${SCRIPT}
+    set +e
   done
 fi
 
@@ -383,7 +391,9 @@ if [ -d "${CUSTOM_D}" ] ; then
     # Execute custom bootstrap scripts
     for SCRIPT in $CUSTOM_DIR/*.sh; do
       head -n 3 ${SCRIPT}
+      set -e
       . ${SCRIPT}
+      set +e
     done
   fi
 
@@ -393,13 +403,16 @@ if [ -d "${CUSTOM_D}" ] ; then
     chroot_exec /bin/bash -x <<'EOF'
     for SCRIPT in /chroot_scripts/* ; do
       if [ -f ${SCRIPT} -a -x ${SCRIPT} ] ; then
+	set -e
         ${SCRIPT}
+	set +e
       fi
     done
 EOF
   fi
 fi
 
+set -e
 rm -rf "${R}/chroot_scripts"
 
 

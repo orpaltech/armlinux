@@ -17,7 +17,7 @@
 ########################################################################
 
 # common clean options, can be overriden in board-specific config files
-CLEAN_OPTIONS="uboot firmware kernel rootfs gdb qt5"
+CLEAN_OPTIONS="uboot firmware kernel rootfs gdb qt"
 
 CPUINFO_NUM_CORES=$(grep -c ^processor /proc/cpuinfo)
 

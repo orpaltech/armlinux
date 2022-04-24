@@ -48,7 +48,9 @@ KERNEL_MKIMAGE_COMPRESS=none
 KERNEL_MKIMAGE_LOADADDR=0x00008000
 # Can be compressed source (Image.gz) or uncompressed (Image)
 KERNEL_IMAGE_SOURCE="Image"
+#KERNEL_IMAGE_SOURCE="Image.gz"
 KERNEL_IMAGE_TARGET="linux.uImage"
+#KERNEL_IMAGE_TARGET="linux.zImage"
 
 # Custom EDID binary for DRM
 # DRM_USE_FIRMWARE_EDID="yes"
@@ -56,8 +58,8 @@ KERNEL_IMAGE_TARGET="linux.uImage"
 # DRM_CONNECTOR="HDMI-A-1"
 # DRM_VIDEO_MODE="640x480-24@60"
 
-# The option should be overriden to change GPU support in QT5
-QT5_OPENGL_OPTION="-opengl es2"
+# The option should be overriden to change GPU support in QT
+QT_OPENGL_OPTION="-opengl es2"
 
 # Extra debian packages to be installed for RaspberryPi
 APT_BOARD_PACKAGES="rng-tools fbset"

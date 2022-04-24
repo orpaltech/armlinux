@@ -1,0 +1,76 @@
+From f7a3ee8e8b49ab35972acab5eef80f36fdf93ff8 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Mon, 17 Feb 2020 00:12:18 +0300
+Subject: [PATCH] input: Use reset controller in edt-ft5x06 driver
+
+---
+ drivers/input/touchscreen/edt-ft5x06.c | 23 +++++++++--------------
+ 1 file changed, 9 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/input/touchscreen/edt-ft5x06.c b/drivers/input/touchscreen/edt-ft5x06.c
+index d258772..a49c694 100644
+--- a/drivers/input/touchscreen/edt-ft5x06.c
++++ b/drivers/input/touchscreen/edt-ft5x06.c
+@@ -26,6 +26,7 @@
+ #include <linux/module.h>
+ #include <linux/ratelimit.h>
+ #include <linux/regulator/consumer.h>
++#include <linux/reset.h>
+ #include <linux/slab.h>
+ #include <linux/uaccess.h>
+ 
+@@ -92,7 +93,7 @@ struct edt_ft5x06_ts_data {
+ 	u16 num_y;
+ 	struct regulator *vcc;
+ 
+-	struct gpio_desc *reset_gpio;
++	struct reset_control *reset;
+ 	struct gpio_desc *wake_gpio;
+ 
+ #if defined(CONFIG_DEBUG_FS)
+@@ -1096,12 +1097,11 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
+ 	if (error)
+ 		return error;
+ 
+-	tsdata->reset_gpio = devm_gpiod_get_optional(&client->dev,
+-						     "reset", GPIOD_OUT_HIGH);
+-	if (IS_ERR(tsdata->reset_gpio)) {
+-		error = PTR_ERR(tsdata->reset_gpio);
++	tsdata->reset = devm_reset_control_get(&client->dev, "reset");
++	if (IS_ERR(tsdata->reset)) {
++		error = PTR_ERR(tsdata->reset);
+ 		dev_err(&client->dev,
+-			"Failed to request GPIO reset pin, error %d\n", error);
++			"Failed to get our reset line, error: %d\n", error);
+ 		return error;
+ 	}
+ 
+@@ -1119,11 +1119,7 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
+ 		gpiod_set_value_cansleep(tsdata->wake_gpio, 1);
+ 	}
+ 
+-	if (tsdata->reset_gpio) {
+-		usleep_range(5000, 6000);
+-		gpiod_set_value_cansleep(tsdata->reset_gpio, 0);
+-		msleep(300);
+-	}
++	reset_control_reset(tsdata->reset);
+ 
+ 	input = devm_input_allocate_device(&client->dev);
+ 	if (!input) {
+@@ -1210,10 +1206,9 @@ static int edt_ft5x06_ts_probe(struct i2c_client *client,
+ 	edt_ft5x06_ts_prepare_debugfs(tsdata, dev_driver_string(&client->dev));
+ 
+ 	dev_dbg(&client->dev,
+-		"EDT FT5x06 initialized: IRQ %d, WAKE pin %d, Reset pin %d.\n",
++		"EDT FT5x06 initialized: IRQ %d, WAKE pin %d.\n",
+ 		client->irq,
+-		tsdata->wake_gpio ? desc_to_gpio(tsdata->wake_gpio) : -1,
+-		tsdata->reset_gpio ? desc_to_gpio(tsdata->reset_gpio) : -1);
++		tsdata->wake_gpio ? desc_to_gpio(tsdata->wake_gpio) : -1);
+ 
+ 	return 0;
+ }
+-- 
+2.17.1
+

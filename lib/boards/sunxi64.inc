@@ -49,14 +49,16 @@ KERNEL_MKIMAGE_WRAP=yes
 KERNEL_MKIMAGE_COMPRESS=none
 KERNEL_MKIMAGE_LOADADDR=0x40000000
 # Use compressed (Image.gz) or uncompressed (Image) source file
-KERNEL_IMAGE_SOURCE=Image
+KERNEL_IMAGE_SOURCE="Image"
+#KERNEL_IMAGE_SOURCE="Image.gz"
 KERNEL_IMAGE_TARGET="linux.uImage"
+#KERNEL_IMAGE_TARGET="linux.zImage"
 
 # No wireless by default, boards must override
 SUPPORT_WLAN="no"
 
 # The option should be overriden if you want GPU support in QT5
-QT5_OPENGL_OPTION="-no-opengl"
+QT_OPENGL_OPTION="-no-opengl"
 
 # sunxi aarch64-specific clean options
 CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa-lima"

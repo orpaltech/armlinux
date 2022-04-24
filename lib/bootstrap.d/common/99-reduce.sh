@@ -43,7 +43,7 @@ if [ "${ENABLE_REDUCE}" = yes ] ; then
 
   # Replace bash shell by dash shell (experimental)
   if [ "$REDUCE_BASH" = yes ] ; then
-    echo "Yes, do as I say!" | chroot_exec apt-get purge -qq -y $APT_FORCE_YES bash
+    echo "Yes, do as I say!" | chroot_exec apt-get purge -qq -y ${APT_FORCE_YES} bash
     chroot_exec update-alternatives --install /bin/bash bash /bin/dash 100
   fi
 
@@ -51,3 +51,5 @@ if [ "${ENABLE_REDUCE}" = yes ] ; then
   rm -fr "${R}/var/lib/apt/lists/*"
   chroot_exec apt-get -qq -y update
 fi
+
+echo "Done."

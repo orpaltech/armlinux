@@ -5,9 +5,6 @@
 #				software in isolated containers
 ########################################################################
 
-update-alternatives --set iptables /usr/sbin/iptables-legacy
-update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
-
 apt-get -qq -y update
 
 curl -fsSL https://get.docker.com -o /chroot_scripts/get-docker.sh

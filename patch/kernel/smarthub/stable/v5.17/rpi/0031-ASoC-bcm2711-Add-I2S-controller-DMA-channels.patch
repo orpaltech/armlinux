@@ -1,0 +1,28 @@
+From 3d5f744fc45daa66b332a6ecc52819d5483e4b9d Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Mon, 21 Mar 2022 17:22:01 +0300
+Subject: [PATCH] ASoC: bcm2711: Add I2S-controller DMA-channels
+
+---
+ arch/arm/boot/dts/bcm2711.dtsi | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/arm/boot/dts/bcm2711.dtsi b/arch/arm/boot/dts/bcm2711.dtsi
+index 21294f7..1f20cf6 100644
+--- a/arch/arm/boot/dts/bcm2711.dtsi
++++ b/arch/arm/boot/dts/bcm2711.dtsi
+@@ -1056,6 +1056,11 @@
+ 	interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
+ };
+ 
++&i2s {
++	dmas = <&dma 2>, <&dma 3>;
++	dma-names = "tx", "rx";
++};
++
+ &mailbox {
+ 	interrupts = <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>;
+ };
+-- 
+2.25.1
+

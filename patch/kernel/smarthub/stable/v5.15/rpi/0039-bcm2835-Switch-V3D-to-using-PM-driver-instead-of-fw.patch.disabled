@@ -1,0 +1,40 @@
+From b3a4b6d3d993a42cce34bc2f509713ebc02a5576 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <ssuloev@orpaltech.com>
+Date: Sat, 29 Feb 2020 17:58:21 +0300
+Subject: [PATCH] bcm2835: Switch V3D to using PM-driver instead of fw
+
+---
+ arch/arm/boot/dts/bcm2835-common.dtsi      | 1 -
+ arch/arm/boot/dts/bcm2837-rpi-3-a-plus.dts | 4 ++++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/bcm2835-common.dtsi b/arch/arm/boot/dts/bcm2835-common.dtsi
+index 2b1d9d4..4119271 100644
+--- a/arch/arm/boot/dts/bcm2835-common.dtsi
++++ b/arch/arm/boot/dts/bcm2835-common.dtsi
+@@ -130,7 +130,6 @@
+ 			compatible = "brcm,bcm2835-v3d";
+ 			reg = <0x7ec00000 0x1000>;
+ 			interrupts = <1 10>;
+-			power-domains = <&pm BCM2835_POWER_DOMAIN_GRAFX_V3D>;
+ 		};
+ 
+ 		vc4: gpu {
+diff --git a/arch/arm/boot/dts/bcm2837-rpi-3-a-plus.dts b/arch/arm/boot/dts/bcm2837-rpi-3-a-plus.dts
+index 66ab35e..1f234fb 100644
+--- a/arch/arm/boot/dts/bcm2837-rpi-3-a-plus.dts
++++ b/arch/arm/boot/dts/bcm2837-rpi-3-a-plus.dts
+@@ -158,6 +158,10 @@
+ 	bus-width = <4>;
+ };
+ 
++&v3d {
++	power-domains = <&power RPI_POWER_DOMAIN_V3D>;
++};
++
+ /* uart0 communicates with the BT module */
+ &uart0 {
+ 	pinctrl-names = "default";
+-- 
+2.17.1
+

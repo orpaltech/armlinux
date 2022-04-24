@@ -13,7 +13,7 @@
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2021 ORPAL Technology, Inc.
+# Copyright (C) 2013-2022 ORPAL Technology, Inc.
 #
 ########################################################################
 

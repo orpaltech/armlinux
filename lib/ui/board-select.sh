@@ -9,12 +9,14 @@ declare -a board_options
 board_index=0
 for board_conf in ${LIBDIR}/boards/*.conf; do
 	board_key=$(basename $board_conf .conf)
-	board_name=$(sed -n 's/^BOARD_NAME=\([^ ]\+\)/\1/p' $board_conf)
-	soc_name=$(sed -n 's/^SOC_NAME=\([^ ]\+\)/\1/p' $board_conf)
-	board_options[$board_index]="${board_key}"
-	((board_index++))
-	board_options[$board_index]="${board_name} (SoC: ${soc_name})"
-	((board_index++))
+	if [[ -z "${BOARDS_SUPPORTED}" ]] || [[ ${BOARDS_SUPPORTED} =~ (^|,)${board_key}(,|$) ]] ; then
+		board_name=$(sed -n 's/^BOARD_NAME=\([^ ]\+\)/\1/p' $board_conf)
+		soc_name=$(sed -n 's/^SOC_NAME=\([^ ]\+\)/\1/p' $board_conf)
+		board_options[$board_index]="${board_key}"
+		((board_index++))
+		board_options[$board_index]="${board_name} (SoC: ${soc_name})"
+		((board_index++))
+	fi
 done
 
 BOARD=$(dialog  --clear \

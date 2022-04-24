@@ -1,5 +1,5 @@
 #
-# Build and Setup Kernel (Main script)
+# Setup Kernel (Main script)
 #
 
 export ARCH="${KERNEL_ARCH}"
@@ -17,7 +17,6 @@ fi
 # Install kernel modules
 # make -C "${KERNEL_DIR}" INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH="${R}" modules_install
 
-KERNEL_DEB_PKG_VER="${PROD_VERSION}-${CONFIG}-${KERNEL_VERSION}-${KERNEL_REPO_NAME}"
 # Install kernel image DEB-package
 KERNEL_IMAGE_DEB_PKG="linux-image-${KERNEL_VERSION}_${KERNEL_DEB_PKG_VER}_${DEBIAN_RELEASE_ARCH}"
 cp ${BASEDIR}/debs/${KERNEL_IMAGE_DEB_PKG}.deb	${R}/tmp/
