@@ -1,0 +1,58 @@
+From f41a7475eb3715200bb96d233aa607ef52cedc54 Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Mon, 25 Apr 2022 11:51:35 +0300
+Subject: [PATCH] qtbase: configure: Use pkgconfig in lib sources
+
+---
+ configure.json             | 1 +
+ src/corelib/configure.json | 1 +
+ src/gui/configure.json     | 2 ++
+ 3 files changed, 4 insertions(+)
+
+diff --git a/configure.json b/configure.json
+index c273aee..e30093b 100644
+--- a/configure.json
++++ b/configure.json
+@@ -166,6 +166,7 @@
+             },
+             "headers": "zlib.h",
+             "sources": [
++                { "type": "pkgConfig", "args": "zlib >= 1.2" },
+                 { "libs": "-lzdll", "condition": "config.msvc" },
+                 { "libs": "-lzlib", "condition": "config.msvc" },
+                 { "libs": "-lz", "condition": "!config.msvc" },
+diff --git a/src/corelib/configure.json b/src/corelib/configure.json
+index c5e0423..954a7c8 100644
+--- a/src/corelib/configure.json
++++ b/src/corelib/configure.json
+@@ -106,6 +106,7 @@
+             },
+             "headers": [ "unicode/utypes.h", "unicode/ucol.h", "unicode/ustring.h" ],
+             "sources": [
++		{ "type": "pkgConfig", "args": "icu-i18n icu-io icu-uc" },
+                 {
+                     "builds": {
+                         "debug": "-lsicuind -lsicuucd -lsicudtd",
+diff --git a/src/gui/configure.json b/src/gui/configure.json
+index c8c4864..8604d50 100644
+--- a/src/gui/configure.json
++++ b/src/gui/configure.json
+@@ -303,6 +303,7 @@
+             },
+             "headers": "harfbuzz/hb.h",
+             "sources": [
++		{ "type": "pkgConfig", "args": "harfbuzz >= 1.8" },
+                 "-lharfbuzz"
+             ]
+         },
+@@ -493,6 +494,7 @@
+             },
+             "headers": "tslib.h",
+             "sources": [
++		{ "type": "pkgConfig", "args": "tslib" },
+                 "-lts"
+             ]
+         },
+-- 
+2.25.1
+
