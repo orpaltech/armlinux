@@ -2,7 +2,7 @@
 # Debootstrap basic system
 #
 
-ROOTFS_PKG="rootfs-${DEBIAN_RELEASE}_${PROD_VERSION}-${CONFIG}_${DEBIAN_RELEASE_ARCH}"
+ROOTFS_PKG="rootfs-${DEBIAN_RELEASE}-${DEBIAN_RELEASE_ARCH}_${FULL_VERSION}-${CONFIG}"
 
 mkdir -p ${BASEDIR}/debs
 

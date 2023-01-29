@@ -20,18 +20,6 @@ QT_PATCH_BASE_DIR=${PATCHDIR}/qt/qt5/${QT_CUSTOM_VER}
 QT_TARGET_LOCATION="/usr/local"
 QT_TARGET_PREFIX=${QT_TARGET_LOCATION}/qt5pi
 QT_HOST_PREFIX=${QT_BUILD_DIR}/qt5host
-QT_EXT_PREFIX=${QT_BUILD_DIR}/qt5pi
-QT_QMAKE=${QT_HOST_PREFIX}/bin/qmake
-
-[[ -z "${QT_TAG}" ]] && QT5_DEB_VER="${QT_BRANCH}" || QT5_DEB_VER="${QT_RELEASE}-tag-${QT_TAG}"
-QT5_DEB_PKG_VER="${QT5_DEB_VER}-${QT_DEVICE_CONFIG}-${CONFIG}-${VERSION}"
-QT5_DEB_PKG="qt-${QT5_DEB_PKG_VER}"
-QT5_DEB_DIR="${DEBS_DIR}/${QT5_DEB_PKG}-deb"
-
-QT_CROSS_COMPILE=${QT_CROSS_COMPILE:="$CROSS_COMPILE"}
-
-[[ "${ENABLE_X11}" = "yes" ]] && QT_XCB_OPTION="-system-xcb" || QT_XCB_OPTION="-no-xcb"
-
 echo -n -e "\n*** Build Settings ***\n"
 set -x
 
@@ -42,6 +30,19 @@ QT_UPDATE_SOURCES=${QT_UPDATE_SOURCES:="no"}
 QT_FORCE_REBUILD=${QT_FORCE_REBUILD:="yes"}
 
 set +x
+QT_EXT_PREFIX=${QT_BUILD_DIR}/qt5pi
+QT_QMAKE=${QT_HOST_PREFIX}/bin/qmake
+
+[[ -z "${QT_TAG}" ]] && QT5_DEB_VER="${QT_BRANCH}" || QT5_DEB_VER="${QT_RELEASE}-tag-${QT_TAG}"
+QT5_DEB_PKG_VER="${QT5_DEB_VER}-${QT_DEVICE_CONFIG}-${FULL_VERSION}-${CONFIG}"
+QT5_DEB_PKG="qt-${QT5_DEB_PKG_VER}"
+QT5_DEB_DIR=${DEBS_DIR}/${QT5_DEB_PKG}-deb
+QT5_DEB_PKG_FILE=${BASEDIR}/debs/${QT5_DEB_PKG}.deb
+
+QT_CROSS_COMPILE=${QT_CROSS_COMPILE:="$CROSS_COMPILE"}
+
+[[ "${ENABLE_X11}" = "yes" ]] && QT_XCB_OPTION="-system-xcb" || QT_XCB_OPTION="-no-xcb"
+
 
 # ----------------------------------------------------------------------------
 
@@ -196,13 +197,7 @@ qt5_make_qtbase()
         echo "Configure qtbase..."
 
 
-# -no-gcc-sysroot \
-#                        -system-zlib \
-#                        -system-libjpeg \
-#                        -system-libpng \
-#                        -system-freetype \
 	export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
-
 	${QTBASE_SRC_DIR}/configure -v \
 			-silent \
 			-release \
@@ -225,6 +220,12 @@ qt5_make_qtbase()
 			-no-cups \
 			${QT_OPENGL_OPTION} \
 			${QT_XCB_OPTION} \
+			-system-zlib \
+			-system-libjpeg \
+			-system-libpng \
+			-system-freetype \
+			-system-pcre \
+			-system-harfbuzz \
 			-no-openssl \
 			-no-sql-db2 -no-sql-ibase -no-sql-mysql -no-sql-oci -no-sql-odbc -no-sql-psql -no-sql-tds -no-sql-sqlite -no-sql-sqlite2
 
@@ -293,13 +294,13 @@ qt5_deploy()
 	echo "Deploy QT5 to target system..."
 
 	mkdir -p ${QT5_DEB_DIR}
-	dpkg -x ${BASEDIR}/debs/${QT5_DEB_PKG}.deb ${QT5_DEB_DIR} 2> /dev/null
+	dpkg -x ${QT5_DEB_PKG_FILE} ${QT5_DEB_DIR} 2> /dev/null
 	mkdir -p ${SYSROOT_DIR}${QT_TARGET_LOCATION}
 	rsync -az ${QT5_DEB_DIR}${QT_TARGET_PREFIX} ${SYSROOT_DIR}${QT_TARGET_LOCATION}
 	${LIBDIR}/make-relativelinks.sh $SYSROOT_DIR
 	rm -rf ${QT5_DEB_DIR}
 
-	cp ${BASEDIR}/debs/${QT5_DEB_PKG}.deb ${R}/tmp/
+	cp ${QT5_DEB_PKG_FILE} ${R}/tmp/
 	chroot_exec dpkg -i /tmp/${QT5_DEB_PKG}.deb
 	rm -f ${R}/tmp/${QT5_DEB_PKG}.deb
 
@@ -312,15 +313,15 @@ qt5_deb_pkg()
 {
 	echo "Create QT5 deb package..."
 
-	mkdir -p $QT5_DEB_DIR
+	mkdir -p ${QT5_DEB_DIR}
 	rm -rf ${QT5_DEB_DIR}/*
 
 	mkdir ${QT5_DEB_DIR}/DEBIAN
 
 	cat <<-EOF > ${QT5_DEB_DIR}/DEBIAN/control
-Package: $QT5_DEB_PKG
-Version: $QT5_DEB_PKG_VER
-Maintainer: $MAINTAINER_NAME <$MAINTAINER_EMAIL>
+Package: ${QT5_DEB_PKG}
+Version: ${QT5_DEB_PKG_VER}
+Maintainer: ${MAINTAINER_NAME} <${MAINTAINER_EMAIL}>
 Architecture: all
 Priority: optional
 Description: This package provides the Qt5 libraries
@@ -348,7 +349,7 @@ EOF
 
 	cp ${QTBASE_OUT_DIR}/config.summary ${QT5_DEB_DIR}${QT_TARGET_PREFIX}
 
-	dpkg-deb -z0 -b $QT5_DEB_DIR ${BASEDIR}/debs/${QT5_DEB_PKG}.deb
+	dpkg-deb -z0 -b ${QT5_DEB_DIR} ${QT5_DEB_PKG_FILE}
 	[ $? -eq 0 ] || exit $?;
 
 	rm -rf $QT5_DEB_DIR
@@ -361,10 +362,19 @@ EOF
 if [ "${ENABLE_QT}" = yes ] && [ -n "${QT_DEVICE_CONFIG}" ] ; then
 
 	if [[ $CLEAN =~ (^|,)"qt"(,|$) ]] ; then
-		rm -f ${BASEDIR}/debs/${QT5_DEB_PKG}.deb
+		rm -f ${QT5_DEB_PKG_FILE}
 	fi
 
-	if [ ! -f ${BASEDIR}/debs/${QT5_DEB_PKG}.deb ] ; then
+	if [ ! -f ${QT5_DEB_PKG_FILE} ] ; then
+
+		echo -n -e "\n*** Build Settings ***\n"
+		set -x
+		# force update sources
+		QT_UPDATE_SOURCES=${QT_UPDATE_SOURCES:="no"}
+		# go for a full rebuild
+		QT_FORCE_REBUILD=${QT_FORCE_REBUILD:="yes"}
+		set +x
+
 		qt_update
 
 		qt5_apply_patch
@@ -379,4 +389,6 @@ if [ "${ENABLE_QT}" = yes ] && [ -n "${QT_DEVICE_CONFIG}" ] ; then
 	fi
 
 	qt5_deploy
+else
+	echo "Skip."
 fi

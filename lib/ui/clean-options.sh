@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# common clean options, can be overriden in board-specific config files
+CLEAN_OPTIONS="uboot firmware kernel rootfs ${CLEAN_OPTIONS}"
+
 LABEL_BACKTITLE="ORPALTECH ARM LINUX [ ${CONFIG} v${VERSION} ]"
 LABEL_TITLE="Clean options"
 LABEL_CHECKLIST="Select components you want to clean:"

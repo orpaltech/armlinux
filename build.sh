@@ -53,18 +53,19 @@ if [ -f ${BASEDIR}/wlan ] ; then
 . ${BASEDIR}/wlan
 fi
 
-# alias
+PROD_FULL_VERSION=${PROD_VERSION}-${PROD_BUILD}
+# aliases
 VERSION=${PROD_VERSION}
-FULL_VERSION=${PROD_VERSION}-${PROD_BUILD}
+FULL_VERSION=${PROD_FULL_VERSION}
 
 set +x
 
 # check image destination
-if ! [[ ${DEST_DEV_TYPE} =~ ^(img|sd)$ ]] ; then
+if ! [[ ${DEST_DEV_TYPE} =~ ^(img|mc)$ ]] ; then
   echo "error: DEST_DEV_TYPE has unsupported value '${DEST_DEV_TYPE}'!"
   exit 1
 fi
-if [ "${DEST_DEV_TYPE}" = sd ] && [ -z "${DEST_BLOCK_DEV}" ] ; then
+if [ "${DEST_DEV_TYPE}" = mc ] && [ -z "${DEST_BLOCK_DEV}" ] ; then
   echo "error: DEST_BLOCK_DEV must be specified!"
   exit 1
 fi
@@ -169,7 +170,7 @@ compile_kernel
 
 
 if [ "${BUILD_IMAGE}" = yes ] ; then
-  # create a SD-card image
+  # create a disk image
   create_image
 fi
 

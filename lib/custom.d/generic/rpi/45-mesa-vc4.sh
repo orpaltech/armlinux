@@ -3,13 +3,13 @@
 #
 
 MESA_REPO_URL="https://gitlab.freedesktop.org/mesa/mesa.git"
-MESA_BRANCH="master"
+MESA_BRANCH="main"
 # Remove tag if you want to build code from the branch above
-MESA_TAG="mesa-21.3.8"
+MESA_TAG="mesa-22.3.4"
 MESA_SRC_DIR=${EXTRADIR}/mesa
 MESA_OUT_DIR=${MESA_SRC_DIR}/build/${LINUX_PLATFORM}-vc4
 MESA_PREFIX=/usr
-MESA_FORCE_UPDATE=${MESA_FORCE_UPDATE:="no"}
+MESA_FORCE_UPDATE=${MESA_FORCE_UPDATE:="yes"}
 MESA_FORCE_REBUILD=${MESA_FORCE_REBUILD:="yes"}
 
 MESA_CROSS_PKGCONFIG="${MESA_OUT_DIR}/cross-pkg-config.sh"
@@ -29,20 +29,19 @@ mesa_cross_init()
 
 SYSROOT=${SYSROOT_DIR}
 
-export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
 export PKG_CONFIG_DIR=
 export PKG_CONFIG_SYSROOT_DIR=\${SYSROOT}
 export PKG_CONFIG_LIBDIR=\${SYSROOT}/usr/lib/${LINUX_PLATFORM}/pkgconfig:\${SYSROOT}/usr/lib/pkgconfig:\${SYSROOT}/usr/share/pkgconfig
 
 exec pkg-config "\$@"
 EOF
-
 	chmod +x ${MESA_CROSS_PKGCONFIG}
 
 	cat <<-EOF > ${MESA_OUT_DIR}/${MESON_CROSSFILE}
+# Meson cross-file for Mesa 3D Graphics Library, ver ${MESA_DEB_VER}
 [constants]
 compile_flags = []
-c_flags = [ '-I${MESA_SRC_DIR}/include/c11', '-I${SYSROOT_DIR}/usr/include', '-I${SYSROOT_DIR}/usr/include/${LINUX_PLATFORM}' ]
+c_flags = [ '-I${SYSROOT_DIR}/usr/include', '-I${SYSROOT_DIR}/usr/include/${LINUX_PLATFORM}' ]
 cpp_flags = []
 
 [binaries]
@@ -52,11 +51,7 @@ ar = '${MESA_AR}'
 strip = '${MESA_STRIP}'
 nm = '${MESA_NM}'
 pkgconfig = '${MESA_CROSS_PKGCONFIG}'
-exe_wrapper = 'QEMU_LD_PREFIX=${SYSROOT_DIR} ${QEMU_BINARY}'
-
-[properties]
-root = '${SYSROOT_DIR}'
-sys_root = '${SYSROOT_DIR}'
+#exe_wrapper = 'QEMU_LD_PREFIX=${SYSROOT_DIR} ${QEMU_BINARY}'
 
 [built-in options]
 c_args = compile_flags + c_flags
@@ -102,7 +97,7 @@ mesa_prepare()
 		git clone $MESA_REPO_URL -b $MESA_BRANCH $MESA_SRC_DIR
 	fi
 
-	if [ ! -z "${MESA_TAG}" ] ; then
+	if [ -n "${MESA_TAG}" ] ; then
 		echo "Checking out tag: tags/${MESA_TAG}"
 		git -C $MESA_SRC_DIR checkout tags/${MESA_TAG}
 

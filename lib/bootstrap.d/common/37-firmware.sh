@@ -58,12 +58,12 @@ repo_update_safe()
 	return $status
 }
 
-set +e
+#set +e
 
-repo_update_safe "${LINUX_FIRMWARE_REPO_URL}" "${LINUX_FIRMWARE_BRANCH}" "${EXTRADIR}/linux-firmware"
-[ $? -ne 0 ] && exit $?;
+#repo_update_safe "${LINUX_FIRMWARE_REPO_URL}" "${LINUX_FIRMWARE_BRANCH}" "${EXTRADIR}/linux-firmware"
+#[ $? -ne 0 ] && exit $?;
 
-set -e
+#set -e
 
-rsync -avz ${EXTRADIR}/linux-firmware/brcm ${LIB_DIR}/firmware
-rsync -avz ${FILES_DIR}/firmware/ ${LIB_DIR}/firmware
+#rsync -avz ${EXTRADIR}/linux-firmware/brcm	${LIB_DIR}/firmware
+rsync -avz ${FILES_DIR}/firmware/	${LIB_DIR}/firmware

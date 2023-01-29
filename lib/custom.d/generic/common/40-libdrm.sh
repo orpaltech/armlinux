@@ -11,6 +11,12 @@ LIBDRM_OUT_DIR=${LIBDRM_SRC_DIR}/build/${LINUX_PLATFORM}
 LIBDRM_CROSS_PKGCONFIG="${LIBDRM_OUT_DIR}/cross-pkg-config.sh"
 LIBDRM_PREFIX="/usr"
 
+MESA_GCC="${MESA_CROSS_COMPILE}gcc"
+MESA_CXX="${MESA_CROSS_COMPILE}g++"
+MESA_AR="${MESA_CROSS_COMPILE}ar"
+MESA_NM="${MESA_CROSS_COMPILE}nm"
+MESA_STRIP="${MESA_CROSS_COMPILE}strip"
+
 # ----------------------------------------------------------------------------
 
 libdrm_cross_init()
@@ -28,12 +34,6 @@ exec pkg-config "\$@"
 EOF
 
         chmod +x ${LIBDRM_CROSS_PKGCONFIG}
-
-	MESA_GCC="${MESA_CROSS_COMPILE}gcc"
-	MESA_CXX="${MESA_CROSS_COMPILE}g++"
-	MESA_AR="${MESA_CROSS_COMPILE}ar"
-	MESA_NM="${MESA_CROSS_COMPILE}nm"
-	MESA_STRIP="${MESA_CROSS_COMPILE}strip"
 
         cat <<-EOF > ${LIBDRM_OUT_DIR}/${MESON_CROSSFILE}
 [constants]
@@ -137,13 +137,8 @@ libdrm_make()
                         --prefix="${LIBDRM_PREFIX}" \
                         --errorlogs \
                         --backend=ninja \
+			-Dlibkms=true \
 			-Dvc4=true \
-			-Dtegra=false \
-			-Dradeon=false \
-			-Dnouveau=false \
-			-Damdgpu=false \
-			-Dfreedreno=false \
-			-Dvmwgfx=false \
 			-Dcairo-tests=false \
 			-Dinstall-test-programs=true
 

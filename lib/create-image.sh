@@ -17,8 +17,8 @@
 #
 ########################################################################
 
-if [ -f "${LIBDIR}/sdcard-${SOC_FAMILY}.sh" ] ; then
-. ${LIBDIR}/sdcard-${SOC_FAMILY}.sh
+if [ -f "${LIBDIR}/image-${SOC_FAMILY}.sh" ] ; then
+. ${LIBDIR}/image-${SOC_FAMILY}.sh
 else
 	echo "error: image creation script not found for ${SOC_FAMILY}!"
 	exit 1
@@ -29,7 +29,7 @@ fi
 create_image()
 {
     if [ ! -z "${DEBIAN_RELEASE}" ] ; then
-        display_alert "Prepare SD-card image..." "${SOC_FAMILY} | ${SOC_ARCH} | ${BOARD} | ${DEBIAN_RELEASE}" "info"
+        display_alert "Prepare disk image..." "${SOC_FAMILY} | ${SOC_ARCH} | ${BOARD} | ${DEBIAN_RELEASE}" "info"
 
         cd ${LIBDIR}/
 
@@ -56,7 +56,7 @@ create_image()
 	ROOTFS_DIR="${OUTPUTDIR}/images/${DEBIAN_RELEASE}/build/chroot"
 
 	DEST_IMG_PREFIX=${DEST_IMG_PREFIX:="${CONFIG}"}
-	DEST_VERSION=${DEST_VERSION:="${PROD_VERSION}"}
+	DEST_VERSION=${DEST_VERSION:="${PROD_FULL_VERSION}"}
 
 	if [ "${DEST_DEV_TYPE}" = img ] ; then
 
@@ -90,24 +90,24 @@ create_image()
 
                 echo "Loop device ${BLOCK_DEV} allocated for image file ${img_file}"
 
-	elif [ "${DEST_DEV_TYPE}" = sd ] ; then
+	elif [ "${DEST_DEV_TYPE}" = mc ] ; then
 		#
-		# Write directly to SD-card
+		# Write directly to Flash card
 		#
 		BLOCK_DEV="${DEST_BLOCK_DEV}"
-		DISK_NAME="SD-card"
+		DISK_NAME="MC"
 		[[ $BLOCK_DEV =~ ^/dev/mmcblk[0-9]+$ ]] && P="p"
 
                 if [ ! -e ${BLOCK_DEV} ] ; then
-                        echo "!!!!!!!!! Make sure your SD-card is attached to the reader !!!!!!!!!"
+                        echo "!!!!!!!!! Make sure your disk is attached to the reader !!!!!!!!!"
                         pause
                 else
                         local ticks=5
-                        echo "*** SD-card operation starts in ${ticks} sec"
+                        echo "*** Disk operation starts in ${ticks} sec"
                         while [ ${ticks} -gt 0 ]; do
                             ticks=$((ticks-1))
                             sleep 1
-                            echo "*** SD-card operation starts in ${ticks} sec"
+                            echo "*** Disk operation starts in ${ticks} sec"
                         done
                 fi
 
