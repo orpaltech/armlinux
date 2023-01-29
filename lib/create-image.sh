@@ -3,7 +3,7 @@
 ########################################################################
 # create-image.sh
 #
-# Description:	The entry point of the image creation scenario
+# Description:	The entry point of the disk image creation scenario
 #		for ORPALTECH ARMLINUX build framework.
 #
 # Author:	Sergey Suloev <ssuloev@orpaltech.com>
@@ -48,7 +48,7 @@ create_image()
 		KERNEL_DEB_PKG_VER=${KERNEL_DEB_PKG_VER} \
 		FIRMWARE_DIR=${FIRMWARE_BASE_DIR} \
 		RESIZE_PART_NUM=${RESIZE_PART_NUM} \
-	${LIBDIR}/image-gen.sh
+	${LIBDIR}/gen-image.sh
 
 	[ $? -eq 0 ] || exit $?;
 
