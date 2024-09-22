@@ -27,8 +27,8 @@ if [ "${ENABLE_IPTABLES}" = yes ] ; then
 fi
 
 # Resize rootfs partition
-sed -i "s#^\(BLOCK_DEV=\).*#\1${DEST_BLOCK_DEV}#"  ${FILES_DIR}/firstboot/40-resize-rootfs.sh
-sed -i "s#^\(PART_NUM=\).*#\1${RESIZE_PART_NUM}#"  ${FILES_DIR}/firstboot/40-resize-rootfs.sh
+#sed -i "s#^\(BLOCK_DEV=\).*#\1${DEST_BLOCK_DEV}#"  ${FILES_DIR}/firstboot/40-resize-rootfs.sh
+#sed -i "s#^\(PART_NUM=\).*#\1${RESIZE_PART_NUM}#"  ${FILES_DIR}/firstboot/40-resize-rootfs.sh
 cat ${FILES_DIR}/firstboot/40-resize-rootfs.sh >> ${ETC_DIR}/rc.firstboot
 
 
@@ -55,7 +55,6 @@ chmod +x "${ETC_DIR}/rc.firstboot"
 if [ ! -f "${ETC_DIR}/rc.local" ] ; then
   install_exec ${FILES_DIR}/etc/rc.local ${ETC_DIR}/rc.local
 fi
-# chroot_exec chmod +x /etc/rc.local
 
 #if [ ! -f "${ETC_DIR}/systemd/system/rc-local.service" ] ; then
 #  mkdir -p ${ETC_DIR}/systemd/system

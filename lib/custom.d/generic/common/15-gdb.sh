@@ -3,10 +3,9 @@
 #
 
 # force download source code tarball
-GDB_FORCE_UPDATE="no"
-
+GDB_FORCE_UPDATE=no
 # remove all binaries and intermediate files and go for full rebuild
-GDB_FORCE_REBUILD="yes"
+GDB_FORCE_REBUILD=yes
 
 GDB_VERSION="9.2"
 GDB_NAME="gdb-${GDB_VERSION}"
@@ -75,7 +74,7 @@ gdb_make()
 
 	echo "Making GDB..."
 
-        chrt -i 0 make -j${NUM_CPU_CORES}
+        chrt -i 0 make -j${HOST_CPU_CORES}
 	[ $? -eq 0 ] || exit $?;
 
         make DESTDIR="${GDB_OUT_DIR}/dist" install
@@ -134,7 +133,7 @@ gdb_deb_pkg()
 
 # ----------------------------------------------------------------------------
 
-if [[ ${CLEAN} =~ (^|,)"gdb"(,|$) ]] ; then
+if [[ ${CLEAN} =~ (^|,)gdb(,|$) ]] ; then
 	rm -f ${BASEDIR}/debs/${GDB_DEB_PKG}.deb
 fi
 

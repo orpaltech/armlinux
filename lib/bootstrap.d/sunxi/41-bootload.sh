@@ -11,11 +11,17 @@ install_readonly "${UBOOT_SOURCE_DIR}/u-boot-sunxi-with-spl.bin" "${BOOT_DIR}/u-
 # Install and setup U-Boot command file
 install_readonly "${FILES_DIR}/boot/uboot.mkimage" $BOOT_SCR_CMD
 
-if [ "${KERNEL_ARCH}" = arm64 ] ; then
-  [[ "${KERNEL_MKIMAGE_WRAP}" = yes ]] && BOOTCMD="bootm" || BOOTCMD="booti"
+# detect which boot command must be used
+if [ "${KERNEL_MKIMAGE_WRAP}" = yes ] ; then
+  BOOTCMD="bootm"
 else
-  BOOTCMD="bootz"
+  if [ "${KERNEL_ARCH}" = arm64 ] ; then
+    BOOTCMD="booti"
+  else
+    BOOTCMD="bootz"
+  fi
 fi
+
 echo "${BOOTCMD} \${kernel_addr_r} - \${fdt_addr}" >> $BOOT_SCR_CMD
 
 

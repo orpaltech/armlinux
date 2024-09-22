@@ -1,5 +1,5 @@
 #
-# Common sunxi configuration
+# Common sunXi armhf configuration
 #
 SOC_FAMILY=sunxi
 SOC_ARCH=arm
@@ -23,27 +23,29 @@ MESON_CPU="armv7hl"
 QEMU_BINARY="/usr/bin/qemu-arm-static"
 
 KERNEL_BUILD_CONFIG="sunxi_defconfig"
-KERNEL_BUILD_FAMILY_CONFIG="linux-mainline-sunxi.config"
+KERNEL_BUILD_FAMILY_CONFIG="linux-sunxi.config"
 
-KERNEL_OVERLAY_DIR=overlays
+KERNEL_OVERLAY_DIR="allwinner/overlays"
 
-# On sunxi platforms ENABLE_UBOOT must always be "yes"
-ENABLE_UBOOT="yes"
-BOOTSCR_LOAD_ADDR=0x43000000 
-BOOTSCR_FDT_ADDR=0x46000000 
-#BOOTSCR_KERNEL_ADDR=0x47000000 
+# On sunxi platforms BOOTLOADER must be "uboot" only
+BOOTLOAD_OPTIONS="uboot"
+BOOTLOADER="uboot"
+
+# U-boot booting script variables
+BOOTSCR_LOAD_ADDR=0x43000000
 #BOOTSCR_RAMDISK_ADDR=0x48000000
+# use to load device tree at the specified address (leave blank for auto)
+BOOTSCR_FDT_ADDR=0x46000000
+# uncomment line below to at the specified address (leave blank for auto)
+BOOTSCR_KERNEL_ADDR=
+
+# must be yes for arm 32bit
+KERNEL_IMAGE_COMPRESSED=yes
 
 KERNEL_MKIMAGE_WRAP=no
 # Use compressed (gzip) or uncompressed (none) kernel image
 KERNEL_MKIMAGE_COMPRESS=none
-KERNEL_MKIMAGE_LOADADDR=0x00000000
-# Use compressed (Image.gz) or uncompressed (Image) source file
-#KERNEL_IMAGE_SOURCE=Image
-KERNEL_IMAGE_SOURCE=zImage
-# Use wrapped (linux.uImage) or normal (linuz.img) target file
-#KERNEL_IMAGE_TARGET="linux.uImage"
-KERNEL_IMAGE_TARGET="linuz.img"
+KERNEL_MKIMAGE_LOADADDR=0x47000000
 
 # FELBOOT_KERNEL_ADDR=0x42000000
 # FELBOOT_RAMDISK_ADDR=0x43300000
@@ -52,16 +54,10 @@ KERNEL_IMAGE_TARGET="linuz.img"
 # The option should be overriden if you want GPU support in QT5
 QT_OPENGL_OPTION="-no-opengl"
 
-#
-# Custom EDID binary for DRM
-#
-DRM_USE_FIRMWARE_EDID=no
-DRM_EDID_BINARY="edid/1280x1024.bin"
-DRM_CONNECTOR="HDMI-A-1"
-DRM_VIDEO_MODE="1280x1024-24@60"
+# No wireless support by default. Update this value in a board config file
+SUPPORT_WLAN=no
 
-# No wireless support by default, board specific
-SUPPORT_WLAN="no"
-
+ENABLE_MESA=yes
+APT_REMOVE_PACKAGES="libwayland-dev,libgbm-dev"
 # sunxi-specific clean options
 CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa-lima"

@@ -2,13 +2,14 @@
 # Install Meson - open source build system
 #
 
-MESON_RELEASE="0.61.4"
-MESON_BASE_DIR=$EXTRADIR/meson
+MESON_RELEASE="1.4.1"
+MESON_BASE_DIR=${EXTRADIR}/meson
 MESON_DIR=${MESON_BASE_DIR}/meson-${MESON_RELEASE}
 MESON_TAR_FILE="meson-${MESON_RELEASE}.tar.gz"
 MESON_TAR_URL="https://github.com/mesonbuild/meson/releases/download/${MESON_RELEASE}/${MESON_TAR_FILE}"
 MESON_CROSSFILE="meson-cross-file.ini"
-MESON_FORCE_UPDATE="no"
+
+MESON_FORCE_UPDATE=no
 
 
 meson_update()

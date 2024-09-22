@@ -1,22 +1,31 @@
 logger -t "rc.firstboot" "Resizing rootfs..."
 
-BLOCK_DEV=${BLOCK_DEV:="/dev/sdX"}
-PART_NUM=${PART_NUM:="1"}
-START=$(fdisk -l ${BLOCK_DEV}|grep ${BLOCK_DEV}p${PART_NUM}|awk '{print $2}')
+root_part=$(cat /proc/cmdline | grep -Po "root=\K[-=\w]*\s")
 
-fdisk ${BLOCK_DEV} <<EOF
+# if partition is given as a uuid, then find the device name
+if [[ ${root_part} =~ ^"PARTUUID=" ]] ; then
+	part_uuid=$(echo "${root_part}" | cut -d "=" -f 2)
+	root_part=$(readlink -en /dev/disk/by-partuuid/${part_uuid})
+fi
+blk_dev=$(lsblk -lnp -o PKNAME ${root_part})
+part_num=$(echo "${root_part}" | grep -Eo '[0-9]+$')
+
+start_pos=$(fdisk -l | grep ${root_part} | awk '{print $2}')
+
+fdisk ${blk_dev} <<EOF
 p
 d
-${PART_NUM}
+${part_num}
 n
 p
-${PART_NUM}
-${START}
+${part_num}
+${start_pos}
 
+y
 w
 EOF
 
-partx -u ${BLOCK_DEV}
-resize2fs ${BLOCK_DEV}p${PART_NUM}
+partx -u ${blk_dev}
+resize2fs ${root_part}
 
 echo "Done!"

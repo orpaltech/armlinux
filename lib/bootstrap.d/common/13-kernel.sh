@@ -23,13 +23,10 @@ cp ${BASEDIR}/debs/${KERNEL_IMAGE_DEB_PKG}.deb	${R}/tmp/
 chroot_exec dpkg -i  /tmp/${KERNEL_IMAGE_DEB_PKG}.deb
 rm -f ${R}/tmp/${KERNEL_IMAGE_DEB_PKG}.deb
 
-# -----------------------------------------------------------------------------
 # Preserve headers from being updated by kernel
-# -----------------------------------------------------------------------------
 #if [ -f $USR_DIR/include/linux/i2c-dev.h.kernel ] ; then
 #  mv $USR_DIR/include/linux/i2c-dev.h	$USR_DIR/include/linux/i2c-dev.h.temp
 #fi
-# -----------------------------------------------------------------------------
 
 
 # Install kernel headers
@@ -38,42 +35,50 @@ if [ "${KERNEL_INSTALL_HEADERS}" = yes ] ; then
   cp ${BASEDIR}/debs/${KERNEL_HEADERS_DEB_PKG}.deb	${R}/tmp/
   chroot_exec dpkg -i  /tmp/${KERNEL_HEADERS_DEB_PKG}.deb
   rm -f ${R}/tmp/${KERNEL_HEADERS_DEB_PKG}.deb
+# TODO: remove ???
 #  make -C "${KERNEL_DIR}" INSTALL_HDR_PATH="${USR_DIR}" headers_install
 fi
 
-# -----------------------------------------------------------------------------
 # Restore headers
-# -----------------------------------------------------------------------------
 #if [ -f ${USR_DIR}/include/linux/i2c-dev.h.temp ] ; then
 #  mv ${USR_DIR}/include/linux/i2c-dev.h		${USR_DIR}/include/linux/i2c-dev.h.kernel
 #  mv ${USR_DIR}/include/linux/i2c-dev.h.temp	${USR_DIR}/include/linux/i2c-dev.h
 #fi
-# -----------------------------------------------------------------------------
 
 # Prepare boot (firmware) directory
 mkdir -p ${BOOT_DIR}
 
 # Copy kernel configuration file to the boot directory
 install_readonly "${KERNEL_DIR}/.config" "${R}/boot/config-${KERNEL_VERSION}"
-
-
 # Copy device tree binaries
 install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/dts/${DTB_FILE}" "${BOOT_DIR}/"
+# Setup initramfs file
+install_readonly "${R}/boot/initrd.img-${KERNEL_VERSION}" "${BOOT_DIR}/initrd.img"
+
 
 # The default Linux kernel 'make' target generates an uncompressed 'Image' and a gzip-compresesd 'Image.gz'.
 # If we use latter and wrap it into an uImage then u-boot can decompress gzip images.
 # See https://www.kernel.org/doc/Documentation/arm64/booting.txt
-# The default Linux kernel 'make' target generates a self-extracting 'zImage'. Since a zImage file is
-# self-extracting (i.e. needs no external decompressors), the u-boot wrapper
+# Since a "zImage" file is self-extracting (i.e. needs no external decompressors), the u-boot wrapper
 # would indicate that this kernel is "uncompressed" even though it actually is.
 
-if [ "${ENABLE_UBOOT}" = yes ] && [ "${KERNEL_ARCH}" = arm64 ] && [ "${KERNEL_MKIMAGE_WRAP}" = yes ] ; then
-  ${UBOOT_SOURCE_DIR}/tools/mkimage -A $KERNEL_ARCH -O linux -T kernel \
-	-C $KERNEL_MKIMAGE_COMPRESS \
-	-a $KERNEL_MKIMAGE_LOADADDR -e $KERNEL_MKIMAGE_LOADADDR \
-	-d "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_SOURCE}" "${BOOT_DIR}/${KERNEL_IMAGE_TARGET}"
+if [ "${KERNEL_MKIMAGE_WRAP}" = yes ] ; then
+  if [ "${KERNEL_MKIMAGE_COMPRESS}" = none ] ; then
+    KERNEL_IMAGE_TARGET="linux.uImage"
+  else
+    KERNEL_IMAGE_TARGET="linux.zImage"
+  fi
 else
-  install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_SOURCE}" "${BOOT_DIR}/${KERNEL_IMAGE_TARGET}"
+  KERNEL_IMAGE_TARGET="linuz.img"
+fi
+
+if [ "${BOOTLOADER}" = uboot ] && [ "${KERNEL_MKIMAGE_WRAP}" = yes ] ; then
+  ${UBOOT_SOURCE_DIR}/tools/mkimage -A ${KERNEL_ARCH} -O linux -T kernel \
+	-C ${KERNEL_MKIMAGE_COMPRESS} \
+	-a ${KERNEL_MKIMAGE_LOADADDR} -e ${KERNEL_MKIMAGE_LOADADDR} \
+	-d "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_SOURCE_IMAGE}" "${BOOT_DIR}/${KERNEL_IMAGE_TARGET}"
+else
+  install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_SOURCE_IMAGE}" "${BOOT_DIR}/${KERNEL_IMAGE_TARGET}"
 fi
 
 if [ "${KERNEL_DIR}" != "${KERNEL_SOURCE_DIR}" ] ; then

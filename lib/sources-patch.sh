@@ -62,11 +62,11 @@ copy_patches()
 
 #-----------------------------------------------------------------------
 
-patch_uboot()
+patch_bootloader()
 {
-if [ "${ENABLE_UBOOT}" = yes ] ; then
+if [ "${BOOTLOADER}" = uboot ] ; then
 
-	local PATCH_BASE_DIR=${BASEDIR}/patch/u-boot
+	local PATCH_BASE_DIR=${BASEDIR}/patch/u-boot/${UBOOT_REPO_NAME}
 	local PATCH_OUT_DIR=${OUTPUTDIR}/patches
 
 	rm -rf ${PATCH_OUT_DIR}/u-boot.*

@@ -19,23 +19,25 @@
 
 GCC_VERSION=10
 
-REQUIRED_PACKAGES="autoconf automake bc binfmt-support bison bmap-tools "\
+REQUIRED_PACKAGES="autoconf automake libtool bc binfmt-support bison bmap-tools "\
 "cmake "\
 "debootstrap debian-archive-keyring device-tree-compiler dialog dosfstools "\
+"debhelper "\
 "flex "\
 "git "\
 "libmpc-dev "\
 "libssl-dev "\
 "ninja-build "\
-"qemu-user-static quilt "\
+"qemu-system-arm qemu-efi qemu-user-static quilt "\
 "patch "\
-"python2.7 python-mako python3 python3-pip python3-mako "\
+"python2.7 python3 python3-pip python3-mako "\
 "rsync "\
 "sunxi-tools swig "\
 "texi2html texinfo "\
 "u-boot-tools "\
 "whois "\
 "xz-utils "\
+"zstd "\
 "gcc-${GCC_VERSION} g++-${GCC_VERSION}"
 
 # will find out missing required packages
@@ -64,7 +66,8 @@ get_host_pkgs()
 		[ $? -eq 0 ] || exit $?;
 	fi
 
-	sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} ${GCC_VERSION}0 --slave /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} --slave /usr/bin/gcov gcov /usr/bin/gcov-${GCC_VERSION}
+	sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} ${GCC_VERSION}0
+	sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} ${GCC_VERSION}0
 
 	echo "Done."
 }

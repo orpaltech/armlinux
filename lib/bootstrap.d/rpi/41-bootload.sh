@@ -6,7 +6,7 @@ BOOTENV_FILE="${BOOT_DIR}/bootEnv.txt"
 UBOOT_IMAGE="u-boot.bin"
 DTB_FILE_NAME=$(basename $DTB_FILE)
 
-if [ "${ENABLE_UBOOT}" = yes ] ; then
+if [ "${BOOTLOADER}" = uboot ] ; then
   install_readonly "${UBOOT_SOURCE_DIR}/u-boot.bin" "${BOOT_DIR}/u-boot.bin"
 
   # Install and setup U-Boot command file
@@ -17,23 +17,34 @@ if [ "${ENABLE_UBOOT}" = yes ] ; then
 
 
   sed -i "s/^\(setenv kernel_file \).*/\1${KERNEL_IMAGE_TARGET}/" $BOOT_SCR_CMD
-  if [ ! -z "${BOu-boot.binOTSCR_LOAD_ADDR}" ] ; then
-    sed -i "s/^\(setenv load_addr \).*/\1${BOOTSCR_LOAD_ADDR}/" $BOOT_SCR_CMD
+
+  if [ -z "${BOOTSCR_LOAD_ADDR}" ] ; then
+    echo "error: must specify bootscr load address!"
+    exit 1
   fi
-  if [ ! -z "${BOOTSCR_FDT_ADDR}" ] ; then
+  sed -i "s/^\(setenv load_addr \).*/\1${BOOTSCR_LOAD_ADDR}/" $BOOT_SCR_CMD
+
+  if [ -n "${BOOTSCR_FDT_ADDR}" ] ; then
     sed -i "s/^\(setenv fdt_addr_r \).*/\1${BOOTSCR_FDT_ADDR}/" $BOOT_SCR_CMD
     sed -i "s/^\(setenv dtb_file \).*/\1${DTB_FILE_NAME}/" $BOOT_SCR_CMD
   fi
-  if [ ! -z "${BOOTSCR_KERNEL_ADDR}" ] ; then
+
+  if [ -n "${BOOTSCR_KERNEL_ADDR}" ] ; then
     sed -i "s/^\(setenv kernel_addr_r \).*/\1${BOOTSCR_KERNEL_ADDR}/" $BOOT_SCR_CMD
   fi
 
-  if [ "${KERNEL_ARCH}" = arm64 ] ; then
-    [[ "${KERNEL_MKIMAGE_WRAP}" = yes ]] && BOOTCMD="bootm" || BOOTCMD="booti"
+  # detect which boot command must be used
+  if [ "${KERNEL_MKIMAGE_WRAP}" = yes ] ; then
+    BOOTCMD="bootm"
   else
-    BOOTCMD="bootz"
+    if [ "${KERNEL_ARCH}" = arm64 ] ; then
+      BOOTCMD="booti"
+    else
+      BOOTCMD="bootz"
+    fi
   fi
-  if [ ! -z "${BOOTSCR_FDT_ADDR}" ] ; then
+
+  if [ -n "${BOOTSCR_FDT_ADDR}" ] ; then
     printf "${BOOTCMD} \${kernel_addr_r} - \${fdt_addr_r}" >> $BOOT_SCR_CMD
   else
     printf "${BOOTCMD} \${kernel_addr_r} - \${fdt_addr}" >> $BOOT_SCR_CMD
@@ -50,11 +61,18 @@ if [ "${ENABLE_UBOOT}" = yes ] ; then
 
   # The raspberry firmware blobs will boot u-boot
   sed -i "s/^\(kernel=\).*/\1${UBOOT_IMAGE}/" ${BOOT_DIR}/config.txt
+
+  # The default bootEnv.txt
+  printf "# user provided boot environment\nkernel_args=${KERNEL_BOOT_ARGS}\noverlay_prefix=${OVERLAY_PREFIX}\noverlays=\n" >> ${BOOTENV_FILE}
+
 else
   sed -i "s/^\(kernel=\).*/\1${KERNEL_IMAGE_TARGET}/" ${BOOT_DIR}/config.txt
 fi
 
+
 sed -i "s/^\(device_tree=\).*/\1${DTB_FILE_NAME}/" ${BOOT_DIR}/config.txt
+
+sed -i "s/^\(ramfsfile=\).*/\1initrd.img/" ${BOOT_DIR}/config.txt
 
 if [ "${KERNEL_ARCH}" = arm64 ] ; then
   # See:
@@ -64,6 +82,3 @@ if [ "${KERNEL_ARCH}" = arm64 ] ; then
 fi
 
 printf "\n# enable serial console\nenable_uart=1\nuart_2ndstage=1\n" >> ${BOOT_DIR}/config.txt
-
-# The default bootEnv.txt
-printf "# user provided boot environment\nkernel_args=${KERNEL_BOOT_ARGS}\noverlay_prefix=${OVERLAY_PREFIX}\noverlays=\n" >> $BOOTENV_FILE

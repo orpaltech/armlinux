@@ -1,0 +1,380 @@
+From b066380609dedfca1aabe08830bbb906c63ce9de Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Tue, 2 Jul 2024 22:40:34 +0300
+Subject: [PATCH] pwm/sun4i: Add support for the Allwinner A31 PWM
+
+---
+ arch/arm/boot/dts/allwinner/sun6i-a31.dtsi |   8 +
+ drivers/pwm/pwm-sun4i.c                    | 170 +++++++++++++++++++--
+ 2 files changed, 163 insertions(+), 15 deletions(-)
+
+diff --git a/arch/arm/boot/dts/allwinner/sun6i-a31.dtsi b/arch/arm/boot/dts/allwinner/sun6i-a31.dtsi
+index f0145d6..f7f8bf4 100644
+--- a/arch/arm/boot/dts/allwinner/sun6i-a31.dtsi
++++ b/arch/arm/boot/dts/allwinner/sun6i-a31.dtsi
+@@ -806,6 +806,14 @@
+ 			status = "disabled";
+ 		};
+ 
++		pwm0: pwm@1c21400 {
++			compatible = "allwinner,sun6i-a31-pwm";
++			reg = <0x01c21400 0x400>;
++			clocks = <&osc24M>;
++			#pwm-cells = <3>;
++			status = "disabled";
++		};
++
+ 		rtp: rtp@1c25000 {
+ 			compatible = "allwinner,sun6i-a31-ts";
+ 			reg = <0x01c25000 0x100>;
+diff --git a/drivers/pwm/pwm-sun4i.c b/drivers/pwm/pwm-sun4i.c
+index 5c29590..7973be8 100644
+--- a/drivers/pwm/pwm-sun4i.c
++++ b/drivers/pwm/pwm-sun4i.c
+@@ -39,6 +39,7 @@
+ #define PWM_MODE		BIT(7)
+ #define PWM_PULSE		BIT(8)
+ #define PWM_BYPASS		BIT(9)
++#define PWM_CHCTL_MASK		GENMASK(9, 0)
+ 
+ #define PWM_RDY_BASE		28
+ #define PWM_RDY_OFFSET		1
+@@ -55,7 +56,13 @@
+ 
+ #define BIT_CH(bit, chan)	((bit) << ((chan) * PWMCH_OFFSET))
+ 
+-static const u32 prescaler_table[] = {
++#define SUN6I_PWM_RDY_BIT	PWM_RDY_BASE
++#define SUN6I_PWM_CTL_OFFS	0x0
++#define SUN6I_PWM_PRD_OFFS	0x4
++#define SUN6I_PWM_CH_CTL(ch)	(0x10 * (ch) + SUN6I_PWM_CTL_OFFS)
++#define SUN6I_PWM_CH_PRD(ch)	(0x10 * (ch) + SUN6I_PWM_PRD_OFFS)
++
++static const u32 sun4i_prescaler_table[] = {
+ 	120,
+ 	180,
+ 	240,
+@@ -74,10 +81,41 @@ static const u32 prescaler_table[] = {
+ 	0, /* Actually 1 but tested separately */
+ };
+ 
++static const u32 sun6i_prescaler_table[] = {
++	1,
++	2,
++	4,
++	8,
++	16,
++	32,
++	64,
++	0,
++	0,
++	0,
++	0,
++	0,
++	0,
++	0,
++	0,
++	0,
++};
++
++struct sun4i_pwm_chip;
++
++struct sunxi_reg_ops {
++/*	int (*ctl_rdy)(struct sun4i_pwm_chip *chip, int npwm);*/
++	u32 (*ctl_read)(struct sun4i_pwm_chip *chip, int npwm);
++	void (*ctl_write)(struct sun4i_pwm_chip *chip, int npwm, u32 val);
++	u32 (*prd_read)(struct sun4i_pwm_chip *chip, int npwm);
++	void (*prd_write)(struct sun4i_pwm_chip *chip, int npwm, u32 val);
++};
++
+ struct sun4i_pwm_data {
+ 	bool has_prescaler_bypass;
+ 	bool has_direct_mod_clk_output;
+ 	unsigned int npwm;
++	const u32 *prescaler_table;
++	struct sunxi_reg_ops *reg_ops;
+ };
+ 
+ struct sun4i_pwm_chip {
+@@ -106,11 +144,72 @@ static inline void sun4i_pwm_writel(struct sun4i_pwm_chip *sun4ichip,
+ 	writel(val, sun4ichip->base + offset);
+ }
+ 
++/*static int sun4i_reg_ctl_rdy(struct sun4i_pwm_chip *chip, int npwm)
++{
++	return PWM_RDY(npwm) & sun4i_pwm_readl(chip, PWM_CTRL_REG);
++}
++
++static int sun6i_reg_ctl_rdy(struct sun4i_pwm_chip *chip, int npwm)
++{
++	u32 val = sun4i_pwm_readl(chip, SUN6I_PWM_CH_CTL(npwm));
++
++	return val & BIT(SUN6I_PWM_RDY_BIT);
++}*/
++
++static u32 sun4i_reg_ctl_read(struct sun4i_pwm_chip *chip, int npwm)
++{
++	u32 val = sun4i_pwm_readl(chip, PWM_CTRL_REG);
++
++	return val >> (PWMCH_OFFSET * (npwm));
++}
++
++static u32 sun6i_reg_ctl_read(struct sun4i_pwm_chip *chip, int npwm)
++{
++	return sun4i_pwm_readl(chip, SUN6I_PWM_CH_CTL(npwm));
++}
++
++static void sun4i_reg_ctl_write(struct sun4i_pwm_chip *chip, int npwm, u32 val)
++{
++	u32 rd = sun4i_pwm_readl(chip, PWM_CTRL_REG);
++
++	rd &= ~(PWM_CHCTL_MASK << (PWMCH_OFFSET * npwm));
++	val &= (PWM_CHCTL_MASK << (PWMCH_OFFSET * npwm));
++	sun4i_pwm_writel(chip, rd | val, PWM_CTRL_REG);
++}
++
++static void sun6i_reg_ctl_write(struct sun4i_pwm_chip *chip, int npwm, u32 val)
++{
++	return sun4i_pwm_writel(chip, val, SUN6I_PWM_CH_CTL(npwm));
++}
++
++static u32 sun4i_reg_prd_read(struct sun4i_pwm_chip *chip, int npwm)
++{
++	return sun4i_pwm_readl(chip, PWM_CH_PRD(npwm));
++}
++
++static u32 sun6i_reg_prd_read(struct sun4i_pwm_chip *chip, int npwm)
++{
++	return sun4i_pwm_readl(chip, SUN6I_PWM_CH_PRD(npwm));
++}
++
++static void sun4i_reg_prd_write(struct sun4i_pwm_chip *chip, int npwm, u32 val)
++{
++	sun4i_pwm_writel(chip, val, PWM_CH_PRD(npwm));
++}
++
++static void sun6i_reg_prd_write(struct sun4i_pwm_chip *chip, int npwm, u32 val)
++{
++	return sun4i_pwm_writel(chip, val, SUN6I_PWM_CH_PRD(npwm));
++}
++
+ static int sun4i_pwm_get_state(struct pwm_chip *chip,
+ 			       struct pwm_device *pwm,
+ 			       struct pwm_state *state)
+ {
+ 	struct sun4i_pwm_chip *sun4ichip = to_sun4i_pwm_chip(chip);
++	const struct sun4i_pwm_data *data = sun4ichip->data;
++	struct sunxi_reg_ops *reg_ops = data->reg_ops;
++	const u32 *prescaler_table = data->prescaler_table;
+ 	u64 clk_rate, tmp;
+ 	u32 val;
+ 	unsigned int prescaler;
+@@ -119,7 +218,7 @@ static int sun4i_pwm_get_state(struct pwm_chip *chip,
+ 	if (!clk_rate)
+ 		return -EINVAL;
+ 
+-	val = sun4i_pwm_readl(sun4ichip, PWM_CTRL_REG);
++	val = reg_ops->ctl_read(sun4ichip, pwm->hwpwm);
+ 
+ 	/*
+ 	 * PWM chapter in H6 manual has a diagram which explains that if bypass
+@@ -127,7 +226,7 @@ static int sun4i_pwm_get_state(struct pwm_chip *chip,
+ 	 * proved that also enable bit is ignored in this case.
+ 	 */
+ 	if ((val & BIT_CH(PWM_BYPASS, pwm->hwpwm)) &&
+-	    sun4ichip->data->has_direct_mod_clk_output) {
++	    data->has_direct_mod_clk_output) {
+ 		state->period = DIV_ROUND_UP_ULL(NSEC_PER_SEC, clk_rate);
+ 		state->duty_cycle = DIV_ROUND_UP_ULL(state->period, 2);
+ 		state->polarity = PWM_POLARITY_NORMAL;
+@@ -136,7 +235,7 @@ static int sun4i_pwm_get_state(struct pwm_chip *chip,
+ 	}
+ 
+ 	if ((PWM_REG_PRESCAL(val, pwm->hwpwm) == PWM_PRESCAL_MASK) &&
+-	    sun4ichip->data->has_prescaler_bypass)
++	    data->has_prescaler_bypass)
+ 		prescaler = 1;
+ 	else
+ 		prescaler = prescaler_table[PWM_REG_PRESCAL(val, pwm->hwpwm)];
+@@ -155,7 +254,7 @@ static int sun4i_pwm_get_state(struct pwm_chip *chip,
+ 	else
+ 		state->enabled = false;
+ 
+-	val = sun4i_pwm_readl(sun4ichip, PWM_CH_PRD(pwm->hwpwm));
++	val = reg_ops->prd_read(sun4ichip, pwm->hwpwm);
+ 
+ 	tmp = (u64)prescaler * NSEC_PER_SEC * PWM_REG_DTY(val);
+ 	state->duty_cycle = DIV_ROUND_CLOSEST_ULL(tmp, clk_rate);
+@@ -171,12 +270,14 @@ static int sun4i_pwm_calculate(struct sun4i_pwm_chip *sun4ichip,
+ 			       u32 *dty, u32 *prd, unsigned int *prsclr,
+ 			       bool *bypass)
+ {
++	const struct sun4i_pwm_data *data = sun4ichip->data;
++	const u32 *prescaler_table = data->prescaler_table;
+ 	u64 clk_rate, div = 0;
+ 	unsigned int prescaler = 0;
+ 
+ 	clk_rate = clk_get_rate(sun4ichip->clk);
+ 
+-	*bypass = sun4ichip->data->has_direct_mod_clk_output &&
++	*bypass = data->has_direct_mod_clk_output &&
+ 		  state->enabled &&
+ 		  (state->period * clk_rate >= NSEC_PER_SEC) &&
+ 		  (state->period * clk_rate < 2 * NSEC_PER_SEC) &&
+@@ -186,7 +287,7 @@ static int sun4i_pwm_calculate(struct sun4i_pwm_chip *sun4ichip,
+ 	if (*bypass)
+ 		return 0;
+ 
+-	if (sun4ichip->data->has_prescaler_bypass) {
++	if (data->has_prescaler_bypass) {
+ 		/* First, test without any prescaler when available */
+ 		prescaler = PWM_PRESCAL_MASK;
+ 		/*
+@@ -233,6 +334,8 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
+ 			   const struct pwm_state *state)
+ {
+ 	struct sun4i_pwm_chip *sun4ichip = to_sun4i_pwm_chip(chip);
++	const struct sun4i_pwm_data *data = sun4ichip->data;
++	struct sunxi_reg_ops *reg_ops = data->reg_ops;
+ 	struct pwm_state cstate;
+ 	u32 ctrl, duty = 0, period = 0, val;
+ 	int ret;
+@@ -259,13 +362,13 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
+ 	}
+ 
+ 	spin_lock(&sun4ichip->ctrl_lock);
+-	ctrl = sun4i_pwm_readl(sun4ichip, PWM_CTRL_REG);
++	ctrl = reg_ops->ctl_read(sun4ichip, pwm->hwpwm);
+ 
+-	if (sun4ichip->data->has_direct_mod_clk_output) {
++	if (data->has_direct_mod_clk_output) {
+ 		if (bypass) {
+ 			ctrl |= BIT_CH(PWM_BYPASS, pwm->hwpwm);
+ 			/* We can skip other parameter */
+-			sun4i_pwm_writel(sun4ichip, ctrl, PWM_CTRL_REG);
++			reg_ops->ctl_write(sun4ichip, pwm->hwpwm, ctrl);
+ 			spin_unlock(&sun4ichip->ctrl_lock);
+ 			return 0;
+ 		}
+@@ -276,14 +379,14 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
+ 	if (PWM_REG_PRESCAL(ctrl, pwm->hwpwm) != prescaler) {
+ 		/* Prescaler changed, the clock has to be gated */
+ 		ctrl &= ~BIT_CH(PWM_CLK_GATING, pwm->hwpwm);
+-		sun4i_pwm_writel(sun4ichip, ctrl, PWM_CTRL_REG);
++		reg_ops->ctl_write(sun4ichip, pwm->hwpwm, ctrl);
+ 
+ 		ctrl &= ~BIT_CH(PWM_PRESCAL_MASK, pwm->hwpwm);
+ 		ctrl |= BIT_CH(prescaler, pwm->hwpwm);
+ 	}
+ 
+ 	val = (duty & PWM_DTY_MASK) | PWM_PRD(period);
+-	sun4i_pwm_writel(sun4ichip, val, PWM_CH_PRD(pwm->hwpwm));
++	reg_ops->prd_write(sun4ichip, pwm->hwpwm, val);
+ 
+ 	if (state->polarity != PWM_POLARITY_NORMAL)
+ 		ctrl &= ~BIT_CH(PWM_ACT_STATE, pwm->hwpwm);
+@@ -295,7 +398,7 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
+ 	if (state->enabled)
+ 		ctrl |= BIT_CH(PWM_EN, pwm->hwpwm);
+ 
+-	sun4i_pwm_writel(sun4ichip, ctrl, PWM_CTRL_REG);
++	reg_ops->ctl_write(sun4ichip, pwm->hwpwm, ctrl);
+ 
+ 	spin_unlock(&sun4ichip->ctrl_lock);
+ 
+@@ -310,10 +413,10 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
+ 		usleep_range(delay_us, delay_us * 2);
+ 
+ 	spin_lock(&sun4ichip->ctrl_lock);
+-	ctrl = sun4i_pwm_readl(sun4ichip, PWM_CTRL_REG);
++	ctrl = reg_ops->ctl_read(sun4ichip, pwm->hwpwm);
+ 	ctrl &= ~BIT_CH(PWM_CLK_GATING, pwm->hwpwm);
+ 	ctrl &= ~BIT_CH(PWM_EN, pwm->hwpwm);
+-	sun4i_pwm_writel(sun4ichip, ctrl, PWM_CTRL_REG);
++	reg_ops->ctl_write(sun4ichip, pwm->hwpwm, ctrl);
+ 	spin_unlock(&sun4ichip->ctrl_lock);
+ 
+ 	clk_disable_unprepare(sun4ichip->clk);
+@@ -321,6 +424,22 @@ static int sun4i_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
+ 	return 0;
+ }
+ 
++static struct sunxi_reg_ops sun4i_reg_ops = {
++	/*.ctl_rdy   = sun4i_reg_ctl_rdy,*/
++	.ctl_read  = sun4i_reg_ctl_read,
++	.ctl_write = sun4i_reg_ctl_write,
++	.prd_read  = sun4i_reg_prd_read,
++	.prd_write = sun4i_reg_prd_write,
++};
++
++static struct sunxi_reg_ops sun6i_reg_ops = {
++	/*.ctl_rdy   = sun6i_reg_ctl_rdy,*/
++	.ctl_read  = sun6i_reg_ctl_read,
++	.ctl_write = sun6i_reg_ctl_write,
++	.prd_read  = sun6i_reg_prd_read,
++	.prd_write = sun6i_reg_prd_write,
++};
++
+ static const struct pwm_ops sun4i_pwm_ops = {
+ 	.apply = sun4i_pwm_apply,
+ 	.get_state = sun4i_pwm_get_state,
+@@ -329,28 +448,46 @@ static const struct pwm_ops sun4i_pwm_ops = {
+ static const struct sun4i_pwm_data sun4i_pwm_dual_nobypass = {
+ 	.has_prescaler_bypass = false,
+ 	.npwm = 2,
++	.prescaler_table = sun4i_prescaler_table,
++	.reg_ops = &sun4i_reg_ops,
+ };
+ 
+ static const struct sun4i_pwm_data sun4i_pwm_dual_bypass = {
+ 	.has_prescaler_bypass = true,
+ 	.npwm = 2,
++	.prescaler_table = sun4i_prescaler_table,
++	.reg_ops = &sun4i_reg_ops,
+ };
+ 
+ static const struct sun4i_pwm_data sun4i_pwm_single_bypass = {
+ 	.has_prescaler_bypass = true,
+ 	.npwm = 1,
++	.prescaler_table = sun4i_prescaler_table,
++	.reg_ops = &sun4i_reg_ops,
+ };
+ 
+ static const struct sun4i_pwm_data sun50i_a64_pwm_data = {
+ 	.has_prescaler_bypass = true,
+ 	.has_direct_mod_clk_output = true,
+ 	.npwm = 1,
++	.prescaler_table = sun4i_prescaler_table,
++	.reg_ops = &sun4i_reg_ops,
+ };
+ 
+ static const struct sun4i_pwm_data sun50i_h6_pwm_data = {
+ 	.has_prescaler_bypass = true,
+ 	.has_direct_mod_clk_output = true,
+ 	.npwm = 2,
++	.prescaler_table = sun4i_prescaler_table,
++	.reg_ops = &sun4i_reg_ops,
++};
++
++static const struct sun4i_pwm_data sun6i_a31_pwm_data = {
++	.has_prescaler_bypass = false,
++	.has_direct_mod_clk_output = true,
++	.npwm = 1,
++	.prescaler_table = sun6i_prescaler_table,
++	.reg_ops = &sun6i_reg_ops,
+ };
+ 
+ static const struct of_device_id sun4i_pwm_dt_ids[] = {
+@@ -363,6 +500,9 @@ static const struct of_device_id sun4i_pwm_dt_ids[] = {
+ 	}, {
+ 		.compatible = "allwinner,sun5i-a13-pwm",
+ 		.data = &sun4i_pwm_single_bypass,
++	}, {
++		.compatible = "allwinner,sun6i-a31-pwm",
++		.data = &sun6i_a31_pwm_data,
+ 	}, {
+ 		.compatible = "allwinner,sun7i-a20-pwm",
+ 		.data = &sun4i_pwm_dual_bypass,
+-- 
+2.34.1
+

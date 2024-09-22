@@ -21,7 +21,7 @@
 update_firmware()
 {
 	if [ ! -z "${FIRMWARE_URL}" ] ; then
-		fw_update "${FIRMWARE_NAME}" "${FIRMWARE_URL}" "${FIRMWARE_BRANCH}"
+		fw_update ${FIRMWARE_NAME} ${FIRMWARE_URL} no ${FIRMWARE_BRANCH}
 	fi
 }
 

@@ -26,7 +26,10 @@ avoid_warnings=2
 #framebuffer_height=1024
 
 # uncomment if hdmi display is not detected and composite is being output
-hdmi_force_hotplug=1
+#hdmi_force_hotplug=1
+
+# uncomment to use composite mode even if HDMI monitor is detected
+hdmi_ignore_hotplug=1
 
 # uncomment to force a specific HDMI mode (this will force VGA)
 #hdmi_group=1
@@ -46,7 +49,7 @@ config_hdmi_boost=4
 # hdmi_ignore_edid=0xa5000080
 
 # Uncomment for composite PAL
-#sdtv_mode=2
+sdtv_mode=2
 
 # Set this option to 0 to prevent the firmware from trying to read an I2C HAT EEPROM (connected to pins ID_SD & ID_SC)
 # at powerup. See also disable_poe_fan.
@@ -68,10 +71,13 @@ eeprom_write_protect=1
 ignore_lcd=1
 
 # Set gpu_mem=16 if you do not need video decoding, or gpu_mem=64 if you need video decoding.
-gpu_mem=32
+gpu_mem=16
 
 # device tree file name
 device_tree=
 
 # kernel image file
 kernel=
+
+# initramfs file name
+ramfsfile=

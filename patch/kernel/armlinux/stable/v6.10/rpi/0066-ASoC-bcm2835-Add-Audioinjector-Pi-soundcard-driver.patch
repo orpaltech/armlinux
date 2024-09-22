@@ -1,0 +1,303 @@
+From 5d023aa3959c541c6309ec1d56e5eaf721e3f05a Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Sat, 21 Sep 2024 01:43:31 +0300
+Subject: [PATCH] ASoC/bcm2835: Add Audioinjector-Pi soundcard driver
+
+---
+ sound/soc/bcm/Kconfig                  |   7 +
+ sound/soc/bcm/Makefile                 |   7 +-
+ sound/soc/bcm/audioinjector-pi-sound.c | 241 +++++++++++++++++++++++++
+ 3 files changed, 254 insertions(+), 1 deletion(-)
+ create mode 100644 sound/soc/bcm/audioinjector-pi-sound.c
+
+diff --git a/sound/soc/bcm/Kconfig b/sound/soc/bcm/Kconfig
+index 4218057..8280437 100644
+--- a/sound/soc/bcm/Kconfig
++++ b/sound/soc/bcm/Kconfig
+@@ -9,6 +9,13 @@ config SND_BCM2835_SOC_I2S
+ 	  the BCM2835 I2S interface. You will also need
+ 	  to select the audio interfaces to support below.
+ 
++config SND_AUDIOINJECTOR_PI
++	tristate "Audioinjector-Pi Soundcard driver for Broadcom BCM2835"
++	depends on SND_BCM2835_SOC_I2S
++	select SND_SOC_WM8731_I2C
++	help
++	  Say Y or M if you want to add support for Audioinjector-Pi Soundcard.
++
+ config SND_SOC_CYGNUS
+ 	tristate "SoC platform audio for Broadcom Cygnus chips"
+ 	depends on ARCH_BCM_CYGNUS || COMPILE_TEST
+diff --git a/sound/soc/bcm/Makefile b/sound/soc/bcm/Makefile
+index 0c1325a..7bbe78a 100644
+--- a/sound/soc/bcm/Makefile
++++ b/sound/soc/bcm/Makefile
+@@ -4,6 +4,11 @@ snd-soc-bcm2835-i2s-y := bcm2835-i2s.o
+ 
+ obj-$(CONFIG_SND_BCM2835_SOC_I2S) += snd-soc-bcm2835-i2s.o
+ 
++# Audioinjector-Pi Soundcard Support
++snd-soc-audioinjector-pi-y := audioinjector-pi-sound.o
++
++obj-$(CONFIG_SND_AUDIOINJECTOR_PI) += snd-soc-audioinjector-pi.o
++
+ # CYGNUS Platform Support
+ snd-soc-cygnus-y := cygnus-pcm.o cygnus-ssp.o
+ 
+@@ -12,4 +17,4 @@ obj-$(CONFIG_SND_SOC_CYGNUS) += snd-soc-cygnus.o
+ # BCM63XX Platform Support
+ snd-soc-63xx-y := bcm63xx-i2s-whistler.o bcm63xx-pcm-whistler.o
+ 
+-obj-$(CONFIG_SND_BCM63XX_I2S_WHISTLER) += snd-soc-63xx.o
+\ No newline at end of file
++obj-$(CONFIG_SND_BCM63XX_I2S_WHISTLER) += snd-soc-63xx.o
+diff --git a/sound/soc/bcm/audioinjector-pi-sound.c b/sound/soc/bcm/audioinjector-pi-sound.c
+new file mode 100644
+index 0000000..4bcacc3
+--- /dev/null
++++ b/sound/soc/bcm/audioinjector-pi-sound.c
+@@ -0,0 +1,241 @@
++/*
++ * ASoC Driver for AudioInjector Pi Soundcard
++ *
++ *  Created on: 14-Apr-2018
++ *  Created by: Sergey Suloev <ssuloev@orpaltech.com>
++ *
++ * Copyright (C) 2013-2018 ORPAL Technology, Inc.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * version 2 as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/module.h>
++#include <linux/types.h>
++
++#include <sound/core.h>
++#include <sound/soc.h>
++#include <sound/pcm_params.h>
++#include <sound/control.h>
++
++#include "../codecs/wm8731.h"
++
++#define BOARD_XTAL_FREQ	12000000
++
++static const unsigned int bcm2835_i2s_rates[] = {
++	8000, 16000, 32000, 44100, 48000, 88200, 96000,
++};
++
++static struct snd_pcm_hw_constraint_list bcm2835_i2s_constraints = {
++	.list	= bcm2835_i2s_rates,
++	.count	= ARRAY_SIZE(bcm2835_i2s_rates),
++};
++
++static int audioinjector_pi_asoc_dai_init(struct snd_soc_pcm_runtime *rtd)
++{
++	struct snd_soc_dai *codec_dai = snd_soc_rtd_to_codec(rtd, 0);
++	struct snd_soc_card *card = rtd->card;
++	int ret;
++
++	/* Set codec sysclk */
++	ret = snd_soc_dai_set_sysclk(codec_dai, WM8731_SYSCLK_XTAL, BOARD_XTAL_FREQ, SND_SOC_CLOCK_IN);
++	if (ret) {
++		dev_err(card->dev, "Failed to set WM8731 SYSCLK: %d\n", ret);
++		return ret;
++	}
++
++	return 0;
++}
++
++static int audioinjector_pi_asoc_startup(struct snd_pcm_substream *substream)
++{
++	/* Setup constraints, because there is a 12 MHz XTAL on the board */
++	snd_pcm_hw_constraint_list(substream->runtime, 0,
++				   SNDRV_PCM_HW_PARAM_RATE,
++				   &bcm2835_i2s_constraints);
++	return 0;
++}
++
++static int audioinjector_pi_asoc_hw_params(struct snd_pcm_substream *substream,
++					   struct snd_pcm_hw_params *params)
++{
++	struct snd_soc_pcm_runtime *rtd	= snd_soc_substream_to_rtd(substream);
++	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
++	struct snd_soc_card *card = rtd->card;
++	int ret;
++
++	switch (params_rate(params)){
++		case 8000:
++			ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 1500);
++			break;
++		case 16000:
++			ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 750);
++			break;
++		case 32000:
++			ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 375);
++			break;
++		case 44100:
++			ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 272);
++			break;
++		case 48000:
++			ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 250);
++			break;
++		case 88200:
++			ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 136);
++			break;
++		case 96000:
++			ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 125);
++			break;
++		default:
++			ret = -EINVAL;
++			break;
++	}
++        if (ret < 0) {
++                dev_err(card->dev, "Failed to set BCLK ratio: %d\n", ret);
++                return ret;
++        }
++
++	return 0;
++}
++
++/* machine stream operations */
++static struct snd_soc_ops audioinjector_pi_asoc_ops = {
++	.startup	= audioinjector_pi_asoc_startup,
++	.hw_params	= audioinjector_pi_asoc_hw_params,
++};
++
++static const struct snd_soc_dapm_widget audioinjector_pi_dapm_widgets[] = {
++	SND_SOC_DAPM_HP("Headphone Jack", NULL),
++	SND_SOC_DAPM_SPK("Ext Spk", NULL),
++	SND_SOC_DAPM_LINE("In Jacks", NULL),
++	SND_SOC_DAPM_MIC("Microphone", NULL),
++};
++
++static const struct snd_soc_dapm_route audioinjector_pi_audio_map[] = {
++	/* headphone connected to LHPOUT, RHPOUT */
++	{ "Headphone Jack", NULL, "LHPOUT" },
++	{ "Headphone Jack", NULL, "RHPOUT" },
++
++	/* speaker connected to LOUT, ROUT */
++	{ "Ext Spk", NULL, "ROUT" },
++	{ "Ext Spk", NULL, "LOUT" },
++
++	/* line inputs */
++	/*{ "Line In Jacks", NULL, "Line Input" },*/
++	{ "LLINEIN", NULL, "In Jacks" },
++	{ "RLINEIN", NULL, "In Jacks" },
++
++	/* mic is connected to Mic Jack, with WM8731 Mic Bias */
++	/*{ "Microphone", NULL, "Mic Bias" },*/
++	{ "MICIN", NULL, "Microphone" },
++};
++
++static int audioinjector_pi_asoc_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++        struct snd_soc_card *card;
++        struct snd_soc_dai_link *dai;
++        struct device_node *codec_np, *cpu_np;
++	struct snd_soc_dai_link_component *comp;
++	int ret;
++
++	if (!dev->of_node)
++		return -ENODEV;
++
++	card = devm_kzalloc(dev, sizeof(*card), GFP_KERNEL);
++	dai = devm_kzalloc(dev, sizeof(*dai), GFP_KERNEL);
++	comp = devm_kzalloc(dev, 3 * sizeof(*comp), GFP_KERNEL);
++	if (!dai || !card || !comp)
++		return -ENOMEM;
++
++
++	// Populate DAI link structure
++	dai->name = "Audioinjector Pi WM8731";
++	dai->stream_name = "Audioinjector Pi WM8731 PCM";
++        dai->init = audioinjector_pi_asoc_dai_init;
++        dai->dai_fmt = SND_SOC_DAIFMT_I2S
++		     | SND_SOC_DAIFMT_CBM_CFM
++		     | SND_SOC_DAIFMT_NB_NF;
++	dai->ops = &audioinjector_pi_asoc_ops;
++
++	dai->cpus = &comp[0];
++	dai->num_cpus = 1;
++	dai->codecs = &comp[1];
++	dai->num_codecs = 1;
++	dai->platforms = &comp[2];
++	dai->num_platforms = 1;
++
++	// Read the Device tree
++	codec_np = of_parse_phandle(dev->of_node, "audio-codec", 0);
++	if (!codec_np) {
++		dev_err(dev, "Node 'audio-codec' missing!\n");
++		return -EINVAL;
++	}
++	dai->codecs->of_node = codec_np;
++	of_node_put(codec_np);
++	dai->codecs->dai_name = "wm8731-hifi";
++
++	cpu_np = of_parse_phandle(dev->of_node, "i2s-controller", 0);
++	if (!cpu_np) {
++		dev_err(dev, "Node 'i2s-controller' missing!\n");
++		of_node_put(codec_np);
++		return -EINVAL;
++	}
++	dai->cpus->of_node = cpu_np;
++	dai->platforms->of_node = cpu_np;
++	of_node_put(cpu_np);
++
++
++	// Register ASoC card object
++	card->dev = dev;
++	card->name = "audioinjector";
++	card->owner = THIS_MODULE;
++
++	card->dai_link = dai;
++	card->num_links = 1;
++
++	card->dapm_widgets = audioinjector_pi_dapm_widgets;
++	card->num_dapm_widgets = ARRAY_SIZE(audioinjector_pi_dapm_widgets);
++	card->dapm_routes = audioinjector_pi_audio_map;
++	card->num_dapm_routes = ARRAY_SIZE(audioinjector_pi_audio_map);
++	card->fully_routed = true;
++
++	ret = devm_snd_soc_register_card(dev, card);
++	if (ret == -EPROBE_DEFER)
++		return ret;
++	if (ret < 0) {
++		dev_err(dev, "register card failed: (%d)\n", ret);
++		return ret;
++	}
++
++	dev_info(dev, "%s card registered!\n", card->name);
++
++	return 0;
++}
++
++static const struct of_device_id audioinjector_pi_asoc_of_match[] = {
++	{ .compatible = "flatmax,audioinjector", },
++	{ /*sentinel*/ },
++};
++MODULE_DEVICE_TABLE(of, audioinjector_pi_asoc_of_match);
++
++static struct platform_driver audioinjector_pi_asoc_driver = {
++	.probe  = audioinjector_pi_asoc_probe,
++	.driver	= {
++		.name	= "audioinjector",
++		.owner 	= THIS_MODULE,
++		.of_match_table	= audioinjector_pi_asoc_of_match,
++	},
++};
++module_platform_driver(audioinjector_pi_asoc_driver);
++
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
++MODULE_DESCRIPTION("FlatMax Audioinjector Pi Soundcard driver");
++MODULE_LICENSE("GPL");
++MODULE_ALIAS("platform:audioinjector");
+-- 
+2.34.1
+

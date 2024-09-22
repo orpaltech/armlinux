@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# ----Test block -------
+DEBIAN_RELEASE=bullseye
+TOOLCHAINDIR=/home/sergey/Projects/orpaltech/armlinux/toolchains
+LINUX_PLATFORM=aarch64-linux-gnu
+EXTRADIR=/home/sergey/Projects/orpaltech
+SYSROOT_DIR=/home/sergey/Projects/orpaltech/boards/nanopi-a64/sysroot
+#CROSS_COMPILE=/home/sergey/Projects/orpaltech/armlinux/toolchains/bootlin/10/aarch64/glibc-2.31/bin/aarch64-buildroot-linux-gnu-
+#TOOLCHAIN_LIBDIR=/home/sergey/Projects/orpaltech/armlinux/toolchains/bootlin/10/aarch64/glibc-2.31/aarch64-buildroot-linux-gnu/sysroot/usr/lib
+
+R=/home/sergey/Projects/orpaltech/armlinux/output/images/${DEBIAN_RELEASE}/build/chroot
+
+CLEAN=bluetooth
+ENABLE_BLUETOOTH=yes
+
+#----------------------
+
+. /home/sergey/Projects/orpaltech/armlinux/lib/common.sh
+. /home/sergey/Projects/orpaltech/armlinux/lib/toolchains.sh
+
+
+set_cross_compile
+
+. /home/sergey/Projects/orpaltech/armlinux/lib/custom.d/generic/common/17-bluetooh.sh
+

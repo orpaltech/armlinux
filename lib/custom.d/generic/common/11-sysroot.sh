@@ -2,7 +2,7 @@
 # Prepare device sysroot for crosscompile
 #
 
-SYSROOT_DIR="${EXTRADIR}/boards/${BOARD}/sysroot"
+SYSROOT_DIR=${EXTRADIR}/boards/${BOARD}/sysroot
 
 mkdir -p ${SYSROOT_DIR}
 rm -rf ${SYSROOT_DIR}/*
@@ -21,7 +21,6 @@ else
 	rsync -az ${R}/etc/ld.so.conf	${SYSROOT_DIR}/etc
 fi
 
-# chown -R ${CURRENT_USER}:${CURRENT_USER} ${SYSROOT_DIR}
 
 # adjust symlinks to be relative
 ${LIBDIR}/make-relativelinks.sh	${SYSROOT_DIR}
@@ -34,6 +33,12 @@ if [ "${MACHINE_DUMP}" != "${LINUX_PLATFORM}" ] ; then
 
 	cd ${SYSROOT_DIR}/usr/lib
 	ln -s	${LINUX_PLATFORM}	./${MACHINE_DUMP}
+fi
+
+if [[ ${LINUX_PLATFORM} =~ ^aarch64-* ]]; then
+	cd ${SYSROOT_DIR}
+	ln -s lib/${LINUX_PLATFORM}	lib64
+	ln -s lib/${LINUX_PLATFORM}	usr/lib64
 fi
 
 chown -R ${CURRENT_USER}:${CURRENT_USER}	${SYSROOT_DIR}

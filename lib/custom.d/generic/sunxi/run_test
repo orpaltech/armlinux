@@ -1,0 +1,36 @@
+#!/bin/bash
+
+BASEDIR=/home/sergey/Projects/orpaltech/armlinux
+SRCDIR=${BASEDIR}/sources
+LIBDIR=${BASEDIR}/lib
+TOOLCHAINDIR=${BASEDIR}/toolchains
+BASEDIR=/home/sergey/Projects/orpaltech/armlinux/output
+
+ROOTFS=debian
+DEBIAN_RELEASE=trixie
+#LINUX_PLATFORM=aarch64-linux-gnu
+#MALI_BLOB_TYPE=lima
+EXTRADIR=/home/sergey/Projects/orpaltech
+
+R=$BASEDIR/images/$DEBIAN_RELEASE/build/chroot
+
+. ../../../../armlinux.conf
+
+BOARD=orangepi-pc
+SYSROOT_DIR=$EXTRADIR/boards/$BOARD/sysroot
+
+. ../../../boards/$BOARD.conf
+. ../../../common.sh
+. ../../../functions.sh
+
+
+. ../../../toolchains.sh
+
+set_cross_compile
+
+. ../common/12-meson.sh
+
+
+. ../common/67-bluetooh.sh
+#. ../common/40-libdrm.sh
+#. ./45-mesa-lima.sh

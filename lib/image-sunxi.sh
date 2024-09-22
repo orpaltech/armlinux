@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ########################################################################
-# mc-sunxi.sh
+# image-sunxi.sh
 #
 # Description:	Allwinner-specific part of the disk image scenario
 #		for ORPALTECH ARMLINUX build framework.
@@ -13,11 +13,10 @@
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2023 ORPAL Technology, Inc.
+# Copyright (C) 2013-2024 ORPAL Technology, Inc.
 #
 ########################################################################
 
-RESIZE_PART_NUM=1
 
 format_disk()
 {

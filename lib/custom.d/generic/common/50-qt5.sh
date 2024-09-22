@@ -1,5 +1,5 @@
 #
-# The script to build Qt5 framework
+# Build Qt5 framework
 #
 QT_GIT_ROOT="https://code.qt.io/qt"
 QT_RELEASE="5.15"
@@ -82,7 +82,7 @@ qt_update()
 		[[ -d ${QTBASE_SRC_DIR} ]] && rm -rf ${QTBASE_SRC_DIR}
 
 		# clone sources
-		git clone ${QTBASE_URL} -b ${QT_BRANCH} ${QTBASE_SRC_DIR}
+		git clone ${QTBASE_URL} -b ${QT_BRANCH} --tags ${QTBASE_SRC_DIR}
 		[ $? -eq 0 ] || exit $?;
 	fi
 
@@ -125,7 +125,7 @@ qt_update()
 			[[ -d ${QT_MODULE_DIR} ]] && rm -rf ${QT_MODULE_DIR}
 
 			# clone sources
-			git clone ${QT_MODULE_URL} -b $QT_BRANCH ${QT_MODULE_DIR}
+			git clone ${QT_MODULE_URL} -b $QT_BRANCH --tags ${QT_MODULE_DIR}
 			[ $? -eq 0 ] || exit $?;
 		fi
 
@@ -233,7 +233,7 @@ qt5_make_qtbase()
 
 	echo "Making qtbase..."
 
-        chrt -i 0 make -j${NUM_CPU_CORES}
+        chrt -i 0 make -j${HOST_CPU_CORES}
 	[ $? -eq 0 ] || exit $?;
 
         make install
@@ -264,7 +264,7 @@ qt5_make_modules()
 
 		${QT_QMAKE} -makefile ${QT_MODULE_SRC_DIR}/
 
-		chrt -i 0 make -j${NUM_CPU_CORES}
+		chrt -i 0 make -j${HOST_CPU_CORES}
 		[ $? -eq 0 ] || exit $?;
 
 		make install
@@ -361,7 +361,7 @@ EOF
 
 if [ "${ENABLE_QT}" = yes ] && [ -n "${QT_DEVICE_CONFIG}" ] ; then
 
-	if [[ $CLEAN =~ (^|,)"qt"(,|$) ]] ; then
+	if [[ ${CLEAN} =~ (^|,)qt(,|$) ]] ; then
 		rm -f ${QT5_DEB_PKG_FILE}
 	fi
 

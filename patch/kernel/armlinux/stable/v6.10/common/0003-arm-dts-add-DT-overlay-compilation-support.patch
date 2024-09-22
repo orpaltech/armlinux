@@ -1,0 +1,76 @@
+From bf358b7506f83848e962cc2d228a30d6d97703dd Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Sat, 21 Sep 2024 01:16:52 +0300
+Subject: [PATCH] arm/dts: add DT-overlay compilation support
+
+---
+ drivers/of/Kconfig   |  8 ++++++++
+ scripts/Makefile.lib | 12 ++++++++++++
+ 2 files changed, 20 insertions(+)
+
+diff --git a/drivers/of/Kconfig b/drivers/of/Kconfig
+index dd726c7..46b4940 100644
+--- a/drivers/of/Kconfig
++++ b/drivers/of/Kconfig
+@@ -96,11 +96,19 @@ config OF_RESERVED_MEM
+ config OF_RESOLVE
+ 	bool
+ 
++config OF_SYMBOLS
++	bool "Include device tree symbols"
++	help
++	  Loading a device tree overlay dynamically can require the base
++	  device tree symbols to be present.
++	  If this is enabled, the device tree blobs will be bigger.
++
+ config OF_OVERLAY
+ 	bool "Device Tree overlays"
+ 	select OF_DYNAMIC
+ 	select OF_FLATTREE
+ 	select OF_RESOLVE
++	select OF_SYMBOLS
+ 	help
+ 	  Overlays are a method to dynamically modify part of the kernel's
+ 	  device tree with dynamically loaded data.
+diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
+index 7f8ec77..217d787 100644
+--- a/scripts/Makefile.lib
++++ b/scripts/Makefile.lib
+@@ -362,6 +362,7 @@ DTC_FLAGS += -Wno-unit_address_vs_reg \
+ 	-Wno-avoid_unnecessary_addr_size \
+ 	-Wno-alias_paths \
+ 	-Wno-graph_child_address \
++	-Wno-unit_address_format \
+ 	-Wno-simple_bus_reg
+ else
+ DTC_FLAGS += \
+@@ -376,8 +377,13 @@ endif
+ 
+ DTC_FLAGS += $(DTC_FLAGS_$(target-stem))
+ 
++ifeq ($(CONFIG_OF_SYMBOLS),y)
++# Always compile the base DTB with symbols
++DTC_FLAGS += -@
++else
+ # Set -@ if the target is a base DTB that overlay is applied onto
+ DTC_FLAGS += $(if $(filter $(patsubst $(obj)/%,%,$@), $(base-dtb-y)), -@)
++endif
+ 
+ # Generate an assembly file to wrap the output of the device tree compiler
+ quiet_cmd_wrap_S_dtb = WRAP    $@
+@@ -437,6 +443,12 @@ $(obj)/%.dtb: $(obj)/%.dts $(DTC) $(DT_TMP_SCHEMA) FORCE
+ $(obj)/%.dtbo: $(src)/%.dtso $(DTC) FORCE
+ 	$(call if_changed_dep,dtc)
+ 
++quiet_cmd_scr  = MKIMAGE $@
++	cmd_scr  = mkimage -C none -A $(ARCH) -T script -d $< $@
++
++$(obj)/%.scr: $(src)/%.scr-cmd FORCE
++	$(call if_changed,scr)
++
+ dtc-tmp = $(subst $(comma),_,$(dot-target).dts.tmp)
+ 
+ # Bzip2
+-- 
+2.34.1
+

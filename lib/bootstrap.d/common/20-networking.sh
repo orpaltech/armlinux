@@ -42,10 +42,14 @@ network={
 }
 EOF
 
+  echo "Enable wpa_supplicant service..."
   chroot_exec systemctl --no-reload enable wpa_supplicant@wlan0.service
+else
+  echo "Disable wpa_supplicant service..."
+  chroot_exec systemctl disable wpa_supplicant
 fi
 
-# Enable network services
+echo "Enable network services..."
 chroot_exec systemctl --no-reload enable systemd-networkd.service
 chroot_exec systemctl --no-reload enable systemd-resolved.service
 
@@ -53,7 +57,7 @@ chroot_exec systemctl --no-reload enable systemd-resolved.service
 install_readonly "${FILES_DIR}/network/host.conf" "${ETC_DIR}/host.conf"
 
 # Enable network stack hardening
-if [ "${ENABLE_HARDNET}" = "yes" ] ; then
+if [ "${ENABLE_HARDNET}" = yes ] ; then
   # Install sysctl.d configuration files
   install_readonly "${FILES_DIR}/sysctl.d/82-net-hardening.conf" "${ETC_DIR}/sysctl.d/82-net-hardening.conf"
 
@@ -65,6 +69,5 @@ fi
 if [ "${NET_NTP_1}" != "" ] ; then
   chroot_exec systemctl --no-reload enable systemd-timesyncd.service
 fi
-
 
 chroot_exec update-ca-certificates -f

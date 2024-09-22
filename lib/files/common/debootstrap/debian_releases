@@ -1,0 +1,3 @@
+trixie		bookworm	bullseye	buster		stretch
+testing		stable		oldstable	oldoldstable	archived
+-		futureLTS	futureLTS	LTS		extendLTS

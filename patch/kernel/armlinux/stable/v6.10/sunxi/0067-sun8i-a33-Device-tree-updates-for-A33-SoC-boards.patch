@@ -1,0 +1,213 @@
+From 2a26f03672c30b8320e6cefafe1efb6f73db17ae Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Fri, 16 Feb 2024 22:29:40 +0300
+Subject: [PATCH] sun8i-a33: Device tree updates for A33 SoC boards
+
+---
+ .../arm/boot/dts/allwinner/sun8i-a23-a33.dtsi | 19 ++++++
+ arch/arm/boot/dts/allwinner/sun8i-a33.dtsi    | 65 ++++++++++++++++++-
+ .../dts/allwinner/sun8i-r16-bananapi-m2m.dts  | 19 +++++-
+ 3 files changed, 98 insertions(+), 5 deletions(-)
+
+diff --git a/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi b/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi
+index cd4bf60..c16bddd 100644
+--- a/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi
++++ b/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi
+@@ -275,6 +275,20 @@
+ 			#size-cells = <0>;
+ 		};
+ 
++		spi0: spi@1c68000 {
++			compatible = "allwinner,sun8i-a23-spi";
++			reg = <0x01c68000 0x1000>;
++			interrupts = <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_SPI0>, <&ccu CLK_SPI0>;
++			clock-names = "ahb", "mod";
++			dmas = <&dma 23>, <&dma 23>;
++			dma-names = "rx", "tx";
++			resets = <&ccu RST_BUS_SPI0>;
++			status = "disabled";
++			#address-cells = <1>;
++			#size-cells = <0>;
++		};
++
+ 		usb_otg: usb@1c19000 {
+ 			/* compatible gets set in SoC specific dtsi file */
+ 			reg = <0x01c19000 0x0400>;
+@@ -448,6 +462,11 @@
+ 				pins = "PG8", "PG9";
+ 				function = "uart1";
+ 			};
++
++			spi0_pins_a: spi0-pins-a {
++				pins = "PC3", "PC0", "PC1", "PC2";
++				function = "spi0";
++			};
+ 		};
+ 
+ 		timer@1c20c00 {
+diff --git a/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi b/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
+index 30fdd27..605724e 100644
+--- a/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
++++ b/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
+@@ -125,6 +125,9 @@
+ 
+ 	cpus {
+ 		cpu@0 {
++			compatible = "arm,cortex-a7";
++			device_type = "cpu";
++			reg = <0>;
+ 			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
+ 			operating-points-v2 = <&cpu0_opp_table>;
+@@ -132,6 +135,9 @@
+ 		};
+ 
+ 		cpu1: cpu@1 {
++			compatible = "arm,cortex-a7";
++			device_type = "cpu";
++			reg = <1>;
+ 			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
+ 			operating-points-v2 = <&cpu0_opp_table>;
+@@ -268,9 +274,20 @@
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+ 
+-			port {
+-				dsi_in_tcon0: endpoint {
+-					remote-endpoint = <&tcon0_out_dsi>;
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				dsi_in: port@0 {
++					reg = <0>;
++
++					dsi_in_tcon0: endpoint {
++						remote-endpoint = <&tcon0_out_dsi>;
++					};
++				};
++
++				dsi_out: port@1 {
++					reg = <1>;
+ 				};
+ 			};
+ 		};
+@@ -286,6 +303,32 @@
+ 			status = "disabled";
+ 			#phy-cells = <0>;
+ 		};
++
++		i2s0: i2s@1c22000 {
++			#sound-dai-cells = <0>;
++			compatible = "allwinner,sun6i-a31-i2s";
++			reg = <0x01c22000 0x400>;
++			interrupts = <GIC_SPI 13 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_I2S0>, <&ccu CLK_I2S0>;
++			clock-names = "apb", "mod";
++			resets = <&ccu RST_BUS_I2S0>;
++			dmas = <&dma 3>, <&dma 3>;
++			dma-names = "rx", "tx";
++			status = "disabled";
++		};
++
++		i2s1: i2s@1c22400 {
++			#sound-dai-cells = <0>;
++			compatible = "allwinner,sun6i-a31-i2s";
++			reg = <0x01c22400 0x400>;
++			interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_I2S1>, <&ccu CLK_I2S1>;
++			clock-names = "apb", "mod";
++			resets = <&ccu RST_BUS_I2S1>;
++			dmas = <&dma 4>, <&dma 4>;
++			dma-names = "rx", "tx";
++			status = "disabled";
++		};
+ 	};
+ 
+ 	thermal-zones {
+@@ -405,6 +448,22 @@
+ 		function = "uart0";
+ 	};
+ 
++	i2s1_bclk_pin: i2s1-bclk-pin {
++		pins = "PG11";
++		function = "i2s1";
++	};
++	i2s1_lrck_pin: i2s1-lrck-pin {
++		pins = "PG10";
++		function = "i2s1";
++	};
++	i2s1_do0_pin: i2s1-do0-pin {
++		pins = "PG12";
++		function = "i2s1";
++	};
++	i2s1_di_pins: i2s1-di-pin {
++		pins = "PG13";
++		function = "i2s1";
++	};
+ };
+ 
+ &tcon0 {
+diff --git a/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts b/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
+index bc39468..7327f65 100644
+--- a/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
++++ b/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
+@@ -67,6 +67,7 @@
+ 		led-0 {
+ 			label = "bpi-m2m:blue:usr";
+ 			gpios = <&pio 2 7 GPIO_ACTIVE_LOW>;
++			linux,default-trigger = "heartbeat";
+ 		};
+ 
+ 		led-1 {
+@@ -119,7 +120,7 @@
+ };
+ 
+ &dai {
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &ehci0 {
+@@ -141,6 +142,14 @@
+ 	bus-width = <4>;
+ 	non-removable;
+ 	status = "okay";
++
++	brcmf: wifi@1 {
++		reg = <1>;
++		compatible = "brcm,bcm4329-fmac";
++		interrupt-parent = <&r_pio>;
++		interrupts = <0 7 IRQ_TYPE_LEVEL_LOW>;  /* PL07 / EINT7 */
++		interrupt-names = "host-wake";
++	};
+ };
+ 
+ &mmc2 {
+@@ -157,6 +166,12 @@
+ 	status = "okay";
+ };
+ 
++&spi0 {
++	compatible = "allwinner,sun8i-h3-spi";
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi0_pins_a>;
++};
++
+ &r_rsb {
+ 	status = "okay";
+ 
+@@ -266,7 +281,7 @@
+ };
+ 
+ &sound {
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &uart0 {
+-- 
+2.34.1
+

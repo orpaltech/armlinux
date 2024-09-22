@@ -1,8 +1,8 @@
 #!/bin/bash
 
 LABEL_BACKTITLE="ORPALTECH ARM LINUX"
-LABEL_TITLE="Build configuration"
-LABEL_MENU="Choose one of the supported configurations:"
+LABEL_TITLE="Build Configuration"
+LABEL_MENU="Choose one of supported configurations:"
 
 declare -a config_options
 

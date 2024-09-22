@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ########################################################################
-# mc-rpi.sh
+# image-rpi.sh
 #
 # Description:	RaspberryPi-specific part of the disk image scenario
 #		for ORPALTECH ARMLINUX build framework.
@@ -13,11 +13,10 @@
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2023 ORPAL Technology, Inc.
+# Copyright (C) 2013-2024 ORPAL Technology, Inc.
 #
 ########################################################################
 
-RESIZE_PART_NUM=2
 
 format_disk()
 {
@@ -46,10 +45,10 @@ write_image()
 	sudo mkdir -p			/mnt/sdcard
 	sudo mount ${BLOCK_DEV}${P}2	/mnt/sdcard
 
-	sudo mkdir -p			/mnt/sdcard/boot/firmware
-	sudo mount ${BLOCK_DEV}${P}1	/mnt/sdcard/boot/firmware
+	sudo mkdir -p			/mnt/sdcard/${BOOT_DIR}
+	sudo mount ${BLOCK_DEV}${P}1	/mnt/sdcard/${BOOT_DIR}
 
-	sudo rsync -a --stats ${ROOTFS_DIR}/	/mnt/sdcard
+	sudo rsync -a -l --stats ${ROOTFS_DIR}/	/mnt/sdcard
 
         local ROOT_UUID=$(sudo blkid -o value -s UUID ${BLOCK_DEV}${P}2)
 	local BOOT_UUID=$(sudo blkid -o value -s UUID ${BLOCK_DEV}${P}1)
@@ -58,8 +57,11 @@ write_image()
 	sudo sed -i "s/BOOTUUID/UUID=${BOOT_UUID}/g"	/mnt/sdcard/etc/fstab
 
         local ROOT_PARTUUID=$(sudo blkid -o value -s PARTUUID ${BLOCK_DEV}${P}2)
-        sudo sed -i "s/ROOTPARTUUID/PARTUUID=${ROOT_PARTUUID}/g" /mnt/sdcard/boot/firmware/bootEnv.txt
-	sudo sed -i "s/ROOTPARTUUID/PARTUUID=${ROOT_PARTUUID}/g" /mnt/sdcard/boot/firmware/cmdline.txt
+	if [ "${BOOTLOADER}" = uboot ] ; then
+	  sudo sed -i "s/ROOTPARTUUID/PARTUUID=${ROOT_PARTUUID}/g" /mnt/sdcard/${BOOT_DIR}/bootEnv.txt
+	else
+	  sudo sed -i "s/ROOTPARTUUID/PARTUUID=${ROOT_PARTUUID}/g" /mnt/sdcard/${BOOT_DIR}/cmdline.txt
+	fi
 
 	sudo umount ${BLOCK_DEV}${P}*
 

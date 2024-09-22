@@ -8,18 +8,24 @@ if [ ! -d "${FIRMWARE_DIR}" ] ; then
   exit 1
 fi
 
-# Copy firmware binaries
+echo "Copy firmware binaries"
 cp ${FIRMWARE_DIR}/${FIRMWARE_NAME}/boot/bootcode.bin	${BOOT_DIR}/
 cp ${FIRMWARE_DIR}/${FIRMWARE_NAME}/boot/fixup*.dat	${BOOT_DIR}/
 cp ${FIRMWARE_DIR}/${FIRMWARE_NAME}/boot/start*.elf	${BOOT_DIR}/
 
 
+echo "Prepare cmdline.txt & config.txt"
 # Setup firmware boot cmdline
-CMDLINE="console=tty1 cma=256M@256M dwc_otg.lpm_enable=0 elevator=deadline root=ROOTPARTUUID ${CMDLINE}"
-KERNEL_BOOT_ARGS="root=ROOTPARTUUID ${KERNEL_BOOT_ARGS}"
+CMDLINE="console=tty1 8250.nr_uarts=1 cma=256M dwc_otg.lpm_enable=0 ${CMDLINE}"
+
+if [ "${BOOTLOADER}" = uboot ] ; then
+  KERNEL_BOOT_ARGS="root=ROOTPARTUUID ${KERNEL_BOOT_ARGS}"
+else
+  CMDLINE="root=ROOTPARTUUID ${CMDLINE}"
+fi
 
 # Add serial console support
-if [ "$ENABLE_CONSOLE" = yes ] ; then
+if [ "${ENABLE_CONSOLE}" = yes ] ; then
   CMDLINE="console=ttyS0,115200 ${CMDLINE}"
 fi
 
