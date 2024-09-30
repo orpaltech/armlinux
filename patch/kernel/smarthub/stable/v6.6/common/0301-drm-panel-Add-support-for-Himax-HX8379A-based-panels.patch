@@ -1,6 +1,6 @@
-From e29a2603d8e73d87939d34b81413b85533bb245b Mon Sep 17 00:00:00 2001
+From 1bfaf7babde7a40c8ca4b83adaf8ba53dce6e907 Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Thu, 26 Sep 2024 02:58:02 +0300
+Date: Sun, 30 Apr 2023 15:33:28 +0300
 Subject: [PATCH] drm/panel: Add support for Himax HX8379A-based panels
 
 ---
@@ -11,12 +11,12 @@ Subject: [PATCH] drm/panel: Add support for Himax HX8379A-based panels
  create mode 100644 drivers/gpu/drm/panel/panel-himax-hx8379a.c
 
 diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
-index 2ae0eb0..da70b12 100644
+index 8eeee71..10aefe3 100644
 --- a/drivers/gpu/drm/panel/Kconfig
 +++ b/drivers/gpu/drm/panel/Kconfig
-@@ -155,6 +155,16 @@ config DRM_PANEL_HIMAX_HX83112A
- 	  Say Y here if you want to enable support for Himax HX83112A-based
- 	  display panels, such as the one found in the Fairphone 4 smartphone.
+@@ -162,6 +162,16 @@ config DRM_PANEL_FEIYANG_FY07024DI26A30D
+ 	  Say Y if you want to enable support for panels based on the
+ 	  Feiyang FY07024DI26A30-D MIPI-DSI interface.
  
 +config DRM_PANEL_HIMAX_HX8379A
 +	tristate "Himax HX8379A-based MIPI-DSI panels"
@@ -32,13 +32,13 @@ index 2ae0eb0..da70b12 100644
  	tristate "HIMAX HX8394 MIPI-DSI LCD panels"
  	depends on OF
 diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
-index f0203f6..80b17a5 100644
+index c05aa9e..9e93a8c 100644
 --- a/drivers/gpu/drm/panel/Makefile
 +++ b/drivers/gpu/drm/panel/Makefile
-@@ -16,6 +16,7 @@ obj-$(CONFIG_DRM_PANEL_ELIDA_KD35T133) += panel-elida-kd35t133.o
+@@ -14,6 +14,7 @@ obj-$(CONFIG_DRM_PANEL_EBBG_FT8719) += panel-ebbg-ft8719.o
+ obj-$(CONFIG_DRM_PANEL_ELIDA_KD35T133) += panel-elida-kd35t133.o
  obj-$(CONFIG_DRM_PANEL_FEIXIN_K101_IM2BA02) += panel-feixin-k101-im2ba02.o
  obj-$(CONFIG_DRM_PANEL_FEIYANG_FY07024DI26A30D) += panel-feiyang-fy07024di26a30d.o
- obj-$(CONFIG_DRM_PANEL_HIMAX_HX83112A) += panel-himax-hx83112a.o
 +obj-$(CONFIG_DRM_PANEL_HIMAX_HX8379A) += panel-himax-hx8379a.o
  obj-$(CONFIG_DRM_PANEL_HIMAX_HX8394) += panel-himax-hx8394.o
  obj-$(CONFIG_DRM_PANEL_ILITEK_IL9322) += panel-ilitek-ili9322.o
@@ -363,5 +363,5 @@ index 0000000..c1cfc8d
 +MODULE_DESCRIPTION("DRM driver for HX8379A wvga video mode dsi panel");
 +MODULE_LICENSE("GPL v2");
 -- 
-2.34.1
+2.25.1
 

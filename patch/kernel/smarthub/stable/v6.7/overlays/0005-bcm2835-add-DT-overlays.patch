@@ -1,53 +1,47 @@
-From 250032251d1fd712d38e6a4b3a8efdf5610f7da3 Mon Sep 17 00:00:00 2001
+From 9fcd9d4a3a846524b61bc4632819b1800b17b3fa Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Mon, 30 Sep 2024 01:00:51 +0300
+Date: Mon, 30 Oct 2023 14:43:05 +0300
 Subject: [PATCH] bcm2835: Add DT-overlays
 
 ---
  arch/arm/boot/dts/broadcom/Makefile           |   2 +
- arch/arm/boot/dts/broadcom/overlays/Makefile  |  29 +++++
+ arch/arm/boot/dts/broadcom/overlays/Makefile  |  20 ++++
  .../broadcom/overlays/README.bcm2835-overlays |   1 +
- .../overlays/bcm2835-audioinjector-pi.dtso    |  32 +++++
- .../overlays/bcm2835-cm4-io-board.dtso        |  67 +++++++++++
- .../overlays/bcm2835-cm4-no-wifi.dtso         |  24 ++++
+ .../overlays/bcm2835-audioinjector-pi.dtso    |  41 +++++++
+ .../overlays/bcm2835-cm4-io-board.dtso        |  81 +++++++++++++
  .../overlays/bcm2835-ertft0356-drm.dtso       | 110 ++++++++++++++++++
- .../broadcom/overlays/bcm2835-esp32-sdio.dtso |  31 +++++
  .../broadcom/overlays/bcm2835-esp32-spi.dtso  |  29 +++++
- .../broadcom/overlays/bcm2835-fixup.scr-cmd   | 110 ++++++++++++++++++
+ .../broadcom/overlays/bcm2835-fixup.scr-cmd   |  82 +++++++++++++
  .../broadcom/overlays/bcm2835-gpio-reset.dtso |  24 ++++
  .../overlays/bcm2835-hx8379a-panel.dtso       |  29 +++++
  .../overlays/bcm2835-ili9486-drm.dtso         |  60 ++++++++++
  .../broadcom/overlays/bcm2835-no-hdmi.dtso    |  13 +++
- .../broadcom/overlays/bcm2835-nrf24-spi.dtso  |  79 +++++++++++++
- .../dts/broadcom/overlays/bcm2835-spidev.dtso |  59 ++++++++++
+ .../broadcom/overlays/bcm2835-nrf24-spi.dtso  |  83 +++++++++++++
+ .../dts/broadcom/overlays/bcm2835-spidev.dtso |  61 ++++++++++
  .../overlays/bcm2835-suptronics-x300.dtso     |  22 ++++
  .../overlays/bcm2835-waveshare35-drm.dtso     |  73 ++++++++++++
  arch/arm64/boot/dts/broadcom/Makefile         |   1 +
- .../arm64/boot/dts/broadcom/overlays/Makefile |  29 +++++
+ .../arm64/boot/dts/broadcom/overlays/Makefile |  20 ++++
  .../broadcom/overlays/README.bcm2835-overlays |   1 +
- .../overlays/bcm2835-audioinjector-pi.dtso    |  32 +++++
- .../overlays/bcm2835-cm4-io-board.dtso        |  67 +++++++++++
- .../overlays/bcm2835-cm4-no-wifi.dtso         |  24 ++++
+ .../overlays/bcm2835-audioinjector-pi.dtso    |  41 +++++++
+ .../overlays/bcm2835-cm4-io-board.dtso        |  81 +++++++++++++
  .../overlays/bcm2835-ertft0356-drm.dtso       | 110 ++++++++++++++++++
- .../broadcom/overlays/bcm2835-esp32-sdio.dtso |  31 +++++
  .../broadcom/overlays/bcm2835-esp32-spi.dtso  |  29 +++++
- .../broadcom/overlays/bcm2835-fixup.scr-cmd   | 110 ++++++++++++++++++
+ .../broadcom/overlays/bcm2835-fixup.scr-cmd   |  82 +++++++++++++
  .../broadcom/overlays/bcm2835-gpio-reset.dtso |  24 ++++
  .../overlays/bcm2835-hx8379a-panel.dtso       |  29 +++++
  .../overlays/bcm2835-ili9486-drm.dtso         |  60 ++++++++++
  .../broadcom/overlays/bcm2835-no-hdmi.dtso    |  13 +++
- .../broadcom/overlays/bcm2835-nrf24-spi.dtso  |  79 +++++++++++++
- .../dts/broadcom/overlays/bcm2835-spidev.dtso |  59 ++++++++++
+ .../broadcom/overlays/bcm2835-nrf24-spi.dtso  |  83 +++++++++++++
+ .../dts/broadcom/overlays/bcm2835-spidev.dtso |  61 ++++++++++
  .../overlays/bcm2835-suptronics-x300.dtso     |  22 ++++
  .../overlays/bcm2835-waveshare35-drm.dtso     |  73 ++++++++++++
- 36 files changed, 1587 insertions(+)
+ 32 files changed, 1461 insertions(+)
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/README.bcm2835-overlays
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dtso
- create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-cm4-no-wifi.dtso
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso
- create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-sdio.dtso
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dtso
@@ -62,9 +56,7 @@ Subject: [PATCH] bcm2835: Add DT-overlays
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/README.bcm2835-overlays
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dtso
- create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-no-wifi.dtso
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso
- create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-sdio.dtso
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dtso
@@ -77,10 +69,10 @@ Subject: [PATCH] bcm2835: Add DT-overlays
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dtso
 
 diff --git a/arch/arm/boot/dts/broadcom/Makefile b/arch/arm/boot/dts/broadcom/Makefile
-index 5881bcc..ddab0c1 100644
+index 7099d95..98cc18e 100644
 --- a/arch/arm/boot/dts/broadcom/Makefile
 +++ b/arch/arm/boot/dts/broadcom/Makefile
-@@ -126,3 +126,5 @@ dtb-$(CONFIG_ARCH_BCM_NSP) += \
+@@ -124,3 +124,5 @@ dtb-$(CONFIG_ARCH_BCM_NSP) += \
  	bcm958625k.dtb
  dtb-$(CONFIG_ARCH_BRCMSTB) += \
  	bcm7445-bcm97445svmb.dtb
@@ -88,10 +80,10 @@ index 5881bcc..ddab0c1 100644
 +subdir-y += overlays
 diff --git a/arch/arm/boot/dts/broadcom/overlays/Makefile b/arch/arm/boot/dts/broadcom/overlays/Makefile
 new file mode 100644
-index 0000000..0825a79
+index 0000000..01de61f
 --- /dev/null
 +++ b/arch/arm/boot/dts/broadcom/overlays/Makefile
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,20 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
@@ -100,25 +92,16 @@ index 0000000..0825a79
 +	bcm2835-gpio-reset.dtbo \
 +	bcm2835-nrf24-spi.dtbo \
 +	bcm2835-esp32-spi.dtbo \
-+	bcm2835-esp32-sdio.dtbo \
 +	bcm2835-waveshare35-drm.dtbo \
 +	bcm2835-ertft0356-drm.dtbo \
 +	bcm2835-audioinjector-pi.dtbo \
 +	bcm2835-no-hdmi.dtbo \
 +	bcm2835-suptronics-x300.dtbo \
-+	bcm2835-cm4-io-board.dtbo \
-+	bcm2835-cm4-no-wifi.dtbo
++	bcm2835-cm4-io-board.dtbo
 +
++scr-$(CONFIG_ARCH_BCM2835) += bcm2835-fixup.scr
 +
-+scr-$(CONFIG_ARCH_BCM2835) += \
-+	bcm2835-fixup.scr
-+
-+dtbotxt-$(CONFIG_ARCH_BCM2835) += \
-+	README.bcm2835-overlays
-+
-+dtb-y += $(dtbo-y) $(scr-y) $(dtbotxt-y)
-+
-+clean-files := *.dtbo *.scr
++dtbotxt-$(CONFIG_ARCH_BCM2835) += README.bcm2835-overlays
 +
 +endif
 diff --git a/arch/arm/boot/dts/broadcom/overlays/README.bcm2835-overlays b/arch/arm/boot/dts/broadcom/overlays/README.bcm2835-overlays
@@ -130,48 +113,57 @@ index 0000000..6573c77
 +# overlays for bcm2837
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
 new file mode 100644
-index 0000000..9c02c63
+index 0000000..053686c
 --- /dev/null
 +++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,41 @@
 +/dts-v1/;
 +/plugin/;
 +
 +/ {
 +	compatible = "brcm,bcm2835";
-+};
 +
-+&i2s {
-+	status = "okay";
-+};
-+
-+&i2c1 {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	status = "okay";
-+
-+	wm8731: wm8731@1a {
-+		#sound-dai-cells = <0>;
-+		compatible = "wlf,wm8731";
-+		reg = <0x1a>;
-+		status = "okay";
++	fragment@0 {
++		target = <&i2s>;
++		__overlay__ {
++			status = "okay";
++		};
 +	};
-+};
 +
-+&{/soc} {
-+	ai {
-+		compatible = "flatmax,audioinjector";
-+		i2s-controller = <&i2s>;
-+		audio-codec = <&wm8731>;
-+		status = "okay";
++	fragment@1 {
++		target = <&i2c1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			wm8731: wm8731@1a {
++				#sound-dai-cells = <0>;
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/";
++		__overlay__ {
++			sound_ai {
++				compatible = "flatmax,audioinjector";
++				i2s-controller = <&i2s>;
++				audio-codec = <&wm8731>;
++				status = "okay";
++                        };
++                };
 +	};
 +};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dtso
 new file mode 100644
-index 0000000..c95b5de
+index 0000000..6232e57
 --- /dev/null
 +++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dtso
-@@ -0,0 +1,67 @@
+@@ -0,0 +1,81 @@
 +/*
 + * Overlay for the Raspberry Pi Compute Module 4 IO board
 + */
@@ -183,91 +175,75 @@ index 0000000..c95b5de
 +/ {
 +	compatible = "brcm,bcm2711","brcm,bcm2835";
 +
++	fragment@0 {
++		target = <&i2c0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2c0_gpio44>;
++			status = "okay";
++
++			rtc: pcf85063@51 {
++				compatible = "nxp,pcf85063a";
++				reg = <0x51>;
++				quartz-load-femtofarads = <12500>;
++			};
++
++			fanctrl: emc2301@2f {
++				compatible = "microchip,emc2301";
++				reg = <0x2f>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++				#cooling-cells = <0x02>;
++
++				fan0: fan@0 {
++					reg = <0>;
++					min-rpm = /bits/ 16 <3500>;
++					max-rpm = /bits/ 16 <5500>;
++				};
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&cpu_thermal>;
++		polling-delay = <2000>; /* milliseconds */
++		__overlay__ {
++			trips {
++				fanmid0: fanmid0 {
++					temperature = <50000>;
++					hysteresis = <2000>;
++					type = "active";
++				};
++				fanmax0: fanmax0 {
++					temperature = <75000>;
++					hysteresis = <2000>;
++					type = "active";
++				};
++			};
++
++			cooling-maps {
++				map0 {
++					trip = <&fanmid0>;
++					cooling-device = <&fanctrl 2 6>;
++				};
++				map1 {
++					trip = <&fanmax0>;
++					cooling-device = <&fanctrl 7 THERMAL_NO_LIMIT>;
++				};
++			};
++		};
++	};
++
 +	__overrides__ {
-+		midtemp =       <&fanmid0>,"temperature:0";
-+		midtemp_hyst =  <&fanmid0>,"hysteresis:0";
-+		maxtemp =       <&fanmax0>,"temperature:0";
-+		maxtemp_hyst =  <&fanmax0>,"hysteresis:0";
-+		minrpm =        <&fan0>,"min-rpm;0";
-+		maxrpm =        <&fan0>,"max-rpm;0";
++		midtemp =	<&fanmid0>,"temperature:0";
++		midtemp_hyst =	<&fanmid0>,"hysteresis:0";
++		maxtemp =	<&fanmax0>,"temperature:0";
++		maxtemp_hyst =	<&fanmax0>,"hysteresis:0";
++		minrpm =	<&fan0>,"min-rpm;0";
++		maxrpm =	<&fan0>,"max-rpm;0";
 +	};
-+};
-+
-+&i2c0_1 {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	fanctrl: fanctrl@2f {
-+		compatible = "microchip,emc2301";
-+		reg = <0x2f>;
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+		#cooling-cells = <0x02>;
-+
-+		fan0: fan@0 {
-+			reg = <0>;
-+			min-rpm = /bits/ 16 <3500>;
-+			max-rpm = /bits/ 16 <5500>;
-+		};
-+	};
-+};
-+
-+&cpu_thermal {
-+	polling-delay = <2000>; /* milliseconds */
-+	
-+	trips {
-+		fanmid0: fanmid0 {
-+			temperature = <50000>;
-+			hysteresis = <2000>;
-+			type = "active";
-+		};
-+		fanmax0: fanmax0 {
-+			temperature = <75000>;
-+			hysteresis = <2000>;
-+			type = "active";
-+		};
-+	};
-+
-+	cooling-maps {
-+		map0 {
-+			trip = <&fanmid0>;
-+			cooling-device = <&fanctrl 2 6>;
-+		};
-+		map1 {
-+			trip = <&fanmax0>;
-+			cooling-device = <&fanctrl 7 THERMAL_NO_LIMIT>;
-+		};
-+	};
-+};
-diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-cm4-no-wifi.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-cm4-no-wifi.dtso
-new file mode 100644
-index 0000000..5261900
---- /dev/null
-+++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-cm4-no-wifi.dtso
-@@ -0,0 +1,24 @@
-+/*
-+ * Overlay for the Raspberry Pi CM4 without wireless
-+ */
-+#include <dt-bindings/thermal/thermal.h>
-+
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "brcm,bcm2711","brcm,bcm2835";
-+};
-+
-+/* SDHCI is used to control the SDIO for wireless */
-+&sdhci {
-+	status = "disabled";
-+};
-+&brcmf {
-+	status = "disabled";
-+};
-+
-+/* uart0 communicates with the BT module */
-+&uart0 {
-+	status = "disabled";
 +};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso
 new file mode 100644
@@ -385,46 +361,9 @@ index 0000000..5fb2eee
 +		};
 +	};
 +};
-diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-sdio.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-sdio.dtso
-new file mode 100644
-index 0000000..712b76f
---- /dev/null
-+++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-sdio.dtso
-@@ -0,0 +1,31 @@
-+#include <dt-bindings/pinctrl/bcm2835.h>
-+#include <dt-bindings/gpio/gpio.h>
-+
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
-+
-+	esp32_pwrseq: esp32-pwrseq {
-+		compatible = "mmc-pwrseq-simple";
-+		reset-gpios = <&gpio 13 GPIO_ACTIVE_LOW>;
-+	};
-+};
-+
-+&sdhci {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&emmc_gpio22>;
-+
-+	mmc-pwrseq = <&esp32_pwrseq>;
-+	status = "disabled";
-+
-+	esp32_sdio: esp32-sdio@1 {
-+                compatible = "espressif,esp32-sdio";
-+		reg = <1>;
-+		sdio-clk-mhz = <10>;
-+                status = "disabled";
-+        };
-+};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
 new file mode 100644
-index 0000000..9945759
+index 0000000..9d4762e
 --- /dev/null
 +++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
 @@ -0,0 +1,29 @@
@@ -435,65 +374,37 @@ index 0000000..9945759
 +
 +/ {
 +	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
-+};
 +
-+&spi {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&spi0_gpio7>;
-+	status = "disabled";
++	fragment@0 {
++		target = <&spi>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&spi0_gpio7>;
++			status = "okay";
 +
-+	esp32-spi@0 {
-+		compatible = "espressif,esp32-spi";
-+		reg = <0>;			/* CS0 */
-+
-+		spi-max-frequency = <10000000>;
-+
-+		handshake-gpios = <&gpio 5 0>;
-+		dataready-gpios = <&gpio 6 0>;
-+		reset-gpios = <&gpio 13 0>;
-+
-+		status = "disabled";
++			esp32_spi@0 {
++				compatible = "espressif,esp32-spi";
++				reg = <0>;			/* CS0 */
++				spi-max-frequency = <10000000>;
++				handshake-gpios = <&gpio 22 0>;
++				reset-gpios = <&gpio 6 0>;
++				dataready-gpios = <&gpio 27 0>;
++				status = "okay";
++			};
++		};
 +	};
 +};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd b/arch/arm/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
 new file mode 100644
-index 0000000..7e55c7c
+index 0000000..76328f9
 --- /dev/null
 +++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
-@@ -0,0 +1,110 @@
+@@ -0,0 +1,82 @@
 +# overlays fixup script
 +# implements (or rather substitutes) overlay arguments functionality
 +# using u-boot scripting, environment variables and "fdt" command
-+
-+
-+if test "${param_esp32_spi_bus}" = "0"; then
-+	setenv tmp_spi_path "spi@7e204000"
-+
-+	fdt set /soc/${tmp_spi_path} status "okay"
-+	fdt set /soc/${tmp_spi_path}/esp32-spi status "okay"
-+
-+	if test -n "${param_esp32_spi_freq}"; then
-+		fdt set /soc/${tmp_spi_path}/esp32-spi spi-max-frequency "<${param_esp32_spi_freq}>"
-+	fi
-+
-+	if test -n "${param_esp32_spi_mode}"; then
-+		fdt rm /soc/${tmp_spi_path}/esp32-spi spi-cpha
-+		fdt rm /soc/${tmp_spi_path}/esp32-spi spi-cpol
-+
-+		if test "${param_esp32_spi_mode}" = "1"; then
-+			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpha
-+		elif test "${param_esp32_spi_mode}" = "2"; then
-+			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpol
-+		elif test "${param_esp32_spi_mode}" = "3"; then
-+			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpha
-+			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpol
-+		fi
-+	fi
-+
-+	env delete tmp_spi_path
-+fi
 +
 +if test -n "${param_spidev_spi_bus}"; then
 +	test "${param_spidev_spi_bus}" = "0" && setenv tmp_spi_path "spi@7e204000"
@@ -725,10 +636,10 @@ index 0000000..1e6b7a8
 +};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso
 new file mode 100644
-index 0000000..26fc06b
+index 0000000..ed6bc42
 --- /dev/null
 +++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,83 @@
 +#include <dt-bindings/pinctrl/bcm2835.h>
 +
 +/dts-v1/;
@@ -736,141 +647,147 @@ index 0000000..26fc06b
 +
 +/ {
 +	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
-+};
 +
-+&{/aliases} {
-+	spi0 = "/soc/spi@7e204000";
-+	spi1 = "/soc/spi@7e215080";
-+};
-+
-+&gpio {
-+	nrf24_int0: nrf24_int0 {
-+		brcm,pins = <24>;
-+		brcm,function = <BCM2835_FSEL_GPIO_IN>;
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@7e204000";
++			spi1 = "/soc/spi@7e215080";
++		};
 +	};
 +
-+	nrf24_ce0: nrf24_ce0 {
-+		brcm,pins = <25>;
-+		brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++	fragment@1 {
++                target = <&gpio>;
++                __overlay__ {
++                        nrf24_int0: nrf24_int0 {
++				brcm,pins = <24>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++
++			nrf24_ce0: nrf24_ce0 {
++				brcm,pins = <25>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++
++			nrf24_int1: nrf24_int1 {
++				brcm,pins = <17>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++
++			nrf24_ce1: nrf24_ce1 {
++				brcm,pins = <27>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++		};
 +	};
 +
-+	nrf24_int1: nrf24_int1 {
-+		brcm,pins = <17>;
-+		brcm,function = <BCM2835_FSEL_GPIO_IN>;
++	fragment@2 {
++		target-path = "/soc/spi@7e204000";
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			nrf24@0 {
++				compatible = "nordic,nrf24";
++				reg = <0>;			/* CS0 */
++				spi-max-frequency = <5000000>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_int0 &nrf24_ce0>;
++				interrupt-parent = <&gpio>;
++				interrupts = <24 2>;		/* irq, falling edge */
++				irq-gpios = <&gpio 24 0>;
++				ce-gpios = <&gpio 25 0>;
++				status = "disabled";
++			};
++		};
 +	};
 +
-+	nrf24_ce1: nrf24_ce1 {
-+		brcm,pins = <27>;
-+		brcm,function = <BCM2835_FSEL_GPIO_OUT>;
-+	};
-+};
++	fragment@3 {
++		target-path = "/soc/spi@7e215080";
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
 +
-+&{/soc/spi@7e204000} {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	nrf24@0 {
-+		compatible = "nordic,nrf24";
-+		reg = <0>;			/* CS0 */
-+
-+		spi-max-frequency = <5000000>;
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&nrf24_int0 &nrf24_ce0>;
-+
-+		interrupt-parent = <&gpio>;
-+		interrupts = <24 2>;		/* irq, falling edge */
-+		irq-gpios = <&gpio 24 0>;
-+		ce-gpios = <&gpio 25 0>;
-+
-+		status = "disabled";
-+	};
-+};
-+
-+&{/soc/spi@7e215080} {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	nrf24@0 {
-+		compatible = "nordic,nrf24";
-+		reg = <0>;			/* CS0 */
-+
-+		spi-max-frequency = <5000000>;
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&nrf24_int1 &nrf24_ce1>;
-+
-+		interrupt-parent = <&gpio>;
-+		interrupts = <17 2>;		/* irq, falling edge */
-+		irq-gpios = <&gpio 17 0>;
-+		ce-gpios = <&gpio 27 0>;
-+
-+		status = "disabled";
++			nrf24@0 {
++				compatible = "nordic,nrf24";
++				reg = <0>;			/* CS0 */
++				spi-max-frequency = <5000000>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_int1 &nrf24_ce1>;
++				interrupt-parent = <&gpio>;
++				interrupts = <17 2>;		/* irq, falling edge */
++				irq-gpios = <&gpio 17 0>;
++				ce-gpios = <&gpio 27 0>;
++				status = "disabled";
++			};
++		};
 +	};
 +};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-spidev.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-spidev.dtso
 new file mode 100644
-index 0000000..221052a
+index 0000000..304b588
 --- /dev/null
 +++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-spidev.dtso
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,61 @@
 +/dts-v1/;
 +/plugin/;
 +
 +/ {
 +	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
-+};
 +
-+&spi {
-+	/* needed to avoid dtc warning */
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	status = "okay";
++	fragment@0 {
++                target = <&spi>;
++                __overlay__ {
++                        /* needed to avoid dtc warning */
++                        #address-cells = <1>;
++                        #size-cells = <0>;
++			status = "okay";
 +
-+	spidev@0 {
-+		#address-cells = <1>;
-+		#size-cells = <0>;
++                        spidev@0 {
++                                compatible = "spidev";
++                                reg = <0>;              /* CE0 */
++                                #address-cells = <1>;
++                                #size-cells = <0>;
++                                spi-max-frequency = <2000000>;
++				status = "disabled";
++                        };
 +
-+		compatible = "spidev";
-+		reg = <0>;              /* CE0 */
-+		spi-max-frequency = <2000000>;
-+		status = "disabled";
++			spidev@1 {
++                                compatible = "spidev";
++                                reg = <1>;              /* CE1 */
++                                #address-cells = <1>;
++                                #size-cells = <0>;
++                                spi-max-frequency = <2000000>;
++				status = "disabled";
++                        };
++		};
 +	};
 +
-+	spidev@1 {
-+		#address-cells = <1>;
-+		#size-cells = <0>;
++	fragment@1 {
++		target = <&spi1>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
 +
-+		compatible = "spidev";
-+		reg = <1>;              /* CE1 */
-+		spi-max-frequency = <2000000>;
-+		status = "disabled";
-+	};
-+};
++			spidev@0 {
++				compatible = "spidev";
++				reg = <0>;		/* CE0 */
++				#address-cells = <1>;
++				#size-cells = <0>;
++				spi-max-frequency = <2000000>;
++				status = "disabled";
++			};
 +
-+&spi1 {
-+	/* needed to avoid dtc warning */
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	spidev@0 {
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		compatible = "spidev";
-+		reg = <0>;		/* CE0 */
-+		spi-max-frequency = <2000000>;
-+		status = "disabled";
-+	};
-+
-+	spidev@1 {
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		compatible = "spidev";
-+		reg = <1>;		/* CE1 */
-+		spi-max-frequency = <2000000>;
-+		status = "disabled";
++			spidev@1 {
++				compatible = "spidev";
++				reg = <1>;		/* CE1 */
++				#address-cells = <1>;
++				#size-cells = <0>;
++				spi-max-frequency = <2000000>;
++				status = "disabled";
++			};
++		};
 +	};
 +};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-suptronics-x300.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-suptronics-x300.dtso
@@ -991,10 +908,10 @@ index 8b4591d..e68b05a 100644
 +subdir-y	+= overlays
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/Makefile b/arch/arm64/boot/dts/broadcom/overlays/Makefile
 new file mode 100644
-index 0000000..0825a79
+index 0000000..01de61f
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/Makefile
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,20 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
@@ -1003,25 +920,16 @@ index 0000000..0825a79
 +	bcm2835-gpio-reset.dtbo \
 +	bcm2835-nrf24-spi.dtbo \
 +	bcm2835-esp32-spi.dtbo \
-+	bcm2835-esp32-sdio.dtbo \
 +	bcm2835-waveshare35-drm.dtbo \
 +	bcm2835-ertft0356-drm.dtbo \
 +	bcm2835-audioinjector-pi.dtbo \
 +	bcm2835-no-hdmi.dtbo \
 +	bcm2835-suptronics-x300.dtbo \
-+	bcm2835-cm4-io-board.dtbo \
-+	bcm2835-cm4-no-wifi.dtbo
++	bcm2835-cm4-io-board.dtbo
 +
++scr-$(CONFIG_ARCH_BCM2835) += bcm2835-fixup.scr
 +
-+scr-$(CONFIG_ARCH_BCM2835) += \
-+	bcm2835-fixup.scr
-+
-+dtbotxt-$(CONFIG_ARCH_BCM2835) += \
-+	README.bcm2835-overlays
-+
-+dtb-y += $(dtbo-y) $(scr-y) $(dtbotxt-y)
-+
-+clean-files := *.dtbo *.scr
++dtbotxt-$(CONFIG_ARCH_BCM2835) += README.bcm2835-overlays
 +
 +endif
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/README.bcm2835-overlays b/arch/arm64/boot/dts/broadcom/overlays/README.bcm2835-overlays
@@ -1033,48 +941,57 @@ index 0000000..6573c77
 +# overlays for bcm2837
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
 new file mode 100644
-index 0000000..9c02c63
+index 0000000..053686c
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,41 @@
 +/dts-v1/;
 +/plugin/;
 +
 +/ {
 +	compatible = "brcm,bcm2835";
-+};
 +
-+&i2s {
-+	status = "okay";
-+};
-+
-+&i2c1 {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	status = "okay";
-+
-+	wm8731: wm8731@1a {
-+		#sound-dai-cells = <0>;
-+		compatible = "wlf,wm8731";
-+		reg = <0x1a>;
-+		status = "okay";
++	fragment@0 {
++		target = <&i2s>;
++		__overlay__ {
++			status = "okay";
++		};
 +	};
-+};
 +
-+&{/soc} {
-+	ai {
-+		compatible = "flatmax,audioinjector";
-+		i2s-controller = <&i2s>;
-+		audio-codec = <&wm8731>;
-+		status = "okay";
++	fragment@1 {
++		target = <&i2c1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			wm8731: wm8731@1a {
++				#sound-dai-cells = <0>;
++				compatible = "wlf,wm8731";
++				reg = <0x1a>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target-path = "/soc/";
++		__overlay__ {
++			sound_ai {
++				compatible = "flatmax,audioinjector";
++				i2s-controller = <&i2s>;
++				audio-codec = <&wm8731>;
++				status = "okay";
++                        };
++                };
 +	};
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dtso
 new file mode 100644
-index 0000000..c95b5de
+index 0000000..6232e57
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-io-board.dtso
-@@ -0,0 +1,67 @@
+@@ -0,0 +1,81 @@
 +/*
 + * Overlay for the Raspberry Pi Compute Module 4 IO board
 + */
@@ -1086,91 +1003,75 @@ index 0000000..c95b5de
 +/ {
 +	compatible = "brcm,bcm2711","brcm,bcm2835";
 +
++	fragment@0 {
++		target = <&i2c0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2c0_gpio44>;
++			status = "okay";
++
++			rtc: pcf85063@51 {
++				compatible = "nxp,pcf85063a";
++				reg = <0x51>;
++				quartz-load-femtofarads = <12500>;
++			};
++
++			fanctrl: emc2301@2f {
++				compatible = "microchip,emc2301";
++				reg = <0x2f>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++				#cooling-cells = <0x02>;
++
++				fan0: fan@0 {
++					reg = <0>;
++					min-rpm = /bits/ 16 <3500>;
++					max-rpm = /bits/ 16 <5500>;
++				};
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&cpu_thermal>;
++		polling-delay = <2000>; /* milliseconds */
++		__overlay__ {
++			trips {
++				fanmid0: fanmid0 {
++					temperature = <50000>;
++					hysteresis = <2000>;
++					type = "active";
++				};
++				fanmax0: fanmax0 {
++					temperature = <75000>;
++					hysteresis = <2000>;
++					type = "active";
++				};
++			};
++
++			cooling-maps {
++				map0 {
++					trip = <&fanmid0>;
++					cooling-device = <&fanctrl 2 6>;
++				};
++				map1 {
++					trip = <&fanmax0>;
++					cooling-device = <&fanctrl 7 THERMAL_NO_LIMIT>;
++				};
++			};
++		};
++	};
++
 +	__overrides__ {
-+		midtemp =       <&fanmid0>,"temperature:0";
-+		midtemp_hyst =  <&fanmid0>,"hysteresis:0";
-+		maxtemp =       <&fanmax0>,"temperature:0";
-+		maxtemp_hyst =  <&fanmax0>,"hysteresis:0";
-+		minrpm =        <&fan0>,"min-rpm;0";
-+		maxrpm =        <&fan0>,"max-rpm;0";
++		midtemp =	<&fanmid0>,"temperature:0";
++		midtemp_hyst =	<&fanmid0>,"hysteresis:0";
++		maxtemp =	<&fanmax0>,"temperature:0";
++		maxtemp_hyst =	<&fanmax0>,"hysteresis:0";
++		minrpm =	<&fan0>,"min-rpm;0";
++		maxrpm =	<&fan0>,"max-rpm;0";
 +	};
-+};
-+
-+&i2c0_1 {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	fanctrl: fanctrl@2f {
-+		compatible = "microchip,emc2301";
-+		reg = <0x2f>;
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+		#cooling-cells = <0x02>;
-+
-+		fan0: fan@0 {
-+			reg = <0>;
-+			min-rpm = /bits/ 16 <3500>;
-+			max-rpm = /bits/ 16 <5500>;
-+		};
-+	};
-+};
-+
-+&cpu_thermal {
-+	polling-delay = <2000>; /* milliseconds */
-+	
-+	trips {
-+		fanmid0: fanmid0 {
-+			temperature = <50000>;
-+			hysteresis = <2000>;
-+			type = "active";
-+		};
-+		fanmax0: fanmax0 {
-+			temperature = <75000>;
-+			hysteresis = <2000>;
-+			type = "active";
-+		};
-+	};
-+
-+	cooling-maps {
-+		map0 {
-+			trip = <&fanmid0>;
-+			cooling-device = <&fanctrl 2 6>;
-+		};
-+		map1 {
-+			trip = <&fanmax0>;
-+			cooling-device = <&fanctrl 7 THERMAL_NO_LIMIT>;
-+		};
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-no-wifi.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-no-wifi.dtso
-new file mode 100644
-index 0000000..5261900
---- /dev/null
-+++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-cm4-no-wifi.dtso
-@@ -0,0 +1,24 @@
-+/*
-+ * Overlay for the Raspberry Pi CM4 without wireless
-+ */
-+#include <dt-bindings/thermal/thermal.h>
-+
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "brcm,bcm2711","brcm,bcm2835";
-+};
-+
-+/* SDHCI is used to control the SDIO for wireless */
-+&sdhci {
-+	status = "disabled";
-+};
-+&brcmf {
-+	status = "disabled";
-+};
-+
-+/* uart0 communicates with the BT module */
-+&uart0 {
-+	status = "disabled";
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso
 new file mode 100644
@@ -1288,46 +1189,9 @@ index 0000000..5fb2eee
 +		};
 +	};
 +};
-diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-sdio.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-sdio.dtso
-new file mode 100644
-index 0000000..712b76f
---- /dev/null
-+++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-sdio.dtso
-@@ -0,0 +1,31 @@
-+#include <dt-bindings/pinctrl/bcm2835.h>
-+#include <dt-bindings/gpio/gpio.h>
-+
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
-+
-+	esp32_pwrseq: esp32-pwrseq {
-+		compatible = "mmc-pwrseq-simple";
-+		reset-gpios = <&gpio 13 GPIO_ACTIVE_LOW>;
-+	};
-+};
-+
-+&sdhci {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&emmc_gpio22>;
-+
-+	mmc-pwrseq = <&esp32_pwrseq>;
-+	status = "disabled";
-+
-+	esp32_sdio: esp32-sdio@1 {
-+                compatible = "espressif,esp32-sdio";
-+		reg = <1>;
-+		sdio-clk-mhz = <10>;
-+                status = "disabled";
-+        };
-+};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
 new file mode 100644
-index 0000000..9945759
+index 0000000..9d4762e
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
 @@ -0,0 +1,29 @@
@@ -1338,65 +1202,37 @@ index 0000000..9945759
 +
 +/ {
 +	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
-+};
 +
-+&spi {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&spi0_gpio7>;
-+	status = "disabled";
++	fragment@0 {
++		target = <&spi>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&spi0_gpio7>;
++			status = "okay";
 +
-+	esp32-spi@0 {
-+		compatible = "espressif,esp32-spi";
-+		reg = <0>;			/* CS0 */
-+
-+		spi-max-frequency = <10000000>;
-+
-+		handshake-gpios = <&gpio 5 0>;
-+		dataready-gpios = <&gpio 6 0>;
-+		reset-gpios = <&gpio 13 0>;
-+
-+		status = "disabled";
++			esp32_spi@0 {
++				compatible = "espressif,esp32-spi";
++				reg = <0>;			/* CS0 */
++				spi-max-frequency = <10000000>;
++				handshake-gpios = <&gpio 22 0>;
++				reset-gpios = <&gpio 6 0>;
++				dataready-gpios = <&gpio 27 0>;
++				status = "okay";
++			};
++		};
 +	};
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
 new file mode 100644
-index 0000000..7e55c7c
+index 0000000..76328f9
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
-@@ -0,0 +1,110 @@
+@@ -0,0 +1,82 @@
 +# overlays fixup script
 +# implements (or rather substitutes) overlay arguments functionality
 +# using u-boot scripting, environment variables and "fdt" command
-+
-+
-+if test "${param_esp32_spi_bus}" = "0"; then
-+	setenv tmp_spi_path "spi@7e204000"
-+
-+	fdt set /soc/${tmp_spi_path} status "okay"
-+	fdt set /soc/${tmp_spi_path}/esp32-spi status "okay"
-+
-+	if test -n "${param_esp32_spi_freq}"; then
-+		fdt set /soc/${tmp_spi_path}/esp32-spi spi-max-frequency "<${param_esp32_spi_freq}>"
-+	fi
-+
-+	if test -n "${param_esp32_spi_mode}"; then
-+		fdt rm /soc/${tmp_spi_path}/esp32-spi spi-cpha
-+		fdt rm /soc/${tmp_spi_path}/esp32-spi spi-cpol
-+
-+		if test "${param_esp32_spi_mode}" = "1"; then
-+			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpha
-+		elif test "${param_esp32_spi_mode}" = "2"; then
-+			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpol
-+		elif test "${param_esp32_spi_mode}" = "3"; then
-+			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpha
-+			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpol
-+		fi
-+	fi
-+
-+	env delete tmp_spi_path
-+fi
 +
 +if test -n "${param_spidev_spi_bus}"; then
 +	test "${param_spidev_spi_bus}" = "0" && setenv tmp_spi_path "spi@7e204000"
@@ -1628,10 +1464,10 @@ index 0000000..1e6b7a8
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso
 new file mode 100644
-index 0000000..26fc06b
+index 0000000..ed6bc42
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,83 @@
 +#include <dt-bindings/pinctrl/bcm2835.h>
 +
 +/dts-v1/;
@@ -1639,141 +1475,147 @@ index 0000000..26fc06b
 +
 +/ {
 +	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
-+};
 +
-+&{/aliases} {
-+	spi0 = "/soc/spi@7e204000";
-+	spi1 = "/soc/spi@7e215080";
-+};
-+
-+&gpio {
-+	nrf24_int0: nrf24_int0 {
-+		brcm,pins = <24>;
-+		brcm,function = <BCM2835_FSEL_GPIO_IN>;
++	fragment@0 {
++		target-path = "/aliases";
++		__overlay__ {
++			spi0 = "/soc/spi@7e204000";
++			spi1 = "/soc/spi@7e215080";
++		};
 +	};
 +
-+	nrf24_ce0: nrf24_ce0 {
-+		brcm,pins = <25>;
-+		brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++	fragment@1 {
++                target = <&gpio>;
++                __overlay__ {
++                        nrf24_int0: nrf24_int0 {
++				brcm,pins = <24>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++
++			nrf24_ce0: nrf24_ce0 {
++				brcm,pins = <25>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++
++			nrf24_int1: nrf24_int1 {
++				brcm,pins = <17>;
++				brcm,function = <BCM2835_FSEL_GPIO_IN>;
++			};
++
++			nrf24_ce1: nrf24_ce1 {
++				brcm,pins = <27>;
++				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
++			};
++		};
 +	};
 +
-+	nrf24_int1: nrf24_int1 {
-+		brcm,pins = <17>;
-+		brcm,function = <BCM2835_FSEL_GPIO_IN>;
++	fragment@2 {
++		target-path = "/soc/spi@7e204000";
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			nrf24@0 {
++				compatible = "nordic,nrf24";
++				reg = <0>;			/* CS0 */
++				spi-max-frequency = <5000000>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_int0 &nrf24_ce0>;
++				interrupt-parent = <&gpio>;
++				interrupts = <24 2>;		/* irq, falling edge */
++				irq-gpios = <&gpio 24 0>;
++				ce-gpios = <&gpio 25 0>;
++				status = "disabled";
++			};
++		};
 +	};
 +
-+	nrf24_ce1: nrf24_ce1 {
-+		brcm,pins = <27>;
-+		brcm,function = <BCM2835_FSEL_GPIO_OUT>;
-+	};
-+};
++	fragment@3 {
++		target-path = "/soc/spi@7e215080";
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
 +
-+&{/soc/spi@7e204000} {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	nrf24@0 {
-+		compatible = "nordic,nrf24";
-+		reg = <0>;			/* CS0 */
-+
-+		spi-max-frequency = <5000000>;
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&nrf24_int0 &nrf24_ce0>;
-+
-+		interrupt-parent = <&gpio>;
-+		interrupts = <24 2>;		/* irq, falling edge */
-+		irq-gpios = <&gpio 24 0>;
-+		ce-gpios = <&gpio 25 0>;
-+
-+		status = "disabled";
-+	};
-+};
-+
-+&{/soc/spi@7e215080} {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	nrf24@0 {
-+		compatible = "nordic,nrf24";
-+		reg = <0>;			/* CS0 */
-+
-+		spi-max-frequency = <5000000>;
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&nrf24_int1 &nrf24_ce1>;
-+
-+		interrupt-parent = <&gpio>;
-+		interrupts = <17 2>;		/* irq, falling edge */
-+		irq-gpios = <&gpio 17 0>;
-+		ce-gpios = <&gpio 27 0>;
-+
-+		status = "disabled";
++			nrf24@0 {
++				compatible = "nordic,nrf24";
++				reg = <0>;			/* CS0 */
++				spi-max-frequency = <5000000>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_int1 &nrf24_ce1>;
++				interrupt-parent = <&gpio>;
++				interrupts = <17 2>;		/* irq, falling edge */
++				irq-gpios = <&gpio 17 0>;
++				ce-gpios = <&gpio 27 0>;
++				status = "disabled";
++			};
++		};
 +	};
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-spidev.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-spidev.dtso
 new file mode 100644
-index 0000000..221052a
+index 0000000..304b588
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-spidev.dtso
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,61 @@
 +/dts-v1/;
 +/plugin/;
 +
 +/ {
 +	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
-+};
 +
-+&spi {
-+	/* needed to avoid dtc warning */
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	status = "okay";
++	fragment@0 {
++                target = <&spi>;
++                __overlay__ {
++                        /* needed to avoid dtc warning */
++                        #address-cells = <1>;
++                        #size-cells = <0>;
++			status = "okay";
 +
-+	spidev@0 {
-+		#address-cells = <1>;
-+		#size-cells = <0>;
++                        spidev@0 {
++                                compatible = "spidev";
++                                reg = <0>;              /* CE0 */
++                                #address-cells = <1>;
++                                #size-cells = <0>;
++                                spi-max-frequency = <2000000>;
++				status = "disabled";
++                        };
 +
-+		compatible = "spidev";
-+		reg = <0>;              /* CE0 */
-+		spi-max-frequency = <2000000>;
-+		status = "disabled";
++			spidev@1 {
++                                compatible = "spidev";
++                                reg = <1>;              /* CE1 */
++                                #address-cells = <1>;
++                                #size-cells = <0>;
++                                spi-max-frequency = <2000000>;
++				status = "disabled";
++                        };
++		};
 +	};
 +
-+	spidev@1 {
-+		#address-cells = <1>;
-+		#size-cells = <0>;
++	fragment@1 {
++		target = <&spi1>;
++		__overlay__ {
++			/* needed to avoid dtc warning */
++			#address-cells = <1>;
++			#size-cells = <0>;
 +
-+		compatible = "spidev";
-+		reg = <1>;              /* CE1 */
-+		spi-max-frequency = <2000000>;
-+		status = "disabled";
-+	};
-+};
++			spidev@0 {
++				compatible = "spidev";
++				reg = <0>;		/* CE0 */
++				#address-cells = <1>;
++				#size-cells = <0>;
++				spi-max-frequency = <2000000>;
++				status = "disabled";
++			};
 +
-+&spi1 {
-+	/* needed to avoid dtc warning */
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	spidev@0 {
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		compatible = "spidev";
-+		reg = <0>;		/* CE0 */
-+		spi-max-frequency = <2000000>;
-+		status = "disabled";
-+	};
-+
-+	spidev@1 {
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		compatible = "spidev";
-+		reg = <1>;		/* CE1 */
-+		spi-max-frequency = <2000000>;
-+		status = "disabled";
++			spidev@1 {
++				compatible = "spidev";
++				reg = <1>;		/* CE1 */
++				#address-cells = <1>;
++				#size-cells = <0>;
++				spi-max-frequency = <2000000>;
++				status = "disabled";
++			};
++		};
 +	};
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-suptronics-x300.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-suptronics-x300.dtso

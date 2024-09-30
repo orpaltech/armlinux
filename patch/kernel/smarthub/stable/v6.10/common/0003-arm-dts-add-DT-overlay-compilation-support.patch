@@ -1,69 +1,69 @@
-From 09e3397a37daafb29a1637bf5d94be495e6ce2df Mon Sep 17 00:00:00 2001
+From b3bad9d6bb6d099ff2d1290b89a0f5ddfb558f49 Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Sat, 6 Jul 2024 22:46:15 +0300
-Subject: [PATCH] arm/dts: add DT-overlay compilation support
+Date: Mon, 30 Sep 2024 19:33:39 +0300
+Subject: [PATCH] arm/dts: Add DT-overlay compilation support
 
 ---
- drivers/of/Kconfig   |  8 ++++++++
- scripts/Makefile.lib | 12 ++++++++++++
- 2 files changed, 20 insertions(+)
+ scripts/Makefile.dtbinst |  8 +++++++-
+ scripts/Makefile.lib     | 12 +++++++++++-
+ 2 files changed, 18 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/of/Kconfig b/drivers/of/Kconfig
-index dd726c7..46b4940 100644
---- a/drivers/of/Kconfig
-+++ b/drivers/of/Kconfig
-@@ -96,11 +96,19 @@ config OF_RESERVED_MEM
- config OF_RESOLVE
- 	bool
+diff --git a/scripts/Makefile.dtbinst b/scripts/Makefile.dtbinst
+index 9d92041..dfc5140 100644
+--- a/scripts/Makefile.dtbinst
++++ b/scripts/Makefile.dtbinst
+@@ -22,6 +22,12 @@ quiet_cmd_dtb_install = INSTALL $@
+ $(dst)/%: $(obj)/%
+ 	$(call cmd,dtb_install)
  
-+config OF_SYMBOLS
-+	bool "Include device tree symbols"
-+	help
-+	  Loading a device tree overlay dynamically can require the base
-+	  device tree symbols to be present.
-+	  If this is enabled, the device tree blobs will be bigger.
++$(dst)/%.scr: $(obj)/%.scr
++	$(call cmd,dtb_install)
 +
- config OF_OVERLAY
- 	bool "Device Tree overlays"
- 	select OF_DYNAMIC
- 	select OF_FLATTREE
- 	select OF_RESOLVE
-+	select OF_SYMBOLS
- 	help
- 	  Overlays are a method to dynamically modify part of the kernel's
- 	  device tree with dynamically loaded data.
++$(dst)/README.%-overlays: $(obj)/README.%-overlays
++	$(call cmd,dtb_install)
++
+ dtbs := $(patsubst $(obj)/%,%,$(call read-file, $(obj)/dtbs-list))
+ 
+ ifdef CONFIG_ARCH_WANT_FLAT_DTB_INSTALL
+@@ -37,7 +43,7 @@ dtbs := $(notdir $(dtbs))
+ 
+ endif # CONFIG_ARCH_WANT_FLAT_DTB_INSTALL
+ 
+-__dtbs_install: $(addprefix $(dst)/, $(dtbs))
++__dtbs_install: $(addprefix $(dst)/, $(dtbs)) $(script-files) $(readme-files)
+ 	@:
+ 
+ .PHONY: $(PHONY)
 diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
-index 9f06f6a..3fa132d 100644
+index 7f8ec77..7f0d80c 100644
 --- a/scripts/Makefile.lib
 +++ b/scripts/Makefile.lib
-@@ -362,6 +362,7 @@ DTC_FLAGS += -Wno-unit_address_vs_reg \
- 	-Wno-avoid_unnecessary_addr_size \
- 	-Wno-alias_paths \
- 	-Wno-graph_child_address \
-+	-Wno-unit_address_format \
- 	-Wno-simple_bus_reg
- else
- DTC_FLAGS += \
-@@ -376,8 +377,13 @@ endif
+@@ -93,6 +93,9 @@ base-dtb-y := $(filter %.dtb, $(call real-search, $(multi-dtb-y), .dtb, -dtbs))
  
- DTC_FLAGS += $(DTC_FLAGS_$(target-stem))
+ always-y			+= $(dtb-y)
  
-+ifeq ($(CONFIG_OF_SYMBOLS),y)
-+# Always compile the base DTB with symbols
-+DTC_FLAGS += -@
-+else
++# Overlay Fixup script targets
++extra-y				+= $(scr-y) $(dtbotxt-y)
++
+ # Add subdir path
+ 
+ ifneq ($(obj),.)
+@@ -374,7 +377,8 @@ DTC_FLAGS += -Wnode_name_chars_strict \
+ 	-Wunique_unit_address
+ endif
+ 
+-DTC_FLAGS += $(DTC_FLAGS_$(target-stem))
++DTC_FLAGS += $(DTC_FLAGS_$(target-stem)) \
++	-@
+ 
  # Set -@ if the target is a base DTB that overlay is applied onto
  DTC_FLAGS += $(if $(filter $(patsubst $(obj)/%,%,$@), $(base-dtb-y)), -@)
-+endif
- 
- # Generate an assembly file to wrap the output of the device tree compiler
- quiet_cmd_wrap_S_dtb = WRAP    $@
-@@ -433,6 +439,12 @@ $(obj)/%.dtb: $(obj)/%.dts $(DTC) $(DT_TMP_SCHEMA) FORCE
+@@ -437,6 +441,12 @@ $(obj)/%.dtb: $(obj)/%.dts $(DTC) $(DT_TMP_SCHEMA) FORCE
  $(obj)/%.dtbo: $(src)/%.dtso $(DTC) FORCE
  	$(call if_changed_dep,dtc)
  
-+quiet_cmd_scr	= MKIMAGE $@
-+      cmd_scr	= mkimage -C none -A $(ARCH) -T script -d $< $@
++quiet_cmd_scr = MKIMAGE $@
++	cmd_scr = mkimage -C none -A $(ARCH) -T script -d $< $@
 +
 +$(obj)/%.scr: $(src)/%.scr-cmd FORCE
 +	$(call if_changed,scr)

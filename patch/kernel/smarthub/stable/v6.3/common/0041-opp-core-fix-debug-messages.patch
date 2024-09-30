@@ -1,0 +1,38 @@
+From d1f266cc5a110623998a536efa572d0e716aee12 Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Sat, 4 Feb 2023 01:12:57 +0300
+Subject: [PATCH] opp: core: fix debug messages
+
+---
+ drivers/opp/core.c | 8 --------
+ 1 file changed, 8 deletions(-)
+
+diff --git a/drivers/opp/core.c b/drivers/opp/core.c
+index e87567d..33148cd 100644
+--- a/drivers/opp/core.c
++++ b/drivers/opp/core.c
+@@ -801,9 +801,6 @@ static int _set_opp_voltage(struct device *dev, struct regulator *reg,
+ 		return 0;
+ 	}
+ 
+-	dev_dbg(dev, "%s: voltages (mV): %lu %lu %lu\n", __func__,
+-		supply->u_volt_min, supply->u_volt, supply->u_volt_max);
+-
+ 	ret = regulator_set_voltage_triplet(reg, supply->u_volt_min,
+ 					    supply->u_volt, supply->u_volt_max);
+ 	if (ret)
+@@ -1085,11 +1082,6 @@ static int _set_opp(struct device *dev, struct opp_table *opp_table,
+ 		return 0;
+ 	}
+ 
+-	dev_dbg(dev, "%s: switching OPP: Freq %lu -> %lu Hz, Level %u -> %u, Bw %u -> %u\n",
+-		__func__, old_opp->rates[0], opp->rates[0], old_opp->level,
+-		opp->level, old_opp->bandwidth ? old_opp->bandwidth[0].peak : 0,
+-		opp->bandwidth ? opp->bandwidth[0].peak : 0);
+-
+ 	scaling_down = _opp_compare_key(opp_table, old_opp, opp);
+ 	if (scaling_down == -1)
+ 		scaling_down = 0;
+-- 
+2.25.1
+
