@@ -1,6 +1,6 @@
-From 20eb3ee1f0efbd8de1eb66626195e27c8a47323c Mon Sep 17 00:00:00 2001
+From 6c9737b07f0fe8c56bbff4971a0c8ae7b3a6ef40 Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Wed, 7 Feb 2024 21:40:41 +0300
+Date: Thu, 26 Sep 2024 02:06:21 +0300
 Subject: [PATCH] opp: core: fix debug messages
 
 ---
@@ -8,7 +8,7 @@ Subject: [PATCH] opp: core: fix debug messages
  1 file changed, 8 deletions(-)
 
 diff --git a/drivers/opp/core.c b/drivers/opp/core.c
-index c4e0432..98b74f5 100644
+index 4e4d293..994a18e 100644
 --- a/drivers/opp/core.c
 +++ b/drivers/opp/core.c
 @@ -927,9 +927,6 @@ static int _set_opp_voltage(struct device *dev, struct regulator *reg,

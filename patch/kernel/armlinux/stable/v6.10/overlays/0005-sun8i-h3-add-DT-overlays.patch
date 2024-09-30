@@ -1,34 +1,34 @@
-From 7b09c94157566696217e59f76abe10bd9bb9be10 Mon Sep 17 00:00:00 2001
+From 81c99a5cd17d6297faf7bca37b3f91b5a8be987c Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Sat, 2 Mar 2024 13:24:09 +0300
+Date: Mon, 30 Sep 2024 19:37:30 +0300
 Subject: [PATCH] sun8i-h3: add DT-overlays
 
 ---
  arch/arm/boot/dts/allwinner/Makefile          |   2 +
- arch/arm/boot/dts/allwinner/overlays/Makefile |  30 ++++
+ arch/arm/boot/dts/allwinner/overlays/Makefile |  27 ++++
  .../overlays/README.sun8i-h3-overlays         |   1 +
  .../overlays/sun8i-h3-audioinjector-pi.dtso   |  45 ++++++
  .../allwinner/overlays/sun8i-h3-dht11.dtso    |  29 ++++
- .../overlays/sun8i-h3-ertft0356-drm.dtso      |  64 +++++++++
- .../overlays/sun8i-h3-esp32-spi.dtso          |  23 ++++
- .../allwinner/overlays/sun8i-h3-fixup.scr-cmd | 130 ++++++++++++++++++
- .../overlays/sun8i-h3-gpio-reset.dtso         |  24 ++++
+ .../overlays/sun8i-h3-ertft0356-drm.dtso      |  64 ++++++++
+ .../overlays/sun8i-h3-esp32-spi.dtso          |  25 ++++
+ .../allwinner/overlays/sun8i-h3-fixup.scr-cmd | 140 ++++++++++++++++++
+ .../overlays/sun8i-h3-gpio-reset.dtso         |  24 +++
  .../overlays/sun8i-h3-gy-pcm5102-sound.dtso   |  34 +++++
  .../overlays/sun8i-h3-nrf24-spi.dtso          |  43 ++++++
- .../dts/allwinner/overlays/sun8i-h3-pwm.dtso  |  40 ++++++
- .../allwinner/overlays/sun8i-h3-spi-cs1.dtso  |  41 ++++++
+ .../dts/allwinner/overlays/sun8i-h3-pwm.dtso  |  40 +++++
+ .../allwinner/overlays/sun8i-h3-spi-cs1.dtso  |  41 +++++
  .../allwinner/overlays/sun8i-h3-spidev.dtso   |  42 ++++++
- .../allwinner/overlays/sun8i-h3-uart1.dtso    |  16 +++
+ .../allwinner/overlays/sun8i-h3-uart1.dtso    |  16 ++
  .../overlays/sun8i-h3-uart2-rtscts.dtso       |  11 ++
- .../allwinner/overlays/sun8i-h3-uart2.dtso    |  16 +++
+ .../allwinner/overlays/sun8i-h3-uart2.dtso    |  16 ++
  .../overlays/sun8i-h3-uart3-rtscts.dtso       |  11 ++
- .../allwinner/overlays/sun8i-h3-uart3.dtso    |  16 +++
+ .../allwinner/overlays/sun8i-h3-uart3.dtso    |  16 ++
  .../allwinner/overlays/sun8i-h3-usbhost0.dtso |  20 +++
  .../allwinner/overlays/sun8i-h3-usbhost1.dtso |  27 ++++
  .../allwinner/overlays/sun8i-h3-usbhost2.dtso |  20 +++
  .../allwinner/overlays/sun8i-h3-usbhost3.dtso |  20 +++
- .../overlays/sun8i-h3-waveshare35-drm.dtso    |  63 +++++++++
- 24 files changed, 768 insertions(+)
+ .../overlays/sun8i-h3-waveshare35-drm.dtso    |  63 ++++++++
+ 24 files changed, 777 insertions(+)
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/README.sun8i-h3-overlays
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-h3-audioinjector-pi.dtso
@@ -54,10 +54,10 @@ Subject: [PATCH] sun8i-h3: add DT-overlays
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-h3-waveshare35-drm.dtso
 
 diff --git a/arch/arm/boot/dts/allwinner/Makefile b/arch/arm/boot/dts/allwinner/Makefile
-index 2d26c33..b13fa8c 100644
+index cd0d044..4e54866 100644
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -333,3 +333,5 @@ dtb-$(CONFIG_MACH_SUNIV) += \
+@@ -272,3 +272,5 @@ dtb-$(CONFIG_MACH_SUNIV) += \
  	suniv-f1c100s-licheepi-nano.dtb \
  	suniv-f1c200s-lctech-pi.dtb \
  	suniv-f1c200s-popstick-v1.1.dtb
@@ -65,10 +65,10 @@ index 2d26c33..b13fa8c 100644
 +subdir-y := overlays
 diff --git a/arch/arm/boot/dts/allwinner/overlays/Makefile b/arch/arm/boot/dts/allwinner/overlays/Makefile
 new file mode 100644
-index 0000000..9a7c6bc
+index 0000000..3aebfad
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/Makefile
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,27 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
@@ -88,17 +88,14 @@ index 0000000..9a7c6bc
 +	sun8i-h3-ertft0356-drm.dtbo \
 +	sun8i-h3-waveshare35-drm.dtbo
 +
++
 +scr-$(CONFIG_MACH_SUN8I) += \
 +	sun8i-h3-fixup.scr
 +
 +dtbotxt-$(CONFIG_MACH_SUN8I) += \
 +	README.sun8i-h3-overlays
 +
-+targets	+= $(dtbo-y) $(scr-y) $(dtbotxt-y)
-+
 +endif
-+
-+extra-y	:= $(dtbo-y) $(scr-y) $(dtbotxt-y)
 diff --git a/arch/arm/boot/dts/allwinner/overlays/README.sun8i-h3-overlays b/arch/arm/boot/dts/allwinner/overlays/README.sun8i-h3-overlays
 new file mode 100644
 index 0000000..ae59524
@@ -264,10 +261,10 @@ index 0000000..d1ed1f5
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-h3-esp32-spi.dtso b/arch/arm/boot/dts/allwinner/overlays/sun8i-h3-esp32-spi.dtso
 new file mode 100644
-index 0000000..c97e116
+index 0000000..87e4398
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-h3-esp32-spi.dtso
-@@ -0,0 +1,23 @@
+@@ -0,0 +1,25 @@
 +#include <dt-bindings/gpio/gpio.h>
 +
 +/dts-v1/;
@@ -285,18 +282,20 @@ index 0000000..c97e116
 +		compatible = "espressif,esp32-spi";
 +		reg = <0>;
 +		spi-max-frequency = <10000000>;
++
 +		handshake-gpios = <&pio 0 7 0>;	/*PA7*/
 +		dataready-gpios = <&pio 0 8 0>;	/*PA8*/
 +		reset-gpios = <&pio 0 9 0>;	/*PA9*/
++
 +		status = "disabled";
 +	};
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-h3-fixup.scr-cmd b/arch/arm/boot/dts/allwinner/overlays/sun8i-h3-fixup.scr-cmd
 new file mode 100644
-index 0000000..5cc90ee
+index 0000000..7d62b3a
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-h3-fixup.scr-cmd
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,140 @@
 +# overlays fixup script
 +# implements (or rather substitutes) overlay arguments functionality
 +# using u-boot scripting, environment variables and "fdt" command
@@ -338,6 +337,16 @@ index 0000000..5cc90ee
 +			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpol
 +		fi
 +        fi
++
++	if test "${param_esp32_spi_cs_auto}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-cs-auto
++	fi
++	if test "${param_esp32_spi_cs_change}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-cs-change
++	fi
++	if test -n "${param_esp32_spi_cs_setup_delay}"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-cs-setup-delay-ns "<${param_esp32_spi_cs_setup_delay}>"
++	fi
 +
 +        env delete tmp_spi_path
 +fi

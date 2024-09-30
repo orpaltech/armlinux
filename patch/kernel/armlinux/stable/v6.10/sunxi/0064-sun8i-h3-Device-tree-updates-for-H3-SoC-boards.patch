@@ -1,16 +1,38 @@
-From 8f2faa66897e93d0cc317637f315d033750dd0f7 Mon Sep 17 00:00:00 2001
+From 686cf4bde578774aa0be162a451a7e1879389933 Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Mon, 26 Feb 2024 22:18:11 +0300
-Subject: [PATCH] sun8i-h3: Device tree updates for H3 SoC boards
+Date: Mon, 30 Sep 2024 18:58:12 +0300
+Subject: [PATCH] arm/dts/sun8i-h3: Device tree updates for H3 SoC boards
 
 ---
- .../dts/allwinner/sun8i-h3-orangepi-pc.dts    |   3 +-
- arch/arm/boot/dts/allwinner/sun8i-h3.dtsi     | 102 +++++++++++++++---
- arch/arm/boot/dts/allwinner/sunxi-h3-h5.dtsi  |  11 ++
- 3 files changed, 103 insertions(+), 13 deletions(-)
+ .../allwinner/sun8i-h3-orangepi-pc-plus.dts   |  6 ++
+ .../dts/allwinner/sun8i-h3-orangepi-pc.dts    |  3 +-
+ arch/arm/boot/dts/allwinner/sun8i-h3.dtsi     | 96 ++++++++++++++++---
+ arch/arm/boot/dts/allwinner/sunxi-h3-h5.dtsi  | 10 ++
+ 4 files changed, 102 insertions(+), 13 deletions(-)
 
+diff --git a/arch/arm/boot/dts/allwinner/sun8i-h3-orangepi-pc-plus.dts b/arch/arm/boot/dts/allwinner/sun8i-h3-orangepi-pc-plus.dts
+index 8a49b33..f015ba6 100644
+--- a/arch/arm/boot/dts/allwinner/sun8i-h3-orangepi-pc-plus.dts
++++ b/arch/arm/boot/dts/allwinner/sun8i-h3-orangepi-pc-plus.dts
+@@ -51,10 +51,16 @@
+ 		/* ethernet0 is the H3 emac, defined in sun8i-h3.dtsi */
+ 		ethernet1 = &rtl8189ftv;
+ 	};
++
++	wifi_pwrseq: wifi_pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		reset-gpios = <&r_pio 0 7 GPIO_ACTIVE_LOW>; /* PL7 WIFI_EN */
++	};
+ };
+ 
+ &mmc1 {
+ 	vmmc-supply = <&reg_vcc3v3>;
++	mmc-pwrseq = <&wifi_pwrseq>;
+ 	bus-width = <4>;
+ 	non-removable;
+ 	status = "okay";
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-h3-orangepi-pc.dts b/arch/arm/boot/dts/allwinner/sun8i-h3-orangepi-pc.dts
-index b96e015..92a58e3 100644
+index b96e015..0c7c41d 100644
 --- a/arch/arm/boot/dts/allwinner/sun8i-h3-orangepi-pc.dts
 +++ b/arch/arm/boot/dts/allwinner/sun8i-h3-orangepi-pc.dts
 @@ -194,7 +194,8 @@
@@ -19,12 +41,12 @@ index b96e015..92a58e3 100644
  		regulator-min-microvolt = <1000000>;
 -		regulator-max-microvolt = <1300000>;
 +		regulator-max-microvolt = <1400000>;
-+		regulator-ramp-delay = <200>;
++		regulator-ramp-delay = <50>;
  		regulator-boot-on;
  		regulator-always-on;
  	};
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-h3.dtsi b/arch/arm/boot/dts/allwinner/sun8i-h3.dtsi
-index eac2349..7cb1db2 100644
+index eac2349..4146346 100644
 --- a/arch/arm/boot/dts/allwinner/sun8i-h3.dtsi
 +++ b/arch/arm/boot/dts/allwinner/sun8i-h3.dtsi
 @@ -48,6 +48,12 @@
@@ -40,7 +62,7 @@ index eac2349..7cb1db2 100644
  		opp-648000000 {
  			opp-hz = /bits/ 64 <648000000>;
  			opp-microvolt = <1040000 1040000 1300000>;
-@@ -60,11 +66,41 @@
+@@ -60,11 +66,35 @@
  			clock-latency-ns = <244144>; /* 8 32k periods */
  		};
  
@@ -73,16 +95,10 @@ index eac2349..7cb1db2 100644
 +			opp-microvolt = <1340000 1340000 1340000>;
 +			clock-latency-ns = <244144>; /* 8 32k periods */
 +		};
-+
-+		opp-1368000000 {
-+			opp-hz = /bits/ 64 <1368000000>;
-+			opp-microvolt = <1400000 1400000 1400000>;
-+			clock-latency-ns = <244144>; /* 8 32k periods */
-+		};
  	};
  
  	cpus {
-@@ -243,31 +279,73 @@
+@@ -243,31 +273,73 @@
  
  	thermal-zones {
  		cpu_thermal: cpu-thermal {
@@ -110,25 +126,25 @@ index eac2349..7cb1db2 100644
 -				cpu_very_hot_trip: cpu-very-hot {
 -					temperature = <100000>;
 -					hysteresis = <0>;
-+				cpu_hot: cpu_hot {
++				cpu_hot: cpu-hot {
 +					temperature = <85000>;
 +					hysteresis = <2000>;
 +					type = "passive";
 +				};
 +
-+				cpu_very_hot_pre: cpu_very_hot_pre {
++				cpu_very_hot_pre: cpu-very-hot-pre {
 +					temperature = <90000>;
 +					hysteresis = <2000>;
 +					type = "passive";
 +				};
 +
-+				cpu_very_hot: cpu_very_hot {
++				cpu_very_hot: cpu-very-hot {
 +					temperature = <95000>;
 +					hysteresis = <2000>;
 +					type = "passive";
 +				};
 +
-+				cpu_crit: cpu_crit {
++				cpu_crit: cpu-crit {
 +					temperature = <105000>;
 +					hysteresis = <2000>;
  					type = "critical";
@@ -169,18 +185,10 @@ index eac2349..7cb1db2 100644
  			};
  		};
 diff --git a/arch/arm/boot/dts/allwinner/sunxi-h3-h5.dtsi b/arch/arm/boot/dts/allwinner/sunxi-h3-h5.dtsi
-index ade1cd5..be746ed 100644
+index 7df6051..fa5db04 100644
 --- a/arch/arm/boot/dts/allwinner/sunxi-h3-h5.dtsi
 +++ b/arch/arm/boot/dts/allwinner/sunxi-h3-h5.dtsi
-@@ -200,6 +200,7 @@
- 			resets = <&ccu RST_BUS_MMC0>;
- 			reset-names = "ahb";
- 			interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>;
-+			bus-width = <0x4>;
- 			status = "disabled";
- 			#address-cells = <1>;
- 			#size-cells = <0>;
-@@ -441,6 +442,16 @@
+@@ -441,6 +441,16 @@
  				function = "i2c2";
  			};
  

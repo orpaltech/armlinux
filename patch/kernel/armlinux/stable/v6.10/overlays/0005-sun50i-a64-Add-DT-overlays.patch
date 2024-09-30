@@ -1,23 +1,23 @@
-From 86b572c166c7ee03faff6dc0554380b62f7fbf87 Mon Sep 17 00:00:00 2001
+From a9aa88bd1a7ef0442531b9a51e7380059fe7e107 Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Thu, 19 Sep 2024 21:12:10 +0300
+Date: Mon, 30 Sep 2024 19:38:22 +0300
 Subject: [PATCH] sun50i-a64: Add DT-overlays
 
 ---
  arch/arm64/boot/dts/allwinner/Makefile        |   2 +
- .../boot/dts/allwinner/overlays/Makefile      |  26 +++++
+ .../boot/dts/allwinner/overlays/Makefile      |  21 ++++
  .../overlays/README.sun50i-a64-overlays       |   1 +
  .../overlays/sun50i-a64-audioinjector-pi.dtso |  35 ++++++
  .../overlays/sun50i-a64-ertft0356-drm.dtso    |  64 +++++++++++
  .../overlays/sun50i-a64-esp32-spi.dtso        |  26 +++++
- .../overlays/sun50i-a64-fixup.scr-cmd         | 102 ++++++++++++++++++
+ .../overlays/sun50i-a64-fixup.scr-cmd         | 106 ++++++++++++++++++
  .../overlays/sun50i-a64-gpio-reset.dtso       |  25 +++++
  .../overlays/sun50i-a64-gy-pcm5102-sound.dtso |  28 +++++
  .../overlays/sun50i-a64-no-hdmi.dtso          |  20 ++++
  .../overlays/sun50i-a64-nrf24-spi.dtso        |  45 ++++++++
  .../allwinner/overlays/sun50i-a64-r_pwm.dtso  |  10 ++
  .../overlays/sun50i-a64-waveshare35-drm.dtso  |  45 ++++++++
- 13 files changed, 429 insertions(+)
+ 13 files changed, 428 insertions(+)
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/Makefile
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/README.sun50i-a64-overlays
  create mode 100644 arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-audioinjector-pi.dtso
@@ -43,10 +43,10 @@ index 0db7b60..f0cf819 100644
 +subdir-y	:= overlays
 diff --git a/arch/arm64/boot/dts/allwinner/overlays/Makefile b/arch/arm64/boot/dts/allwinner/overlays/Makefile
 new file mode 100644
-index 0000000..aad736e
+index 0000000..4f18dc0
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/overlays/Makefile
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,21 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
@@ -66,11 +66,6 @@ index 0000000..aad736e
 +
 +dtbotxt-$(CONFIG_ARCH_SUNXI) += \
 +	README.sun50i-a64-overlays
-+
-+
-+dtb-y += $(dtbo-y) $(scr-y) $(dtbotxt-y)
-+
-+clean-files	:= *.dtbo *.scr
 +
 +endif
 diff --git a/arch/arm64/boot/dts/allwinner/overlays/README.sun50i-a64-overlays b/arch/arm64/boot/dts/allwinner/overlays/README.sun50i-a64-overlays
@@ -225,10 +220,10 @@ index 0000000..213362d
 +};
 diff --git a/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-fixup.scr-cmd b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-fixup.scr-cmd
 new file mode 100644
-index 0000000..2e06add
+index 0000000..ec187c9
 --- /dev/null
 +++ b/arch/arm64/boot/dts/allwinner/overlays/sun50i-a64-fixup.scr-cmd
-@@ -0,0 +1,102 @@
+@@ -0,0 +1,106 @@
 +# overlays fixup script
 +# implements (or rather substitutes) overlay arguments functionality
 +# using u-boot scripting, environment variables and "fdt" command
@@ -263,6 +258,10 @@ index 0000000..2e06add
 +	fi
 +	if test "${param_esp32_spi_cs_change}" = "1"; then
 +		fdt set /soc/${tmp_spi_path}/esp32-spi spi-cs-change
++	fi
++
++	if test -n "${param_esp32_spi_cs_setup_delay}"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-cs-setup-delay-ns "<${param_esp32_spi_cs_setup_delay}>"
 +	fi
 +
 +	env delete tmp_spi_path
