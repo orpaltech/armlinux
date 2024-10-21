@@ -8,6 +8,7 @@ mkdir -p ${SYSROOT_DIR}
 rm -rf ${SYSROOT_DIR}/*
 mkdir ${SYSROOT_DIR}/usr	${SYSROOT_DIR}/opt	${SYSROOT_DIR}/etc
 
+rsync -az ${R}/etc/*		${SYSROOT_DIR}/etc
 rsync -az ${R}/usr/*		${SYSROOT_DIR}/usr
 rsync -az ${R}/lib		${SYSROOT_DIR}
 #rsync -az ${R}/usr/include	${SYSROOT_DIR}/usr

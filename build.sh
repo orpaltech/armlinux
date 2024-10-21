@@ -122,6 +122,7 @@ fi
 DEBIAN_RELEASE=${DEBIAN_RELEASE:="trixie"}
 
 # clean options
+[[ "${ENABLE_BLUETOOTH}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} bluetooth"
 if [ -z "${CLEAN}" ] ; then
 . $LIBDIR/ui/clean-options.sh
 fi

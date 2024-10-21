@@ -4,12 +4,14 @@
 
 BLUEZ_ALSA_REPO_URL="https://github.com/arkq/bluez-alsa.git"
 BLUEZ_ALSA_BRANCH="master"
-BLUEZ_ALSA_VER="4.2.0"
+BLUEZ_ALSA_VER="4.3.1"
 BLUEZ_ALSA_TAG="v${BLUEZ_ALSA_VER}"
 BLUEZ_ALSA_SRC_DIR=${EXTRADIR}/bluez-alsa
+
 BLUEZ_ALSA_WITH_USER=no
 BLUEZ_ALSA_WITH_MP3=yes
-BLUEZ_ALSA_WITH_AAC=yes
+BLUEZ_ALSA_WITH_AAC=no
+BLUEZ_ALSA_WITH_TOOLS=yes
 
 
 update_pkg_src()
@@ -109,6 +111,9 @@ EOF
 	if [ ${BLUEZ_ALSA_WITH_USER} = yes ] ; then
 		BLUEZ_ALSA_EXTRA_PARAMS="--with-bluealsauser=bluealsa --with-bluealsaaplayuser=bluealsa_aplay ${BLUEZ_ALSA_EXTRA_PARAMS}"
 	fi
+	if [ ${BLUEZ_ALSA_WITH_TOOLS} = yes ] ; then
+		BLUEZ_ALSA_EXTRA_PARAMS="--enable-cli --enable-rfcomm --enable-hcitop --enable-a2dpconf ${BLUEZ_ALSA_EXTRA_PARAMS}"
+	fi
 
 	PKG_CONFIG="$(pwd)/${LINUX_PLATFORM}-pkg-config" \
 	CC="$(pwd)/${LINUX_PLATFORM}-gcc" NM=$DEV_NM STRIP=$DEV_STRIP RANLIB=$DEV_RANLIB OBJCOPY=$DEV_OBJCOPY OBJDUMP=$DEV_OBJDUMP AR=$DEV_AR \
@@ -116,7 +121,8 @@ EOF
 		./configure --prefix=/usr --enable-shared \
 			--host=${LINUX_PLATFORM} \
 			--with-sysroot=${SYSROOT_DIR} \
-			--enable-systemd --enable-cli --enable-a2dpconf --enable-upower \
+			--enable-systemd \
+			--enable-upower \
 			${BLUEZ_ALSA_EXTRA_PARAMS}
 
 	[ $? -eq 0 ] || exit $?;

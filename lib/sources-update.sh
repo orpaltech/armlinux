@@ -63,9 +63,9 @@ if [ "${BOOTLOADER}" = uboot ] ; then
 		[[ -d ${UBOOT_SOURCE_DIR} ]] && rm -rf ${UBOOT_SOURCE_DIR}
 
 		if [ -n "${UBOOT_REPO_BRANCH}" ] ; then
-	                git clone ${UBOOT_REPO_URL} -b ${UBOOT_REPO_BRANCH} --depth=1 --tags ${UBOOT_SOURCE_DIR}
+	                git clone ${UBOOT_REPO_URL} -b ${UBOOT_REPO_BRANCH} --tags ${UBOOT_SOURCE_DIR}
 		else
-			git clone ${UBOOT_REPO_URL} --depth=1 --tags ${UBOOT_SOURCE_DIR}
+			git clone ${UBOOT_REPO_URL} --tags ${UBOOT_SOURCE_DIR}
 		fi
 		[ $? -eq 0 ] || exit $?;
 
@@ -83,7 +83,6 @@ if [ "${BOOTLOADER}" = uboot ] ; then
 fi
 }
 
-#-----------------------------------------------------------------------
 
 update_kernel()
 {
@@ -144,6 +143,7 @@ update_kernel()
 
 	echo "Done."
 }
+
 
 fw_update()
 {

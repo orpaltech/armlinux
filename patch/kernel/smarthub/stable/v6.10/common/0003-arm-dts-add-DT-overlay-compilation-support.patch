@@ -1,6 +1,6 @@
-From b3bad9d6bb6d099ff2d1290b89a0f5ddfb558f49 Mon Sep 17 00:00:00 2001
+From 0277139b2d6bffd01841e8a4b2df624a10155d1f Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Mon, 30 Sep 2024 19:33:39 +0300
+Date: Tue, 1 Oct 2024 20:24:38 +0300
 Subject: [PATCH] arm/dts: Add DT-overlay compilation support
 
 ---
@@ -35,7 +35,7 @@ index 9d92041..dfc5140 100644
  
  .PHONY: $(PHONY)
 diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
-index 7f8ec77..7f0d80c 100644
+index 7f8ec77..5062452 100644
 --- a/scripts/Makefile.lib
 +++ b/scripts/Makefile.lib
 @@ -93,6 +93,9 @@ base-dtb-y := $(filter %.dtb, $(call real-search, $(multi-dtb-y), .dtb, -dtbs))
@@ -43,7 +43,7 @@ index 7f8ec77..7f0d80c 100644
  always-y			+= $(dtb-y)
  
 +# Overlay Fixup script targets
-+extra-y				+= $(scr-y) $(dtbotxt-y)
++extra-y				+= $(dtbo-y) $(scr-y) $(dtbotxt-y)
 +
  # Add subdir path
  

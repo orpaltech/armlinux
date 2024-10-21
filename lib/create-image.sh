@@ -24,8 +24,6 @@ else
   exit 1
 fi
 
-#-----------------------------------------------------------------------
-
 create_debian_image()
 {
   if [ -n "${DEBIAN_RELEASE}" ] ; then

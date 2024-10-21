@@ -1,0 +1,63 @@
+From 2c1ac8663e892cadffe65e42f09e337855984d1c Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Tue, 12 Apr 2022 14:58:38 +0300
+Subject: [PATCH] sun50i-a64: Device tree updates for A64 SoC boards
+
+---
+ arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi | 26 +++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+index de77c87..59a5f4a 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi
+@@ -719,6 +719,27 @@
+ 				function = "i2c2";
+ 			};
+ 
++			i2s0_pins_mclk: i2s0-pins-mclk {
++				pins = "PB3";
++				function = "i2s0";
++			};
++			i2s0_pins_bclk: i2s0-pins-bclk {
++				pins = "PB5";
++				function = "i2s0";
++			};
++			i2s0_pins_lrck: i2s0-pins-lrck {
++				pins = "PB4";
++				function = "i2s0";
++			};
++			i2s0_pins_do0: i2s0-pins-do0 {
++				pins = "PB6";
++				function = "i2s0";
++			};
++			i2s0_pins_di: i2s0-pins-di {
++				pins = "PB7";
++				function = "i2s0";
++			};
++
+ 			/omit-if-no-ref/
+ 			lcd_rgb666_pins: lcd-rgb666-pins {
+ 				pins = "PD0", "PD1", "PD2", "PD3", "PD4",
+@@ -1120,6 +1141,9 @@
+ 			clock-names = "bus", "core";
+ 			resets = <&ccu RST_BUS_GPU>;
+ 			operating-points-v2 = <&gpu_opp_table>;
++
++			assigned-clocks = <&ccu CLK_GPU>;
++			assigned-clock-rates = <432000000>;
+ 		};
+ 
+ 		gic: interrupt-controller@1c81000 {
+@@ -1307,6 +1331,8 @@
+ 			interrupts = <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&r_ccu CLK_APB0_I2C>;
+ 			resets = <&r_ccu RST_APB0_I2C>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&r_i2c_pl89_pins>;
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+-- 
+2.25.1
+

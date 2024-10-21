@@ -11,7 +11,7 @@ if [ $(echo "${APT_INCLUDES}" | grep -c ",locales") -ge 1 ] ; then
   # Set locale choice in debconf db, even though dpkg-reconfigure ignores and overwrites them due to some bug
   # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=684134 https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=685957
   # ... so we have to set locales manually
-  if [ "$DEFLOCAL" = "en_US.UTF-8" ] ; then
+  if [ "${DEFLOCAL}" = en_US.UTF-8 ] ; then
     chroot_exec echo "locales locales/locales_to_be_generated multiselect ${DEFLOCAL} UTF-8" | debconf-set-selections
   else
     # en_US.UTF-8 should be available anyway : https://www.debian.org/doc/manuals/debian-reference/ch08.en.html#_the_reconfiguration_of_the_locale

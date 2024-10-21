@@ -18,6 +18,37 @@
 ########################################################################
 
 
+cleanup()
+{
+  set +x
+  set +e
+
+  # Identify and kill all processes still using files
+  echo "killing processes using mount point ..."
+  fuser -k "${R}"
+  sleep 5
+  fuser -9 -k -v "${R}"
+
+  # Clean up temporary .password file
+  if [ -r ".password" ] ; then
+    shred -zu .password
+  fi
+
+  # Clean up all temporary mount points
+  echo "removing temporary mount points ..."
+  umount -l "${R}/proc" 2> /dev/null
+  umount -l "${R}/sys" 2> /dev/null
+  umount -l "${R}/dev/pts" 2> /dev/null
+  umount "$BUILDDIR/mount/boot/firmware" 2> /dev/null
+  umount "$BUILDDIR/mount" 2> /dev/null
+  losetup -d "$ROOT_LOOP" 2> /dev/null
+  losetup -d "$FRMW_LOOP" 2> /dev/null
+  trap - 0 1 2 3 6
+}
+
+
+########################################################################
+
 # Are we running as root?
 if [ "$(id -u)" -ne "0" ] ; then
   echo "error: script must be executed with root privileges!"
@@ -82,14 +113,12 @@ if [ ! -r "${LIBDIR}/common.sh" ] ; then
   exit 1
 fi
 
-# Load utility functions
-. $LIBDIR/common.sh
-. $LIBDIR/functions.sh
-
-# Apply board configuration
-. $BOARD_CONF
-
-. $LIBDIR/toolchains.sh
+# Source common functions
+. ${LIBDIR}/common.sh
+. ${LIBDIR}/functions.sh
+# Source board configuration
+. ${BOARD_CONF}
+. ${LIBDIR}/toolchains.sh
 
 set_cross_compile
 

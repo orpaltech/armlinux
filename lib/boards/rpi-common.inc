@@ -27,9 +27,9 @@ APT_BOARD_PACKAGES="rng-tools fbset"
 # Most RaspberryPi boards has a built-in Wi-Fi adapter
 SUPPORT_WLAN="yes"
 
-ENABLE_MESA=yes
+ENABLE_MESA=${ENABLE_MESA:="yes"}
 # Raspberry-specific clean options
-CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa-vc4"
+[[ "${ENABLE_MESA}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa-vc4"
 
 # Custom EDID binary for DRM
 # DRM_USE_FIRMWARE_EDID="yes"
