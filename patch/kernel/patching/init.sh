@@ -5,7 +5,14 @@ DST_DIR=$(pwd)
 source $DST_DIR/../common.sh
 source $DST_DIR/patch.info
 
-readarray -t filenames < $DST_DIR/CHANGED_FILES/$REPO/files1-$VER
+git -C $SRC_DIR checkout -f tags/$TAG
+
+if [ -f $DST_DIR/CHANGED_FILES/$REPO/files1-$VER ] ; then
+  files1=$DST_DIR/CHANGED_FILES/$REPO/files1-$VER
+else
+  files1=$DST_DIR/CHANGED_FILES/$REPO/files1
+fi
+mapfile -t filenames < $files1
 
 rm -rf $DST_DIR/.git/
 git -C $DST_DIR init

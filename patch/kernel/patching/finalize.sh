@@ -5,7 +5,17 @@ DST_DIR=$( pwd )
 source $DST_DIR/../common.sh
 source $DST_DIR/patch.info
 
-readarray -t filenames < <( cat -s $DST_DIR/CHANGED_FILES/$REPO/files1-$VER $DST_DIR/CHANGED_FILES/$REPO/files2-$VER )
+if [ -f $DST_DIR/CHANGED_FILES/$REPO/files1-$VER ] ; then
+  files1=$DST_DIR/CHANGED_FILES/$REPO/files1-$VER
+else
+  files1=$DST_DIR/CHANGED_FILES/$REPO/files1
+fi
+if [ -f $DST_DIR/CHANGED_FILES/$REPO/files2-$VER ] ; then
+  files2=$DST_DIR/CHANGED_FILES/$REPO/files2-$VER
+else
+  files2=$DST_DIR/CHANGED_FILES/$REPO/files2
+fi
+readarray -t filenames < <( cat -s $files1 $files2 )
 
 for filen in ${filenames[@]}
 do
