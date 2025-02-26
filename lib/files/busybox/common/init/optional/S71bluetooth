@@ -1,0 +1,68 @@
+#!/bin/sh
+#
+# Start the bluetooth daemon....
+#
+
+BLUETOOTH_ARGS=""
+
+DAEMON="bluetoothd"
+PIDFILE="/var/run/$DAEMON.pid"
+DAEMONFILE="/usr/libexec/bluetooth/$DAEMON"
+
+# If you want to be ignore error of "org.freedesktop.hostname1",
+# please enable NOPLUGIN_OPTION.
+# NOPLUGIN_OPTION="--noplugin=hostname"
+NOPLUGIN_OPTION=
+
+# Allow a few customizations from a config file
+test -f /etc/default/bluetooth && . /etc/default/bluetooth
+
+start() {
+	BLUETOOTH_ARGS="-n ${BLUETOOTH_ARGS} ${NOPLUGIN_OPTION}"
+
+	printf 'Starting %s: ' "$DAEMON"
+	start-stop-daemon --start --background --make-pidfile \
+		--pidfile "$PIDFILE" --exec "$DAEMONFILE" \
+		-- $BLUETOOTH_ARGS
+	status=$?
+	[ $status = 0 ] && echo "OK" || echo "FAIL"
+}
+
+stop() {
+	printf 'Stopping %s: ' "$DAEMON"
+	start-stop-daemon --stop --pidfile "$PIDFILE" --exec "$DAEMONFILE"
+	status=$?
+	if [ "$status" -eq 0 ]; then
+		rm -f "$PIDFILE"
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+	return "$status"
+}
+
+wait_() {
+	while start-stop-daemon --stop --test --quiet --pidfile "$PIDFILE" \
+		--exec "$DAEMONFILE"; do
+		sleep 0.1
+	done
+}
+
+restart() {
+	stop
+	wait_
+	start
+}
+
+case "$1" in
+	start|stop|restart)
+		"$1";;
+	reload)
+		# Restart, since there is no true "reload" feature.
+		restart;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+esac
+
+exit $?

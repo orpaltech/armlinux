@@ -13,24 +13,24 @@
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2020 ORPAL Technology, Inc.
+# Copyright (C) 2013-2024 ORPAL Technology, Inc.
 #
 ########################################################################
 
-GCC_VERSION=10
+GCC_VERSION=13
 
-REQUIRED_PACKAGES="autoconf automake libtool bc binfmt-support bison bmap-tools "\
-"cmake "\
-"debootstrap debian-archive-keyring device-tree-compiler dialog dosfstools "\
+REQUIRED_PACKAGES="autoconf autogen automake "\
+"build-essential bc binfmt-support bison bmap-tools "\
+"ccache cmake cpio "\
+"debootstrap debian-archive-keyring device-tree-compiler dialog dosfstools dropbear "\
 "debhelper "\
-"flex "\
-"git "\
-"libmpc-dev "\
-"libssl-dev "\
+"fakeroot flex "\
+"git gpg gpgv "\
+"kmod "\
+"libmpc-dev libelf-dev libssl-dev libncurses-dev libtool lynx "\
 "ninja-build "\
 "qemu-system-arm qemu-efi qemu-user-static quilt "\
-"patch "\
-"python2.7 python3 python3-pip python3-mako "\
+"patch python2.7 python3 python3-pip python3-mako "\
 "rsync "\
 "sunxi-tools swig "\
 "texi2html texinfo "\
@@ -61,13 +61,19 @@ get_host_pkgs()
 		echo "${MISSING_PACKAGES}"
 
 		sudo apt-get update
+
 		# Make sure all required packages are installed
 		sudo apt-get install -qq -y ${MISSING_PACKAGES}
 		[ $? -eq 0 ] || exit $?;
 	fi
 
-	sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} ${GCC_VERSION}0
-	sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} ${GCC_VERSION}0
+	local current_version=$(gcc -v 2>&1 | tail -1 | awk '{print $3}')
+	local major_version=$(cut -d '.' -f 1 <<< "${current_version}")
+
+	if [[ $GCC_VERSION -gt $major_version ]] ; then
+		sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} ${GCC_VERSION}0
+		sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} ${GCC_VERSION}0
+	fi
 
 	echo "Done."
 }

@@ -13,15 +13,24 @@
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2022 ORPAL Technology, Inc.
+# Copyright (C) 2013-2025 ORPAL Technology, Inc.
 #
 ########################################################################
 
 
+FIRMWARE_SRC_DIR="${FIRMWARE_BASE_DIR}/${FIRMWARE_NAME}"
+
+
 update_firmware()
 {
-	if [ ! -z "${FIRMWARE_URL}" ] ; then
-		fw_update ${FIRMWARE_NAME} ${FIRMWARE_URL} no ${FIRMWARE_BRANCH}
+	if [ -n "${FIRMWARE_URL}" ] ; then
+            PKG_FORCE_CLEAN=yes \
+		update_src_pkg $FIRMWARE_NAME \
+				$FIRMWARE_VER \
+				$FIRMWARE_SRC_DIR \
+				$FIRMWARE_URL \
+				$FIRMWARE_BRANCH \
+				$FIRMWARE_TAG
 	fi
 }
 
@@ -31,5 +40,6 @@ compile_firmware()
 
 	echo "*** RaspberryPi is using prebuilt firmware ***"
 
+	echo "Firmware files location: ${FIRMWARE_SRC_DIR}/boot"
 	echo "Done."
 }

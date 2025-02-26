@@ -20,15 +20,20 @@
 BASEDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 SRCDIR=${BASEDIR}/sources
 LIBDIR=${BASEDIR}/lib
+CONFIGDIR=${BASEDIR}/config
 TOOLCHAINDIR=${BASEDIR}/toolchains
 OUTPUTDIR=${BASEDIR}/output
+LOGDIR=${BASEDIR}/logs
 DEFAULT_CONFIG="armlinux"
 
 . ${LIBDIR}/common.sh
 . ${LIBDIR}/packages-update.sh
 
+# ensure folder exists for debug logger
+mkdir -p ${LOGDIR}/debug
+
 # start background sudo monitor
-display_alert "This script requires root privileges, entering sudo" "" "wrn"
+display_alert "This script requires root privileges, entering sudo" "" "warn"
 
 sudo_init
 
@@ -42,8 +47,8 @@ if [ -z "${CONFIG}" ] ; then
 fi
 ARMLINUX_CONF=${BASEDIR}/${CONFIG}.conf
 if [ ! -f ${ARMLINUX_CONF} ] ; then
-    echo "No config file found. Cannot continue."
-    exit 1
+  display_alert "No config file found. Cannot continue." "${ARMLINUX_CONF}" "err"
+  exit 1
 fi
 
 set -x
@@ -57,13 +62,15 @@ fi
 if [ -z "${PROD_BUILD}" ] ; then
   PROD_BUILD=$(( $(date +%s) / 3600 - 474709 ))
 fi
-PROD_FULL_VERSION=${PROD_VERSION}-${PROD_BUILD}
+PRODUCT_FULL_VER=${PRODUCT_VERSION}-${PRODUCT_BUILD}
 # aliases
-VERSION=${PROD_VERSION}
-FULL_VERSION=${PROD_FULL_VERSION}
+VERSION=${PRODUCT_VERSION}
+
+
+# directory for building extra-packages
+EXTRADIR=${BUILD_EXTRA_DIR:="${BASEDIR}/extra"}
 
 set +x
-
 #------------------------------------------------------------------------------
 # board configuration
 if [ -z "${BOARD}" ] ; then
@@ -105,24 +112,35 @@ if [[ ! ${ROOTFS_OPTIONS[@]} =~ $ROOTFS ]] ; then
   echo "error: unknown rootfs '${ROOTFS}'"
   exit 1
 fi
+
 if [ "${ROOTFS}" = debian ] ; then
-  DEBIAN_OPTIONS=$(sed '1!d' $LIBDIR/files/common/debootstrap/debian_releases)
-  DEBIAN_STATES=$(sed '2!d' $LIBDIR/files/common/debootstrap/debian_releases)
-  DEBIAN_SUPPORTS=$(sed '3!d' $LIBDIR/files/common/debootstrap/debian_releases)
-  # Debian release
+  FILESDIR=$LIBDIR/files/debian
+  DEBIAN_OPTIONS=$(sed '1!d' ${FILESDIR}/common/debootstrap/debian_releases)
+  DEBIAN_STATES=$(sed '2!d' ${FILESDIR}/common/debootstrap/debian_releases)
+  DEBIAN_SUPPORTS=$(sed '3!d' ${FILESDIR}/common/debootstrap/debian_releases)
+
+  # select debian release
   if [ -z "${DEBIAN_RELEASE}" ] ; then
 . $LIBDIR/ui/debian-select.sh
   fi
+
   if [[ ! ${DEBIAN_OPTIONS[@]} =~ $DEBIAN_RELEASE ]] ; then
     echo "error: unknown debian release '${DEBIAN_RELEASE}'"
     exit 1
   fi
+else
+  FILESDIR=$LIBDIR/files/busybox
 fi
 
-DEBIAN_RELEASE=${DEBIAN_RELEASE:="trixie"}
+# git mirror server root
+GIT_MIRROR_ROOT=${GIT_MIRROR_ROOT:=""}
 
 # clean options
-[[ "${ENABLE_BLUETOOTH}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} bluetooth"
+[[ "${BOOTLOADER}" = uboot ]] && CLEAN_OPTIONS="uboot ${CLEAN_OPTIONS}"
+[[ "${ENABLE_MESA}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa"
+[[ "${ENABLE_BTH}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} bluetooth"
+[[ "${ENABLE_SOUND}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} sound"
+[[ "${ENABLE_SDR}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} sdr"
 if [ -z "${CLEAN}" ] ; then
 . $LIBDIR/ui/clean-options.sh
 fi
@@ -131,18 +149,23 @@ fi
 
 BUILD_IMAGE=${BUILD_IMAGE:="yes"}
 
-# destination to write a image to, possible values are "sd" or "img"
-DEST_DEV_TYPE=${DEST_DEV_TYPE:="img"}
-# destination Flash-card device in form /dec/sdX, required
+# destination to write a image to, possible values are "dev" or "img"
+DEST_MEDIA=${DEST_MEDIA:="img"}
+DEST_DEV_TYPE=${DEST_DEV_TYPE:="mmc"}
+# destination block device in form /dec/sdX, required
 DEST_BLOCK_DEV=${DEST_BLOCK_DEV:="/dev/mmcblk0"}
 
 # check image destination
-if ! [[ ${DEST_DEV_TYPE} =~ ^(img|sd)$ ]] ; then
-  echo "error: DEST_DEV_TYPE has unsupported value '${DEST_DEV_TYPE}'!"
+if ! [[ ${DEST_MEDIA} =~ ^(img|dev)$ ]] ; then
+  echo "error: DEST_MEDIA has unsupported value '${DEST_MEDIA}'!"
   exit 1
 fi
-if [ "${DEST_DEV_TYPE}" = sd ] && [ -z "${DEST_BLOCK_DEV}" ] ; then
+if [ "${DEST_MEDIA}" = dev ] && [ -z "${DEST_BLOCK_DEV}" ] ; then
   echo "error: DEST_BLOCK_DEV must be specified!"
+  exit 1
+fi
+if ! [[ ${DEST_DEV_TYPE} =~ ^(mmc|nvme)$ ]] ; then
+  echo "error: DEST_DEV_TYPE has unsupported value '${DEST_DEV_TYPE}'!"
   exit 1
 fi
 
@@ -159,6 +182,17 @@ get_toolchains
 
 set_cross_compile
 
+if [ ! -f "${CROSS_COMPILE}gcc" ] ; then
+  echo "error: toolchain not found [${CROSS_COMPILE}] !"
+  exit 1
+fi
+
+if [ ! -f ${LIBDIR}/meson-build.sh ] ; then
+  echo "error: configuration script not found for meson build"
+  exit 1
+fi
+. ${LIBDIR}/meson-build.sh
+
 #------------------------------------------------------------------------------
 
 if [ -z "${UBOOT_REPO_TAG}" ] ; then
@@ -170,9 +204,9 @@ fi
 
 KERNEL_RELEASE="v${KERNEL_VER_MAJOR}.${KERNEL_VER_MINOR}"
 if [ -z "${KERNEL_REPO_TAG}" ] ; then
-	KERNEL_REPO_TAG="${KERNEL_RELEASE}${KERNEL_VER_BUILD}"
+  KERNEL_REPO_TAG="${KERNEL_RELEASE}${KERNEL_VER_BUILD}"
 elif [ "${KERNEL_REPO_TAG}" = no ] ; then
-	KERNEL_REPO_TAG=""
+  KERNEL_REPO_TAG=""
 fi
 [ -z "${KERNEL_REPO_BRANCH}" ] && KERNEL_REPO_BRANCH="master"
 
@@ -192,8 +226,6 @@ fi
 
 # source library scripts
 . ${LIBDIR}/compile.sh
-. ${LIBDIR}/create-image.sh
-
 
 display_alert "Build configuration:" "${CONFIG}" "info"
 display_alert "Selected platform:" "${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_ARCH}])" "info"
@@ -202,11 +234,7 @@ display_alert "Selected platform:" "${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_AR
 TICKS_BEGIN=$(date '+%s')
 DATETIME_BEGIN=$(date '+%d/%m/%Y %H:%M:%S')
 
-if [ ! -f "${CROSS_COMPILE}gcc" ] ; then
-  echo "error: toolchain not found [${CROSS_COMPILE}] !"
-  exit 1
-fi
-
+# start build sequence
 update_firmware
 
 update_bootloader
@@ -215,15 +243,31 @@ patch_bootloader
 update_kernel
 patch_kernel
 
-# Build u-boot, kernel, firmware
+
+# build u-boot, kernel, firmware
 compile_firmware
 compile_bootloader
 compile_kernel
 
 
+# prepare meson build tool
+meson_install
+
+
+if [ -f ${LIBDIR}/create-image-${ROOTFS}.sh ] ; then
+. ${LIBDIR}/create-image-${ROOTFS}.sh
+else
+  echo "error: image creation script not found for ${ROOTFS} rootfs!"
+  exit 1
+fi
+. ${LIBDIR}/write-image.sh
+
 if [ "${BUILD_IMAGE}" = yes ] ; then
-  # create a disk image
+  # create disk image
   create_image
+
+  # write image to media
+  write_image
 fi
 
 # build finished

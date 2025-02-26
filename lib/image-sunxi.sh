@@ -3,20 +3,20 @@
 ########################################################################
 # image-sunxi.sh
 #
-# Description:	Allwinner-specific part of the disk image scenario
-#		for ORPALTECH ARMLINUX build framework.
+# Description:	Allwinner-specific part of the image creation.
 #
-# Author:	Sergey Suloev <ssuloev@orpaltech.com>
+# Author:	Sergey Suloev <ssuloev@orpaltech.ru>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2024 ORPAL Technology, Inc.
+# Copyright (C) 2013-2025 ORPAL Technology, Inc.
 #
 ########################################################################
 
+RESIZE_PART_NUM=1
 
 format_disk()
 {
@@ -39,24 +39,27 @@ format_disk()
 
 #-----------------------------------------------------------------------
 
-write_image()
+write_disk()
 {
 	echo "Copy files to ${DISK_NAME}..."
 
 	# write u-boot binary
 	sudo dd if=${UBOOT_SOURCE_DIR}/u-boot-sunxi-with-spl.bin of=${BLOCK_DEV} bs=1024 seek=8
 
+	local root_part="${BLOCK_DEV}${P}1"
+
 	# copy rootfs files
-        sudo mkdir -p				/mnt/sdcard
-        sudo mount ${BLOCK_DEV}${P}1		/mnt/sdcard
+        sudo mkdir -p		/mnt/sdcard
+        sudo mount ${root_part}	/mnt/sdcard
+
         sudo rsync -a --stats ${ROOTFS_DIR}/	/mnt/sdcard
 
-	local ROOT_UUID=$(sudo blkid -o value -s UUID ${BLOCK_DEV}${P}1)
+	local root_uuid=$(sudo blkid -o value -s UUID ${root_part})
 	# update /etc/fstab with the actual partition UUID
-	sudo sed -i "s/ROOTUUID/UUID=${ROOT_UUID}/g"	/mnt/sdcard/etc/fstab
+	sudo sed -i "s/ROOTUUID/UUID=${root_uuid}/g"	/mnt/sdcard/etc/fstab
 
-	local ROOT_PARTUUID=$(sudo blkid -o value -s PARTUUID ${BLOCK_DEV}${P}1)
-	sudo sed -i "s/ROOTPARTUUID/PARTUUID=${ROOT_PARTUUID}/g" /mnt/sdcard/boot/bootEnv.txt
+	local root_partuuid=$(sudo blkid -o value -s PARTUUID ${root_part})
+	sudo sed -i "s/ROOTPART/PARTUUID=${root_partuuid}/g" /mnt/sdcard/boot/bootEnv.txt
 
         sudo umount ${BLOCK_DEV}${P}*
 

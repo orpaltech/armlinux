@@ -1,0 +1,63 @@
+#!/bin/sh
+#
+# Start the bluelsa daemon....
+#
+
+BLUEALSA_ARGS="-S -p a2dp-source"
+
+DAEMON="bluealsa"
+PIDFILE="/var/run/$DAEMON.pid"
+DAEMONFILE="/usr/bin/$DAEMON"
+
+# Allow customizations from a config file
+test -f /etc/default/bluealsa && . /etc/default/bluealsa
+
+start() {
+	BLUEALSA_ARGS="${BLUEALSA_ARGS} -B org.bluealsa"
+
+	printf 'Starting %s: ' "$DAEMON"
+	start-stop-daemon --start --background --make-pidfile \
+        	        --pidfile "$PIDFILE" --exec "$DAEMONFILE" \
+	                -- $BLUEALSA_ARGS
+	status=$?
+	[ $status = 0 ] && echo "OK" || echo "FAIL"
+}
+
+wait_() {
+	while start-stop-daemon --stop --test --quiet --pidfile "$PIDFILE" \
+		--exec "$DAEMONFILE"; do
+		sleep 0.1
+	done
+}
+
+stop() {
+	printf 'Stopping %s: ' "$DAEMON"
+	start-stop-daemon --stop --pidfile "$PIDFILE" --exec "$DAEMONFILE"
+	status=$?
+	if [ "$status" -eq 0 ]; then
+		rm -f "$PIDFILE"
+		echo "OK"
+	else
+		echo "FAIL"
+	fi
+        return "$status"
+}
+
+restart() {
+	stop
+	wait_
+	start
+}
+
+case "$1" in
+	start|stop|restart)
+		"$1";;
+	reload)
+		# Restart, since there is no true "reload" feature.
+		restart;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+esac
+
+exit $?

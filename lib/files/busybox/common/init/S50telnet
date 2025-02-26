@@ -1,0 +1,43 @@
+#!/bin/sh
+#
+# Start telnet....
+#
+
+DAEMON=telnetd
+PIDFILE="/var/run/${DAEMON}.pid"
+
+TELNETD_ARGS=-F
+[ -r /etc/default/telnet ] && . /etc/default/telnet
+
+start() {
+    printf "Starting ${DAEMON}: "
+    start-stop-daemon -S -q -m -b -p $PIDFILE \
+			-x "/usr/sbin/${DAEMON}" \
+			-- $TELNETD_ARGS
+    [ $? = 0 ] && echo "OK" || echo "FAIL"
+}
+
+stop() {
+    printf "Stopping ${DAEMON}: "
+    start-stop-daemon -K -q -p $PIDFILE \
+			-x "/usr/sbin/${DAEMON}"
+    [ $? = 0 ] && echo "OK" || echo "FAIL"
+}
+
+case "$1" in
+    start)
+	start
+	;;
+    stop)
+	stop
+	;;
+    restart|reload)
+	stop
+	start
+	;;
+    *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit $?

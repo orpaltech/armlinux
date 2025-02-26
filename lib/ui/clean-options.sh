@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # common clean options, can be overriden in board-specific config files
-CLEAN_OPTIONS="bootloader firmware kernel rootfs ${CLEAN_OPTIONS}"
+CLEAN_OPTIONS="firmware kernel rootfs ${CLEAN_OPTIONS}"
 
 LABEL_BACKTITLE="ORPALTECH ARM LINUX [ ${CONFIG} v${VERSION} ]"
 LABEL_TITLE="Clean Options"

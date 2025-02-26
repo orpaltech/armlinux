@@ -14,6 +14,9 @@ LINUX_PLATFORM="aarch64-linux-gnu"
 MESON_CPU_FAMILY="aarch64"
 MESON_CPU="armv8-a"
 
+# Required to build openssl
+OPENSSL_PLATFORM="linux-aarch64"
+
 # you can directly specify tolchain paths
 #UBOOT_CROSS_COMPILE=  
 #KERNEL_CROSS_COMPILE=                                           

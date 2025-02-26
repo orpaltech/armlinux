@@ -1,0 +1,144 @@
+#!/bin/bash
+
+#SOC_ARCH=arm
+SOC_ARCH=arm64
+SOC_FAMILY=sunxi
+PRODUCT_FULL_VER=1.0-0
+CONFIG=armlinux
+
+HOST_CPU_CORES=2
+
+TOOLCHAINDIR=/home/sergey/Projects/orpaltech/armlinux/toolchains
+
+if [ "${SOC_ARCH}" = arm ] ; then
+
+	LINUX_PLATFORM=arm-linux-gnueabihf
+
+	MESON_CPU_FAMILY=arm
+	MESON_CPU=armv7hl
+
+	BOARD=bananapi-m2m
+
+	BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/14/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+
+	OPENSSL_PLATFORM="linux-armv4 -march=armv7-a"
+elif [ "${SOC_ARCH}" = arm64 ] ; then
+
+	LINUX_PLATFORM=aarch64-linux-gnu
+
+	MESON_CPU_FAMILY=aarch64
+	MESON_CPU=armv8-a
+
+	BOARD=nanopi-a64
+
+	BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/14/aarch64-linux-gnu/bin/aarch64-linux-gnu-
+
+	OPENSSL_PLATFORM="linux-aarch64"
+fi
+
+# ----Test block -------
+BASEDIR=/home/sergey/Projects/orpaltech/armlinux/output
+LIBDIR=/home/sergey/Projects/orpaltech/armlinux/lib
+
+LOGDIR=/home/sergey/Projects/orpaltech/armlinux/logs
+
+GIT_MIRROR_ROOT=git@hanni-ubuntu-desktop:/srv/projects3/git
+EXTRADIR=/home/sergey/Projects/orpaltech
+SYSROOT_DIR=/home/sergey/Projects/orpaltech/boards/${BOARD}/sysroot
+#CROSS_COMPILE=/home/sergey/Projects/orpaltech/armlinux/toolchains/bootlin/10/aarch64/glibc-2.31/bin/aarch64-buildroot-linux-gnu-
+#TOOLCHAIN_LIBDIR=/home/sergey/Projects/orpaltech/armlinux/toolchains/bootlin/10/aarch64/glibc-2.31/aarch64-buildroot-linux-gnu/sysroot/usr/lib
+BB_PKG_CONFIG=${BASEDIR}/images/busybox/build/cross-pkg-config.sh
+
+SSH_KEY_PATH=/home/sergey/.ssh/id_rsa
+
+BB_LIBC=gnu
+
+BB_GCC=${BB_CROSS_COMPILE}gcc
+BB_CXX=${BB_CROSS_COMPILE}g++
+BB_NM=${BB_CROSS_COMPILE}nm
+BB_OBJDUMP=${BB_CROSS_COMPILE}objdump
+BB_STRIP=${BB_CROSS_COMPILE}strip
+BB_RANLIB=${BB_CROSS_COMPILE}ranlib
+BB_AR=${BB_CROSS_COMPILE}ar
+BB_PLATFORM=${LINUX_PLATFORM}
+BB_BUILD_OUT=build_${LINUX_PLATFORM}
+
+R=/home/sergey/Projects/orpaltech/armlinux/output/images/busybox/build/chroot
+ETC_DIR=${R}/etc
+
+#CLEAN=bluetooth
+#ENABLE_BTH=yes
+ENABLE_SSHD=yes
+
+ENABLE_WLAN=yes
+
+#----------------------
+
+. /home/sergey/Projects/orpaltech/armlinux/lib/common.sh
+. /home/sergey/Projects/orpaltech/armlinux/lib/functions.sh
+. /home/sergey/Projects/orpaltech/armlinux/lib/toolchains.sh
+
+
+set_cross_compile
+
+. /home/sergey/Projects/orpaltech/armlinux/lib/meson-build.sh
+
+
+
+meson_cross_init()
+{
+    local CROSS_FILE=$1
+    cat <<-EOF > ${CROSS_FILE}
+# Meson cross-file
+[constants]
+compile_flags = [ '-I${R}/usr/include' ]
+linker_flags = [ '-L${R}/usr/lib' ]
+
+[binaries]
+c = '${BB_GCC}'
+cpp = '${BB_CXX}'
+strip = '${BB_STRIP}'
+ar = '${BB_AR}'
+objcopy = '${BB_OBJCOPY}'
+pkg-config = '${BB_PKG_CONFIG}'
+# exe_wrapper = 'QEMU_LD_PREFIX=${R} ${QEMU_BINARY}'
+
+[built-in options]
+c_args = compile_flags
+cpp_args = compile_flags
+c_link_args = linker_flags
+cpp_link_args = linker_flags
+
+[properties]
+sys_root = '${R}'
+#pkg_config_libdir = '${R}/lib/pkgconfig:${R}/usr/lib/pkgconfig:${R}/usr/share/pkgconfig'
+
+[host_machine]
+system = 'linux'
+cpu_family = '${MESON_CPU_FAMILY}'
+cpu = '${MESON_CPU}'
+endian = 'little'
+EOF
+}
+
+
+
+
+
+
+
+#. ./10-rootfs.sh
+#. ./packages/11-zlib.sh
+#. ./packages/12-ncurses.sh
+#. ./packages/25-libusb.sh
+. ./packages/29-dbus.sh
+#. ./packages/31-sysklogd.sh
+#. ./11-pkgs.sh
+#. ./12-locale.sh
+#. ./21-ssh.sh
+#. ./20-networking.sh
+#. ./30-security.sh
+
+#sysklogd_install
+#libusb_install
+dbus_install

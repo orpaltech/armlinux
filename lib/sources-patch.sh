@@ -20,42 +20,42 @@
 
 copy_patches()
 {
-	local PATCH_SRC_DIR=$1
-	local PATCH_TMP_DIR=$2
-	local PATCH_OVERLAY_DIR="${PATCH_SRC_DIR}/overlays"
-	local PATCH_SOC_DIR="${PATCH_SRC_DIR}/${SOC_FAMILY}"
-	local PATCH_BOARD_DIR="${PATCH_SOC_DIR}/${BOARD}"
+	local patch_src_dir=$1
+	local patch_tmp_dir=$2
+	local patch_soc_dir="${patch_src_dir}/${SOC_FAMILY}"
+	local patch_board_dir="${patch_soc_dir}/${BOARD}"
+	local patch_ovlay_dir="${patch_src_dir}/overlays"
 
 	#
 	# Phase 1 - copy common patches
 	#
-	echo "--- 1) Copy common patches from '${PATCH_SRC_DIR}/common'"
-	cp $PATCH_SRC_DIR/common/*.patch $PATCH_TMP_DIR/ 2> /dev/null
+	echo "--- 1) Copy common patches from '${patch_src_dir}/common'"
+	cp ${patch_src_dir}/common/*.patch ${patch_tmp_dir}/ 2> /dev/null
 
 	#
-	# Pahes 2 - copy SoC-spec patches, allow overwrite the common patches
+	# Phase 2 - copy SoC-specific patches (allow overwrite the common patches)
 	#
-	if [ -d "${PATCH_SOC_DIR}" ] ; then
-		echo "--- 2) Copy SoC-specific patches from '${PATCH_SOC_DIR}'"
-		cp $PATCH_SOC_DIR/*.patch $PATCH_TMP_DIR/ 2> /dev/null
+	if [ -d ${patch_soc_dir} ] ; then
+		echo "--- 2) Copy SoC-specific patches from '${patch_soc_dir}'"
+		cp ${patch_soc_dir}/*.patch ${patch_tmp_dir}/ 2> /dev/null
 	fi
 
 	#
-	# Phase 3 - copy board-spec patches, allow overwrite the common & SoC-spec patches
+	# Phase 3 - copy board-specific patches (allow overwrite the common & SoC-specific patches)
 	#
-	if [ -d "${PATCH_BOARD_DIR}" ] ; then
-		echo "--- 3) Copy board-specific patches '${PATCH_BOARD_DIR}'"
-		cp $PATCH_BOARD_DIR/*.patch $PATCH_TMP_DIR/ 2> /dev/null
+	if [ -d ${patch_board_dir} ] ; then
+		echo "--- 3) Copy board-specific patches '${patch_board_dir}'"
+		cp ${patch_board_dir}/*.patch ${patch_tmp_dir}/ 2> /dev/null
 	fi
 
 	#
-	# Phase 4 - kernel specific - copy DT-overlay patches
+	# Phase 4 - SoC specific - copy DT-overlay patches
 	#
-	if [ ! -z "${OVERLAY_PREFIX}" ]  &&  [ -d "${PATCH_OVERLAY_DIR}" ] ; then
-		local PATCHFILE=$(find $PATCH_OVERLAY_DIR -regextype posix-extended -regex ".*[0-9]+-${OVERLAY_PREFIX}-.*\.patch")
-		if [ ! -z "${PATCHFILE}" ] && [ -f $PATCHFILE ] ; then
-			echo "--- 4) Copy DT-overlays patch '${PATCHFILE}'"
-                	cp $PATCHFILE $PATCH_TMP_DIR/
+	if [ -n "${OVERLAY_PREFIX}" ]  &&  [ -d ${patch_ovlay_dir} ] ; then
+		local patch_file=$(find ${patch_ovlay_dir} -regextype posix-extended -regex ".*[0-9]+-${OVERLAY_PREFIX}-.*\.patch")
+		if [ -n "${patch_file}" ] && [ -f ${patch_file} ] ; then
+			echo "--- 4) Copy DT-overlays patch '${patch_file}'"
+                	cp ${patch_file} ${patch_tmp_dir}/
         	fi
 	fi
 }
@@ -119,40 +119,40 @@ fi
 
 patch_kernel()
 {
-	local PATCH_BASE_DIR=${BASEDIR}/patch/kernel/${CONFIG}/${KERNEL_REPO_NAME}
-	local PATCH_OUT_DIR=${OUTPUTDIR}/patches
+	local patch_base_dir=${BASEDIR}/patch/kernel/${CONFIG}/${KERNEL_REPO_NAME}
+	local patch_out_dir=${OUTPUTDIR}/patches
 
-	rm -rf $PATCH_OUT_DIR/kernel.*
+	rm -rf ${patch_out_dir}/kernel.*
 
-	if [[ "${KERNEL_PATCH_DISABLE}" != "yes"  &&  -d "${PATCH_BASE_DIR}" ]] ; then
-                local PATCH_TMP_DIR=$(mktemp -u $PATCH_OUT_DIR/kernel.XXXXXXXXX)
+	if [ "${KERNEL_PATCH_DISABLE}" != yes ]  && [ -d ${patch_base_dir} ] ; then
+                local patch_tmp_dir=$(mktemp -u ${patch_out_dir}/kernel.XXXXXXXXX)
 
 		display_alert "Patching kernel..." "" "info"
 
-		mkdir -p $PATCH_TMP_DIR
+		mkdir -p ${patch_tmp_dir}
 
                 echo "Copy Kernel base patches"
 
-		# Copy base/normal-priority patches
-                copy_patches $PATCH_BASE_DIR $PATCH_TMP_DIR
+		# Copy normal-priority patches
+                copy_patches ${patch_base_dir} ${patch_tmp_dir}
 
 		# Check if high-priority patches are available and, if yes, copy too
-		local PATCH_HIGH_DIR="${KERNEL_PATCH_HIGH_PRIORITY_DIR}"
-		if [ -z "${PATCH_HIGH_DIR}" ] ; then
-			PATCH_HIGH_DIR="${KERNEL_RELEASE}"
+		local dir_name="${KERNEL_PATCH_HIGH_PRIORITY_DIR}"
+		if [ -z "${dir_name}" ] ; then
+			dir_name="${KERNEL_RELEASE}"
 		fi
-                if [ -n "${PATCH_HIGH_DIR}" ] && [ -d "${PATCH_BASE_DIR}/${PATCH_HIGH_DIR}" ] ; then
-                        echo "Copy Kernel high-priority patches from '${PATCH_HIGH_DIR}', allow overwrite base patches"
+                if [ -n "${dir_name}" ] && [ -d ${patch_base_dir}/${dir_name} ] ; then
+                        echo "Copy Kernel high-priority patches from '${dir_name}', allow overwrite base patches"
 
-                        copy_patches $PATCH_BASE_DIR/$PATCH_HIGH_DIR  $PATCH_TMP_DIR
+                        copy_patches ${patch_base_dir}/${dir_name}  ${patch_tmp_dir}
                 fi
 
-		local patch_count=$(count_files "$PATCH_TMP_DIR/*.patch")
+		local patch_count=$(count_files "${patch_tmp_dir}/*.patch")
 		if [ $patch_count -gt 0 ] ; then
 			# patching
-			for PATCHFILE in $PATCH_TMP_DIR/*.patch; do
-				echo "Applying patch '${PATCHFILE}' to kernel..."
-				patch -d $KERNEL_SOURCE_DIR --batch -p1 -N -F5 < $PATCHFILE
+			for patch_file in ${patch_tmp_dir}/*.patch; do
+				echo "Applying patch '${patch_file}' to kernel..."
+				patch -d ${KERNEL_SOURCE_DIR} --batch -p1 -N -F5 < ${patch_file}
 				[ $? -eq 0 ] || exit $?;
 				echo "Patched."
 			done

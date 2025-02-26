@@ -3,7 +3,7 @@
 #
 SOC_FAMILY=sunxi
 
-BOOT_DIR="/boot"
+TARGET_BOOT_DIR="/boot"
 
 # You can directly specify tolchain paths
 #UBOOT_CROSS_COMPILE=  
@@ -39,8 +39,3 @@ QT_OPENGL_OPTION="-no-opengl"
 
 # No wireless support by default. Update this value in a board config file
 SUPPORT_WLAN=no
-
-ENABLE_MESA=${ENABLE_MESA:="yes"}
-[[ "${ENABLE_MESA}" = yes ]] && APT_REMOVE_PACKAGES="libwayland-dev,libgbm-dev"
-# sunxi-specific clean options
-[[ "${ENABLE_MESA}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa-lima"

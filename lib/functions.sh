@@ -3,16 +3,16 @@
 ########################################################################
 # functions.sh
 #
-# Description:	This file contains functions used by image-gen.sh
+# Description:	The functions used by the image generation.
 #
-# Author:	Sergey Suloev <ssuloev@orpaltech.com>
+# Author:	Sergey Suloev <ssuloev@orpaltech.ru>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2018 ORPAL Technology, Inc.
+# Copyright (C) 2013-2025 ORPAL Technology, Inc.
 #
 ########################################################################
 
@@ -34,3 +34,29 @@ install_exec()
   # Install file with root exec permissions
   install -o root -g root -m 744 $*
 }
+
+copy_custom_files()
+{
+  local sub_path=$1
+  local target_path=$2
+  local ext=$3
+
+  if [ -d "${sub_path}" ] ; then
+    local num_files=$(count_files "${sub_path}/common/*${ext}")
+    if [ ${num_files} -gt 0 ] ; then
+      cp -R ${sub_path}/common/*  ${target_path}/
+    fi
+
+    num_files=$(count_files "${sub_path}/${SOC_FAMILY}/*${ext}")
+    if [ ${num_files} -gt 0 ] ; then
+      cp -R ${sub_path}/${SOC_FAMILY}/*  ${target_path}/
+    fi
+
+    num_files=$(count_files "${sub_path}/${SOC_FAMILY}/${BOARD}/*${ext}")
+    if [ ${num_files} -gt 0 ] ; then
+      cp -R ${sub_path}/${SOC_FAMILY}/${BOARD}/*  ${target_path}/
+      rm -rf ${target_path}/${BOARD}
+    fi
+  fi
+}
+

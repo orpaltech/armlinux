@@ -14,6 +14,9 @@ LINUX_PLATFORM="arm-linux-gnueabihf"
 MESON_CPU_FAMILY="arm"
 MESON_CPU="armv7hl"
 
+# Required for building openssl
+OPENSSL_PLATFORM="linux-armv4 -march=armv7-a"
+
 # You can directly specify tolchain paths
 #UBOOT_CROSS_COMPILE=  
 #KERNEL_CROSS_COMPILE=

@@ -1,0 +1,106 @@
+#!/bin/bash
+
+#SOC_ARCH=arm
+SOC_ARCH=arm64
+SOC_FAMILY=sunxi
+PRODUCT_FULL_VER=1.0-0
+CONFIG=armlinux
+
+
+BASEDIR=/home/sergey/Projects/orpaltech/armlinux
+LIBDIR=${BASEDIR}/lib
+TOOLCHAINDIR=${BASEDIR}/toolchains
+EXTRADIR=/home/sergey/Projects/orpaltech
+SSH_KEY_PATH=/home/sergey/.ssh/id_rsa
+
+if [ "${SOC_ARCH}" = arm ]; then
+
+	# Meson build tool parameters
+	MESON_CPU_FAMILY="arm"
+	MESON_CPU="armv7hl"
+
+	LINUX_PLATFORM=arm-linux-gnueabihf
+
+	BOARD=bananapi-m2m
+
+elif [ "${SOC_ARCH}" = arm64 ]; then
+
+	# Meson build tool parameters
+	MESON_CPU_FAMILY=aarch64
+	MESON_CPU=armv8-a
+
+	LINUX_PLATFORM=aarch64-linux-gnu
+
+	BOARD=nanopi-a64
+
+fi
+
+SYSROOT_DIR=/home/sergey/Projects/orpaltech/boards/${BOARD}/sysroot
+BB_PKG_CONFIG=${BASEDIR}/output/images/busybox/build/cross-pkg-config.sh
+
+# Create wrapper script for pkg-config
+#cat <<-EOF > $BB_PKG_CONFIG
+#!/bin/sh
+#R=${SYSROOT_DIR}
+#export PKG_CONFIG_SYSROOT_DIR="\${R}"
+#export PKG_CONFIG_LIBDIR="\${R}/lib/pkgconfig:\${R}/usr/lib/pkgconfig:\${R}/usr/share/pkgconfig"
+#export PKG_CONFIG_PATH=
+#exec /usr/bin/pkg-config "\$@"
+#EOF
+#chmod +x $BB_PKG_CONFIG
+
+# ----Test block -------
+#CROSS_COMPILE=/home/sergey/Projects/orpaltech/armlinux/toolchains/bootlin/10/aarch64/glibc-2.31/bin/aarch64-buildroot-linux-gnu-
+#TOOLCHAIN_LIBDIR=/home/sergey/Projects/orpaltech/armlinux/toolchains/bootlin/10/aarch64/glibc-2.31/aarch64-buildroot-linux-gnu/sysroot/usr/lib
+
+GIT_MIRROR_ROOT="git@hanni-ubuntu-desktop:/srv/projects3/git"
+
+BB_LIBC=gnu
+
+BB_PLATFORM=${LINUX_PLATFORM}
+BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/14/${BB_PLATFORM}/bin/${BB_PLATFORM}-
+BB_GCC=${BB_CROSS_COMPILE}gcc
+BB_CXX=${BB_CROSS_COMPILE}g++
+BB_LD=${BB_CROSS_COMPILE}ld
+BB_NM=${BB_CROSS_COMPILE}nm
+BB_OBJCOPY=${BB_CROSS_COMPILE}objcopy
+BB_OBJDUMP=${BB_CROSS_COMPILE}objdump
+BB_STRIP=${BB_CROSS_COMPILE}strip
+BB_RANLIB=${BB_CROSS_COMPILE}ranlib
+BB_AR=${BB_CROSS_COMPILE}ar
+BB_BUILD_OUT=build-${BB_PLATFORM}
+
+R=${BASEDIR}/output/images/busybox/build/chroot
+ETC_DIR=${R}/etc
+
+CLEAN=bluetooth
+ENABLE_BTH=yes
+ENABLE_SDR=yes
+ENABLE_SOUND=yes
+SOUND_FORCE_REBUILD=yes
+BTH_FORCE_REBUILD=yes
+
+#----------------------
+
+. ${LIBDIR}/common.sh
+. ${LIBDIR}/functions.sh
+. ${LIBDIR}/toolchains.sh
+
+
+set_cross_compile
+
+. ${LIBDIR}/meson-build.sh
+
+#. ./11-sysroot.sh
+#. ./17-ncurses.sh
+#. ./19-linux-utils.sh
+#. ./25-ntp.sh
+#. ./22-pkg-config.sh
+#SND_FORCE_REBUILD=yes
+#. ./65-sound.sh
+
+BTH_FORCE_REBUILD=yes
+. ./67-bluetooh.sh
+
+#SDR_FORCE_REBUILD=yes
+#. ./71-sdr.sh

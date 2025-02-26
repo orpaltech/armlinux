@@ -21,7 +21,9 @@ arr_index=0
 for opt in "${DEBIAN_OPTIONS[@]}" ; do
 	debian_options[$deb_index]=$opt
 	((deb_index++))
-	debian_options[$deb_index]=$(printf '%-14s [ %-10s ]' "${DEBIAN_STATES[$arr_index]}" "${DEBIAN_SUPPORTS[$arr_index]}")
+	deb_state=${DEBIAN_STATES[$arr_index]}
+	deb_supp=${DEBIAN_SUPPORTS[$arr_index]}
+	debian_options[$deb_index]=$(printf '%-14s [ %-16s ]' "${deb_state}" "${deb_supp}")
 	((deb_index++))
 	((arr_index++))
 done
@@ -30,7 +32,7 @@ DEBIAN_RELEASE=$(dialog	--clear \
 		--shadow \
 		--backtitle "${LABEL_BACKTITLE}" \
 		--title "${LABEL_TITLE}" \
-		--menu "${LABEL_MENU}" 16 52 16 \
+		--menu "${LABEL_MENU}" 16 54 16 \
 		"${debian_options[@]}" \
 		2>&1 >/dev/tty)
 

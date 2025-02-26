@@ -1,0 +1,26 @@
+#!/bin/sh
+
+
+# Call all init scripts in /etc/init.d
+# executing them in numerical order.
+#
+for scr in /etc/init.d/S??* ; do
+
+     # Ignore dangling symlinks (if any).
+     [ ! -f ${scr} ] && continue
+
+     case "${scr}" in
+        *.sh)
+            # Source shell script for speed.
+            (
+                trap - INT QUIT TSTP
+                set start
+                . ${scr}
+            )
+            ;;
+        *)
+            # No sh extension, so fork subprocess.
+            ${scr} start
+            ;;
+    esac
+done

@@ -10,10 +10,12 @@ OVERLAY_PREFIX="bcm2835"
 BOOTLOAD_OPTIONS="native uboot"
 BOOTLOADER="${BOOTLOADER}"
 
-BOOT_DIR="/boot/firmware"
+TARGET_BOOT_DIR="/boot/firmware"
 
 FIRMWARE_URL="https://github.com/raspberrypi/firmware.git"
 FIRMWARE_BRANCH="stable"
+FIRMWARE_VER="1.20250127"
+FIRMWARE_TAG="${FIRMWARE_VER}"
 FIRMWARE_NAME="raspberrypi"
 
 KERNEL_OVERLAY_DIR="broadcom/overlays"
@@ -24,12 +26,8 @@ QT_OPENGL_OPTION="-opengl es2"
 # Extra debian packages to be installed for RaspberryPi
 APT_BOARD_PACKAGES="rng-tools fbset"
 
-# Most RaspberryPi boards has a built-in Wi-Fi adapter
-SUPPORT_WLAN="yes"
-
-ENABLE_MESA=${ENABLE_MESA:="yes"}
-# Raspberry-specific clean options
-[[ "${ENABLE_MESA}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa-vc4"
+# Most RaspberryPi are equipped with Wi-Fi adapters
+SUPPORT_WLAN=yes
 
 # Custom EDID binary for DRM
 # DRM_USE_FIRMWARE_EDID="yes"

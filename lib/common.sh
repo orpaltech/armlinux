@@ -5,20 +5,30 @@
 #
 # Description:	This file contains functions used in build scripts.
 #
-# Author:	Sergey Suloev <ssuloev@orpaltech.com>
+# Author:	Sergey Suloev <ssuloev@orpaltech.ru>
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2020 ORPAL Technology, Inc.
+# Copyright (C) 2013-2025 ORPAL Technology, Inc.
 #
 ########################################################################
 
+
 CPUINFO_NUM_CORES=$(grep -c ^processor /proc/cpuinfo)
 
+# (!!!) Do not overload CPU, use only half of CPU cores
+HOST_CPU_CORES=$((CPUINFO_NUM_CORES / 2))
+
+
 [ ${SUDO_USER} ] && CURRENT_USER=${SUDO_USER} || CURRENT_USER=$(whoami)
+
+
+GIT=${GIT:="git_retry"}
+
+. ${LIBDIR}/git-utils.sh
 
 
 # ----------------------------------------------------------------------
@@ -28,7 +38,7 @@ CPUINFO_NUM_CORES=$(grep -c ^processor /proc/cpuinfo)
 display_alert()
 {
   # log function parameters
-  [[ -n ${LOG_DEST} ]] && echo "Displaying message: $@" >> ${LOG_DEST}/debug/output.log
+  [[ -n ${LOGDIR} ]] && echo "Message: $@" >> ${LOGDIR}/debug/output.log
 
   local tmp=""
   [[ -n ${2} ]] && tmp="[\e[0;33m ${2} \x1B[0m]"
@@ -38,7 +48,7 @@ display_alert()
       echo -e "[\e[0;31m error \x1B[0m] ${1} $tmp"
       ;;
 
-    wrn)
+    warn)
       echo -e "[\e[0;35m warn \x1B[0m] ${1} $tmp"
       ;;
 
@@ -94,3 +104,19 @@ fn_exists()
   declare -f -F $1 > /dev/null
   return $?
 }
+
+str_replace()
+{
+  local INPUT=$1
+  local SRC=$2
+  local DST=$3
+  echo -e "${INPUT}" | tr "${SRC}" "${DST}"
+}
+
+make_array()
+{
+  local INPUT="$@"
+  readarray -t temp_array < <(awk -F'[[:blank:],]' '{ for( i=1; i<=NF; i++ ) print $i }' <<<"${INPUT}")
+}
+
+. ${LIBDIR}/update-src-pkg.sh
