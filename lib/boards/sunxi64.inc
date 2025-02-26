@@ -37,9 +37,12 @@ FIRMWARE_SCP_VER="0.6"
 FIRMWARE_SCP_TAG="v${FIRMWARE_SCP_VER}"
 FIRMWARE_SCP_NAME="scp-crust"
 
+
 KERNEL_BUILD_CONFIG="defconfig"
 KERNEL_BUILD_FAMILY_CONFIG="linux-sunxi64.config"
 
-
 # yes" - compressed (Image.gz), or "no" - uncompressed (Image)
 KERNEL_IMAGE_COMPRESSED=no
+
+# busybox configs are stored in ${CONFIGDIR}/busybox/${CONFIG}/${BUSYBOX_VERSION}/ directiory
+BUSYBOX_BUILD_CONFIG="busybox-${LINUX_PLATFORM}.config"

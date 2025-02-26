@@ -1,67 +1,79 @@
-From 929007a122cad3e1220d042d97c38b1e82e59df8 Mon Sep 17 00:00:00 2001
+From be044f4d808d85db2e150b27ad87b9ebb290dbe8 Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Thu, 17 Oct 2024 22:41:52 +0300
+Date: Sat, 7 Dec 2024 19:56:04 +0300
 Subject: [PATCH] bcm2835: Add DT-overlays for RaspberryPi boards
 
 ---
  arch/arm/boot/dts/broadcom/Makefile           |   2 +
- arch/arm/boot/dts/broadcom/overlays/Makefile  |  22 ++++
+ arch/arm/boot/dts/broadcom/overlays/Makefile  |  23 ++++
  .../broadcom/overlays/README.bcm2835-overlays |   1 +
- .../overlays/bcm2835-audioinjector-pi.dtso    |  32 +++++
+ .../overlays/bcm2835-audioinjector-pi.dtso    |  34 +++++
+ .../broadcom/overlays/bcm2835-disable-bt.dtso |  10 ++
+ .../overlays/bcm2835-disable-hdmi.dtso        |  10 ++
+ .../overlays/bcm2835-disable-wlan.dtso        |  10 ++
  .../overlays/bcm2835-ertft0356-drm.dtso       |  63 ++++++++++
- .../broadcom/overlays/bcm2835-esp32-spi.dtso  |  28 +++++
+ .../broadcom/overlays/bcm2835-esp32-spi.dtso  |  60 +++++++++
  .../broadcom/overlays/bcm2835-fixup.scr-cmd   | 119 ++++++++++++++++++
  .../broadcom/overlays/bcm2835-gpio-reset.dtso |  24 ++++
+ .../broadcom/overlays/bcm2835-i2c-gpio.dtso   |  50 ++++++++
  .../overlays/bcm2835-ili9486-drm.dtso         |  60 +++++++++
- .../dts/broadcom/overlays/bcm2835-no-bt.dtso  |  14 +++
- .../broadcom/overlays/bcm2835-no-hdmi.dtso    |  10 ++
+ .../dts/broadcom/overlays/bcm2835-no-bt.dtsi  |  21 ++++
+ .../broadcom/overlays/bcm2835-no-wlan.dtsi    |  15 +++
  .../broadcom/overlays/bcm2835-nrf24-spi.dtso  |  48 +++++++
  .../dts/broadcom/overlays/bcm2835-spidev.dtso |  50 ++++++++
- .../dts/broadcom/overlays/bcm2835-uart0.dtso  |  17 +++
  .../overlays/bcm2835-waveshare35-drm.dtso     |  49 ++++++++
  arch/arm64/boot/dts/broadcom/Makefile         |   1 +
- .../arm64/boot/dts/broadcom/overlays/Makefile |  22 ++++
+ .../arm64/boot/dts/broadcom/overlays/Makefile |  23 ++++
  .../broadcom/overlays/README.bcm2835-overlays |   1 +
- .../overlays/bcm2835-audioinjector-pi.dtso    |  32 +++++
+ .../overlays/bcm2835-audioinjector-pi.dtso    |  34 +++++
+ .../broadcom/overlays/bcm2835-disable-bt.dtso |  10 ++
+ .../overlays/bcm2835-disable-hdmi.dtso        |  10 ++
+ .../overlays/bcm2835-disable-wlan.dtso        |  10 ++
  .../overlays/bcm2835-ertft0356-drm.dtso       |  63 ++++++++++
- .../broadcom/overlays/bcm2835-esp32-spi.dtso  |  28 +++++
+ .../broadcom/overlays/bcm2835-esp32-spi.dtso  |  60 +++++++++
  .../broadcom/overlays/bcm2835-fixup.scr-cmd   | 119 ++++++++++++++++++
  .../broadcom/overlays/bcm2835-gpio-reset.dtso |  24 ++++
+ .../broadcom/overlays/bcm2835-i2c-gpio.dtso   |  50 ++++++++
  .../overlays/bcm2835-ili9486-drm.dtso         |  60 +++++++++
- .../dts/broadcom/overlays/bcm2835-no-bt.dtso  |  14 +++
- .../broadcom/overlays/bcm2835-no-hdmi.dtso    |  10 ++
+ .../dts/broadcom/overlays/bcm2835-no-bt.dtsi  |  21 ++++
+ .../broadcom/overlays/bcm2835-no-wlan.dtsi    |  15 +++
  .../broadcom/overlays/bcm2835-nrf24-spi.dtso  |  48 +++++++
  .../dts/broadcom/overlays/bcm2835-spidev.dtso |  50 ++++++++
- .../dts/broadcom/overlays/bcm2835-uart0.dtso  |  17 +++
  .../overlays/bcm2835-waveshare35-drm.dtso     |  49 ++++++++
- 30 files changed, 1077 insertions(+)
+ 36 files changed, 1297 insertions(+)
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/README.bcm2835-overlays
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
+ create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-bt.dtso
+ create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-hdmi.dtso
+ create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-wlan.dtso
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dtso
+ create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-i2c-gpio.dtso
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-ili9486-drm.dtso
- create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-no-bt.dtso
- create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dtso
+ create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-no-bt.dtsi
+ create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-no-wlan.dtsi
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-spidev.dtso
- create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-uart0.dtso
  create mode 100644 arch/arm/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dtso
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/Makefile
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/README.bcm2835-overlays
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-bt.dtso
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-hdmi.dtso
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-wlan.dtso
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-fixup.scr-cmd
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-gpio-reset.dtso
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-i2c-gpio.dtso
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-ili9486-drm.dtso
- create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-bt.dtso
- create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dtso
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-bt.dtsi
+ create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-wlan.dtsi
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-spidev.dtso
- create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-uart0.dtso
  create mode 100644 arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dtso
 
 diff --git a/arch/arm/boot/dts/broadcom/Makefile b/arch/arm/boot/dts/broadcom/Makefile
@@ -76,10 +88,10 @@ index 5881bcc..ddab0c1 100644
 +subdir-y += overlays
 diff --git a/arch/arm/boot/dts/broadcom/overlays/Makefile b/arch/arm/boot/dts/broadcom/overlays/Makefile
 new file mode 100644
-index 0000000..9f79dd8
+index 0000000..d86c12c
 --- /dev/null
 +++ b/arch/arm/boot/dts/broadcom/overlays/Makefile
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,23 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
@@ -87,13 +99,14 @@ index 0000000..9f79dd8
 +	bcm2835-spidev.dtbo \
 +	bcm2835-gpio-reset.dtbo \
 +	bcm2835-esp32-spi.dtbo \
++	bcm2835-i2c-gpio.dtbo \
 +	bcm2835-nrf24-spi.dtbo \
 +	bcm2835-waveshare35-drm.dtbo \
 +	bcm2835-ertft0356-drm.dtbo \
 +	bcm2835-audioinjector-pi.dtbo \
-+	bcm2835-no-hdmi.dtbo \
-+	bcm2835-no-bt.dtbo \
-+	bcm2835-uart0.dtbo
++	bcm2835-disable-hdmi.dtbo \
++	bcm2835-disable-bt.dtbo \
++	bcm2835-disable-wlan.dtbo
 +
 +scr-$(CONFIG_ARCH_BCM2835) += \
 +	bcm2835-fixup.scr
@@ -111,10 +124,12 @@ index 0000000..6573c77
 +# overlays for bcm2837
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
 new file mode 100644
-index 0000000..512bd51
+index 0000000..cc730d5
 --- /dev/null
 +++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,34 @@
++// Overlay for Audioinjector sound card
++
 +/dts-v1/;
 +/plugin/;
 +
@@ -146,6 +161,54 @@ index 0000000..512bd51
 +		codec-node = <&wm8731>;
 +		status = "okay";
 +	};
++};
+diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-bt.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-bt.dtso
+new file mode 100644
+index 0000000..64dee34
+--- /dev/null
++++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-bt.dtso
+@@ -0,0 +1,10 @@
++// Overlay to disable built-in wireless
++
++/dts-v1/;
++/plugin/;
++
++#include "bcm2835-no-bt.dtsi"
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++};
+diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-hdmi.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-hdmi.dtso
+new file mode 100644
+index 0000000..49b962d
+--- /dev/null
++++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-hdmi.dtso
+@@ -0,0 +1,10 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711", "brcm,bcm2835";
++};
++
++&hdmi {
++	status = "disabled";
++};
+diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-wlan.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-wlan.dtso
+new file mode 100644
+index 0000000..80dc855
+--- /dev/null
++++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-disable-wlan.dtso
+@@ -0,0 +1,10 @@
++// Overlay to disable built-in wireless
++
++/dts-v1/;
++/plugin/;
++
++#include "bcm2835-no-wlan.dtsi"
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
 +};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso
 new file mode 100644
@@ -218,17 +281,43 @@ index 0000000..6a62391
 +};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
 new file mode 100644
-index 0000000..51e9ff7
+index 0000000..9895411
 --- /dev/null
 +++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
-@@ -0,0 +1,28 @@
-+#include <dt-bindings/pinctrl/bcm2835.h>
+@@ -0,0 +1,60 @@
++// Overlay for ESP32 SPI shield
 +
 +/dts-v1/;
 +/plugin/;
 +
++#include <dt-bindings/pinctrl/bcm2835.h>
++
 +/ {
-+	compatible = "brcm,bcm2711", "brcm,bcm2837", "brcm,bcm2835";
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@1 {
++		target = <&esp32_spi>;
++		__dormant__ {
++			spi-cpha;
++		};
++	};
++
++	fragment@2 {
++		target = <&esp32_spi>;
++		__dormant__ {
++			spi-cpol;
++		};
++	};
++
++
++	__overrides__ {
++		spi_freq = <&esp32_spi>,"spi-max-frequency:0";
++		spi_mod1 = <0>,"+1";
++		spi_mod2 = <0>,"+2";
++		spi_mod3 = <0>,"+1+2";
++		enable = <&spi>,"status=okay",
++			 <&esp32_spi>,"status=okay";
++        };
 +};
 +
 +&spi {
@@ -236,12 +325,18 @@ index 0000000..51e9ff7
 +	#size-cells = <0>;
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&spi0_gpio7>;
++	dmas = <&dma 6>, <&dma 7>;
++	dma-names = "tx", "rx";
++	cs-gpios = <&gpio 8 0>, <&gpio 7 0>;
 +	status = "disabled";
 +
 +	esp32_spi: esp32-spi@0 {
 +		compatible = "espressif,esp32-spi";
-+		reg = <0>;
++		reg = <0>; /* CS0 */
++
 +		spi-max-frequency = <10000000>;
++
++		/*SPI MODE0 by default, use fragments */
 +
 +		handshake-gpios = <&gpio 5 0>;
 +		dataready-gpios = <&gpio 6 0>;
@@ -405,6 +500,62 @@ index 0000000..0fa8744
 +		};
 +	};
 +};
+diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-i2c-gpio.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-i2c-gpio.dtso
+new file mode 100644
+index 0000000..33669da
+--- /dev/null
++++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-i2c-gpio.dtso
+@@ -0,0 +1,50 @@
++// Overlay for i2c_gpio bitbanging host bus.
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	__overrides__ {
++		i2c_gpio_sda = <&i2c_gpio>,"sda-gpios:4";
++		i2c_gpio_scl = <&i2c_gpio>,"scl-gpios:4";
++		i2c_gpio_delay_us = <&i2c_gpio>,"i2c-gpio,delay-us:0";
++		bus = <&i2c_gpio>, "reg:0";
++		at24c256 = <0>,"+3";
++        };
++
++	fragment@3 {
++		target = <&i2c_gpio>;
++		__dormant__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			eeprom: at24@50 {
++				compatible = "atmel,24c256";
++				reg = <0x50>;
++				pagesize = <64>;
++			};
++		};
++	};
++};
++
++&{/} {
++	i2c_gpio: i2c@0 {
++		reg = <0xffffffff>;
++		compatible = "i2c-gpio";
++		sda-gpios = <&gpio 23 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
++		scl-gpios = <&gpio 24 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
++		i2c-gpio,delay-us = <2>;	/* ~100 kHz */
++	};
++};
++
++&{/aliases} {
++	i2c_gpio = "/i2c@0";
++};
++
++&{/__symbols__} {
++	i2c_gpio = "/i2c@0";
++};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-ili9486-drm.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-ili9486-drm.dtso
 new file mode 100644
 index 0000000..d5c341a
@@ -471,40 +622,52 @@ index 0000000..d5c341a
 +		};
 +	};
 +};
-diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-bt.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-bt.dtso
+diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-bt.dtsi b/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-bt.dtsi
 new file mode 100644
-index 0000000..344dc03
+index 0000000..c605522
 --- /dev/null
-+++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-bt.dtso
-@@ -0,0 +1,14 @@
-+/dts-v1/;
-+/plugin/;
++++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-bt.dtsi
+@@ -0,0 +1,21 @@
++// Common include to disable built-in bluetooth
 +
 +/ {
-+	compatible = "brcm,bcm2711", "brcm,bcm2837", "brcm,bcm2835";
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++};
++
++/* Disable Bluetooth and restore UART0/ttyAMA0 over GPIOs 14 & 15. */
++
++&uart1 {
++	status = "disabled";
 +};
 +
 +&uart0 {
-+	status = "disabled";
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart0_gpio14>;
++	status = "okay";
 +};
 +
 +&bt {
 +	status = "disabled";
 +};
-diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dtso
+diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-wlan.dtsi b/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-wlan.dtsi
 new file mode 100644
-index 0000000..49b962d
+index 0000000..fddb601
 --- /dev/null
-+++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dtso
-@@ -0,0 +1,10 @@
-+/dts-v1/;
-+/plugin/;
++++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-no-wlan.dtsi
+@@ -0,0 +1,15 @@
++// Common include to disable built-in wireless adapter
 +
 +/ {
-+	compatible = "brcm,bcm2711", "brcm,bcm2835";
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
 +};
 +
-+&hdmi {
++/* Disable Wi-Fi device tree nodes */
++
++&sdhci {
++	status = "disabled";
++};
++
++&brcmf {
 +	status = "disabled";
 +};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso
@@ -617,29 +780,6 @@ index 0000000..b86e7d3
 +		status = "disabled";
 +	};
 +};
-diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-uart0.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-uart0.dtso
-new file mode 100644
-index 0000000..45f1d6c
---- /dev/null
-+++ b/arch/arm/boot/dts/broadcom/overlays/bcm2835-uart0.dtso
-@@ -0,0 +1,17 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "brcm,bcm2837", "brcm,bcm2835";
-+};
-+
-+&uart0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart0_gpio14>;
-+};
-+
-+/* switch uart1 to dummy output, but do not disable it */
-+&uart1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart1_gpio40>;
-+};
 diff --git a/arch/arm/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dtso b/arch/arm/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dtso
 new file mode 100644
 index 0000000..107a305
@@ -706,10 +846,10 @@ index 92565e9..6b49cb8 100644
 +subdir-y	+= overlays
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/Makefile b/arch/arm64/boot/dts/broadcom/overlays/Makefile
 new file mode 100644
-index 0000000..9f79dd8
+index 0000000..d86c12c
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/Makefile
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,23 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
@@ -717,13 +857,14 @@ index 0000000..9f79dd8
 +	bcm2835-spidev.dtbo \
 +	bcm2835-gpio-reset.dtbo \
 +	bcm2835-esp32-spi.dtbo \
++	bcm2835-i2c-gpio.dtbo \
 +	bcm2835-nrf24-spi.dtbo \
 +	bcm2835-waveshare35-drm.dtbo \
 +	bcm2835-ertft0356-drm.dtbo \
 +	bcm2835-audioinjector-pi.dtbo \
-+	bcm2835-no-hdmi.dtbo \
-+	bcm2835-no-bt.dtbo \
-+	bcm2835-uart0.dtbo
++	bcm2835-disable-hdmi.dtbo \
++	bcm2835-disable-bt.dtbo \
++	bcm2835-disable-wlan.dtbo
 +
 +scr-$(CONFIG_ARCH_BCM2835) += \
 +	bcm2835-fixup.scr
@@ -741,10 +882,12 @@ index 0000000..6573c77
 +# overlays for bcm2837
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
 new file mode 100644
-index 0000000..512bd51
+index 0000000..cc730d5
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-audioinjector-pi.dtso
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,34 @@
++// Overlay for Audioinjector sound card
++
 +/dts-v1/;
 +/plugin/;
 +
@@ -776,6 +919,54 @@ index 0000000..512bd51
 +		codec-node = <&wm8731>;
 +		status = "okay";
 +	};
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-bt.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-bt.dtso
+new file mode 100644
+index 0000000..64dee34
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-bt.dtso
+@@ -0,0 +1,10 @@
++// Overlay to disable built-in wireless
++
++/dts-v1/;
++/plugin/;
++
++#include "bcm2835-no-bt.dtsi"
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-hdmi.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-hdmi.dtso
+new file mode 100644
+index 0000000..49b962d
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-hdmi.dtso
+@@ -0,0 +1,10 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2711", "brcm,bcm2835";
++};
++
++&hdmi {
++	status = "disabled";
++};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-wlan.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-wlan.dtso
+new file mode 100644
+index 0000000..80dc855
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-disable-wlan.dtso
+@@ -0,0 +1,10 @@
++// Overlay to disable built-in wireless
++
++/dts-v1/;
++/plugin/;
++
++#include "bcm2835-no-wlan.dtsi"
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ertft0356-drm.dtso
 new file mode 100644
@@ -848,17 +1039,43 @@ index 0000000..6a62391
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
 new file mode 100644
-index 0000000..51e9ff7
+index 0000000..9895411
 --- /dev/null
 +++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-esp32-spi.dtso
-@@ -0,0 +1,28 @@
-+#include <dt-bindings/pinctrl/bcm2835.h>
+@@ -0,0 +1,60 @@
++// Overlay for ESP32 SPI shield
 +
 +/dts-v1/;
 +/plugin/;
 +
++#include <dt-bindings/pinctrl/bcm2835.h>
++
 +/ {
-+	compatible = "brcm,bcm2711", "brcm,bcm2837", "brcm,bcm2835";
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	fragment@1 {
++		target = <&esp32_spi>;
++		__dormant__ {
++			spi-cpha;
++		};
++	};
++
++	fragment@2 {
++		target = <&esp32_spi>;
++		__dormant__ {
++			spi-cpol;
++		};
++	};
++
++
++	__overrides__ {
++		spi_freq = <&esp32_spi>,"spi-max-frequency:0";
++		spi_mod1 = <0>,"+1";
++		spi_mod2 = <0>,"+2";
++		spi_mod3 = <0>,"+1+2";
++		enable = <&spi>,"status=okay",
++			 <&esp32_spi>,"status=okay";
++        };
 +};
 +
 +&spi {
@@ -866,12 +1083,18 @@ index 0000000..51e9ff7
 +	#size-cells = <0>;
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&spi0_gpio7>;
++	dmas = <&dma 6>, <&dma 7>;
++	dma-names = "tx", "rx";
++	cs-gpios = <&gpio 8 0>, <&gpio 7 0>;
 +	status = "disabled";
 +
 +	esp32_spi: esp32-spi@0 {
 +		compatible = "espressif,esp32-spi";
-+		reg = <0>;
++		reg = <0>; /* CS0 */
++
 +		spi-max-frequency = <10000000>;
++
++		/*SPI MODE0 by default, use fragments */
 +
 +		handshake-gpios = <&gpio 5 0>;
 +		dataready-gpios = <&gpio 6 0>;
@@ -1035,6 +1258,62 @@ index 0000000..0fa8744
 +		};
 +	};
 +};
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-i2c-gpio.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-i2c-gpio.dtso
+new file mode 100644
+index 0000000..33669da
+--- /dev/null
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-i2c-gpio.dtso
+@@ -0,0 +1,50 @@
++// Overlay for i2c_gpio bitbanging host bus.
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++
++/ {
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++
++	__overrides__ {
++		i2c_gpio_sda = <&i2c_gpio>,"sda-gpios:4";
++		i2c_gpio_scl = <&i2c_gpio>,"scl-gpios:4";
++		i2c_gpio_delay_us = <&i2c_gpio>,"i2c-gpio,delay-us:0";
++		bus = <&i2c_gpio>, "reg:0";
++		at24c256 = <0>,"+3";
++        };
++
++	fragment@3 {
++		target = <&i2c_gpio>;
++		__dormant__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			eeprom: at24@50 {
++				compatible = "atmel,24c256";
++				reg = <0x50>;
++				pagesize = <64>;
++			};
++		};
++	};
++};
++
++&{/} {
++	i2c_gpio: i2c@0 {
++		reg = <0xffffffff>;
++		compatible = "i2c-gpio";
++		sda-gpios = <&gpio 23 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
++		scl-gpios = <&gpio 24 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
++		i2c-gpio,delay-us = <2>;	/* ~100 kHz */
++	};
++};
++
++&{/aliases} {
++	i2c_gpio = "/i2c@0";
++};
++
++&{/__symbols__} {
++	i2c_gpio = "/i2c@0";
++};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ili9486-drm.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-ili9486-drm.dtso
 new file mode 100644
 index 0000000..d5c341a
@@ -1101,40 +1380,52 @@ index 0000000..d5c341a
 +		};
 +	};
 +};
-diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-bt.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-bt.dtso
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-bt.dtsi b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-bt.dtsi
 new file mode 100644
-index 0000000..344dc03
+index 0000000..c605522
 --- /dev/null
-+++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-bt.dtso
-@@ -0,0 +1,14 @@
-+/dts-v1/;
-+/plugin/;
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-bt.dtsi
+@@ -0,0 +1,21 @@
++// Common include to disable built-in bluetooth
 +
 +/ {
-+	compatible = "brcm,bcm2711", "brcm,bcm2837", "brcm,bcm2835";
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
++};
++
++/* Disable Bluetooth and restore UART0/ttyAMA0 over GPIOs 14 & 15. */
++
++&uart1 {
++	status = "disabled";
 +};
 +
 +&uart0 {
-+	status = "disabled";
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart0_gpio14>;
++	status = "okay";
 +};
 +
 +&bt {
 +	status = "disabled";
 +};
-diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dtso
+diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-wlan.dtsi b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-wlan.dtsi
 new file mode 100644
-index 0000000..49b962d
+index 0000000..fddb601
 --- /dev/null
-+++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-hdmi.dtso
-@@ -0,0 +1,10 @@
-+/dts-v1/;
-+/plugin/;
++++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-no-wlan.dtsi
+@@ -0,0 +1,15 @@
++// Common include to disable built-in wireless adapter
 +
 +/ {
-+	compatible = "brcm,bcm2711", "brcm,bcm2835";
++	compatible = "brcm,bcm2711","brcm,bcm2837","brcm,bcm2835";
 +};
 +
-+&hdmi {
++/* Disable Wi-Fi device tree nodes */
++
++&sdhci {
++	status = "disabled";
++};
++
++&brcmf {
 +	status = "disabled";
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-nrf24-spi.dtso
@@ -1246,29 +1537,6 @@ index 0000000..b86e7d3
 +
 +		status = "disabled";
 +	};
-+};
-diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-uart0.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-uart0.dtso
-new file mode 100644
-index 0000000..45f1d6c
---- /dev/null
-+++ b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-uart0.dtso
-@@ -0,0 +1,17 @@
-+/dts-v1/;
-+/plugin/;
-+
-+/ {
-+	compatible = "brcm,bcm2837", "brcm,bcm2835";
-+};
-+
-+&uart0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart0_gpio14>;
-+};
-+
-+/* switch uart1 to dummy output, but do not disable it */
-+&uart1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart1_gpio40>;
 +};
 diff --git a/arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dtso b/arch/arm64/boot/dts/broadcom/overlays/bcm2835-waveshare35-drm.dtso
 new file mode 100644

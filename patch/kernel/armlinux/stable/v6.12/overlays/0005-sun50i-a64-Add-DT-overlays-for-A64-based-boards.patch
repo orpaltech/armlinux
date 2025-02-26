@@ -1,6 +1,6 @@
-From 7bb54fc77d49be3c9e3f72a0659f3a4c056cfabc Mon Sep 17 00:00:00 2001
+From e8672dbacc8c19bcebb2632ceacf557c2923bfd3 Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Fri, 4 Oct 2024 03:37:41 +0300
+Date: Sun, 8 Dec 2024 21:16:37 +0300
 Subject: [PATCH] sun50i-a64: Add DT-overlays for A64-based boards
 
 ---

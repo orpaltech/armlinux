@@ -1,0 +1,823 @@
+From b070a223a7c6a362377e1baa317746676d51f667 Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Sat, 15 Feb 2025 21:37:39 +0300
+Subject: [PATCH] sun6i-a31s: Add DT-overlays for A31-based boards
+
+---
+ arch/arm/boot/dts/allwinner/Makefile          |   2 +
+ arch/arm/boot/dts/allwinner/overlays/Makefile |  24 ++++
+ .../overlays/README.sun6i-a31s-overlays       |   3 +
+ .../overlays/sun6i-a31s-audioinjector-pi.dtso |  34 +++++
+ .../overlays/sun6i-a31s-bananapi-lcd.dtso     |  79 +++++++++++
+ .../overlays/sun6i-a31s-disable-wlan.dtso     |  14 ++
+ .../overlays/sun6i-a31s-ertft0356-drm.dtso    |  63 +++++++++
+ .../overlays/sun6i-a31s-esp32-spi.dtso        |  25 ++++
+ .../overlays/sun6i-a31s-fixup.scr-cmd         | 132 ++++++++++++++++++
+ .../overlays/sun6i-a31s-gy-pcm5102-sound.dtso |  33 +++++
+ .../overlays/sun6i-a31s-nrf24-spi.dtso        |  24 ++++
+ .../overlays/sun6i-a31s-nrf24-spi_gpio2.dtso  |  48 +++++++
+ .../allwinner/overlays/sun6i-a31s-pwm0.dtso   |  12 ++
+ .../allwinner/overlays/sun6i-a31s-pwm1.dtso   |  12 ++
+ .../allwinner/overlays/sun6i-a31s-pwm2.dtso   |  12 ++
+ .../allwinner/overlays/sun6i-a31s-pwm3.dtso   |  12 ++
+ .../overlays/sun6i-a31s-spi_gpio2.dtso        |  52 +++++++
+ .../allwinner/overlays/sun6i-a31s-spidev.dtso |  32 +++++
+ .../overlays/sun6i-a31s-waveshare35-drm.dtso  |  46 ++++++
+ 19 files changed, 659 insertions(+)
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/Makefile
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/README.sun6i-a31s-overlays
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-audioinjector-pi.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-bananapi-lcd.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-disable-wlan.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-ertft0356-drm.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-esp32-spi.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-fixup.scr-cmd
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-gy-pcm5102-sound.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-nrf24-spi.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-nrf24-spi_gpio2.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm0.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm1.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm2.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm3.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-spi_gpio2.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-spidev.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-waveshare35-drm.dtso
+
+diff --git a/arch/arm/boot/dts/allwinner/Makefile b/arch/arm/boot/dts/allwinner/Makefile
+index 48666f7..f816caf 100644
+--- a/arch/arm/boot/dts/allwinner/Makefile
++++ b/arch/arm/boot/dts/allwinner/Makefile
+@@ -269,3 +269,5 @@ dtb-$(CONFIG_MACH_SUNIV) += \
+ 	suniv-f1c100s-licheepi-nano.dtb \
+ 	suniv-f1c200s-lctech-pi.dtb \
+ 	suniv-f1c200s-popstick-v1.1.dtb
++
++subdir-y := overlays
+diff --git a/arch/arm/boot/dts/allwinner/overlays/Makefile b/arch/arm/boot/dts/allwinner/overlays/Makefile
+new file mode 100644
+index 0000000..de93c28
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/Makefile
+@@ -0,0 +1,24 @@
++# SPDX-License-Identifier: GPL-2.0
++ifeq ($(CONFIG_OF_OVERLAY),y)
++
++dtb-$(CONFIG_MACH_SUN6I) += \
++	sun6i-a31s-audioinjector-pi.dtbo \
++	sun6i-a31s-bananapi-lcd.dtbo \
++	sun6i-a31s-esp32-spi.dtbo \
++	sun6i-a31s-ertft0356-drm.dtbo \
++	sun6i-a31s-disable-wlan.dtbo \
++	sun6i-a31s-nrf24-spi.dtbo \
++	sun6i-a31s-pwm0.dtbo \
++	sun6i-a31s-pwm1.dtbo \
++	sun6i-a31s-pwm2.dtbo \
++	sun6i-a31s-pwm3.dtbo \
++	sun6i-a31s-spidev.dtbo \
++	sun6i-a31s-waveshare35-drm.dtbo
++
++scr-$(CONFIG_MACH_SUN6I) += \
++	sun6i-a31s-fixup.scr
++
++dtbotxt-$(CONFIG_MACH_SUN6I) += \
++	README.sun6i-a31s-overlays
++
++endif
+diff --git a/arch/arm/boot/dts/allwinner/overlays/README.sun6i-a31s-overlays b/arch/arm/boot/dts/allwinner/overlays/README.sun6i-a31s-overlays
+new file mode 100644
+index 0000000..1f728c2
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/README.sun6i-a31s-overlays
+@@ -0,0 +1,3 @@
++This document describes overlays provided in the kernel packages
++For generic Armbian overlays documentation please see
++https://docs.armbian.com/User-Guide_Allwinner_overlays/
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-audioinjector-pi.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-audioinjector-pi.dtso
+new file mode 100644
+index 0000000..be44892
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-audioinjector-pi.dtso
+@@ -0,0 +1,34 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++};
++
++&i2s0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_do0 &i2s0_pins_di>;
++	status = "okay";
++};
++
++&i2c2 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++	status = "okay";
++
++	ai_codec: wm8731@1a {
++		compatible = "wlf,wm8731";
++		reg = <0x1a>;
++		#sound-dai-cells = <0>;
++		status = "okay";
++	};
++};
++
++&{/soc@1c00000} {
++	ai_card: sound {
++		compatible = "flatmax,audioinjector-pi";
++		cpu-node = <&i2s0>;
++		codec-node = <&wm8731>;
++		status = "okay";
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-bananapi-lcd.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-bananapi-lcd.dtso
+new file mode 100644
+index 0000000..af72a25
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-bananapi-lcd.dtso
+@@ -0,0 +1,79 @@
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++};
++
++&{/soc} {
++	panel_bl: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm0 0 50000 PWM_POLARITY_INVERTED>;
++		brightness-levels = <1 2 4 8 16 32 64 128 255>;
++		default-brightness-level = <8>;
++		enable-gpios = <&pio 6 3 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PG3 */
++	};
++
++	panel {
++		compatible = "bananapi,s070wv20-ct16";
++		enable-gpios = <&pio 6 4 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PG4 */
++		backlight = <&panel_bl>;
++
++		port {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			panel_dpi_in: endpoint {
++				remote-endpoint = <&tcon0_out_lcd>;
++			};
++		};
++	};
++};
++
++&pwm0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm0_pin>;
++	status = "okay";
++};
++
++&tcon0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&lcd0_rgb888_pins>;
++};
++
++&tcon0_out {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	tcon0_out_lcd: endpoint@0 {
++		reg = <0>;
++		remote-endpoint = <&panel_dpi_in>;
++		allwinner,tcon-channel = <0>;
++	};
++};
++
++&de {
++	status = "okay";
++};
++
++&hdmi {
++	status = "disabled";
++};
++
++&i2c1 {
++	#address-cells = <1>;
++        #size-cells = <0>;
++	status = "okay";
++
++	panel-ts@5d {
++		compatible = "goodix,gt928";
++		reg = <0x5d>;
++		interrupt-parent = <&pio>;
++		interrupts = <6 0 IRQ_TYPE_EDGE_FALLING>; /* PG0 */
++		reset-gpios = <&pio 6 1 GPIO_ACTIVE_LOW>; /* PG1 */
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-disable-wlan.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-disable-wlan.dtso
+new file mode 100644
+index 0000000..5dc6821
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-disable-wlan.dtso
+@@ -0,0 +1,14 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++};
++
++&brcmf {
++	status = "disabled";
++};
++
++&mmc2 {
++	status = "disabled";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-ertft0356-drm.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-ertft0356-drm.dtso
+new file mode 100644
+index 0000000..e79c871
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-ertft0356-drm.dtso
+@@ -0,0 +1,63 @@
++// Device Tree overlay for EastRising 3.5inch TFT LCD
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++};
++
++&spi1 {
++	/* needed to avoid dtc warning */
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	ertft: ertft@0 {
++		compatible = "eastrising,er-tft035-6","ilitek,ili9488";
++		reg = <0>;
++		spi-max-frequency = <20000000>;
++
++		reset-gpios = <&pio 6 8 GPIO_ACTIVE_HIGH>;	/* PG8 */
++		dc-gpios = <&pio 7 12 GPIO_ACTIVE_HIGH>;	/* PH12 */
++
++		rotation = <90>;
++		backlight = <&ertft_bl>;
++
++		status = "disabled";
++	};
++};
++
++&{/soc@1c00000} {
++	ertft_bl: backlight {
++		compatible = "gpio-backlight";
++		gpios = <&pio 7 11 GPIO_ACTIVE_HIGH>;	/* PH11 */
++	};
++};
++
++&i2c2 {
++	/* needed to avoid dtc warning */
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	ertft_tp: ertft-tp@38 {
++		compatible = "focaltech,ft6236";
++		reg = <0x38>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&ertft_tp_pins>;
++
++		interrupt-parent = <&pio>;
++		interrupts = <6 7 IRQ_TYPE_EDGE_FALLING>; /* PG7 */
++
++		touchscreen-size-x = <320>;
++		touchscreen-size-y = <480>;
++		/*touchscreen-inverted-x;*/
++		/*touchscreen-inverted-y;*/
++		touchscreen-swapped-x-y;
++
++		status = "disabled";
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-esp32-spi.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-esp32-spi.dtso
+new file mode 100644
+index 0000000..31d3346
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-esp32-spi.dtso
+@@ -0,0 +1,25 @@
++// Overlay for ESP32 SPI shield
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++};
++
++&spi1 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	esp32_spi: esp32-spi@0 {
++		compatible = "espressif,esp32-spi";
++		reg = <0>;
++		spi-max-frequency = <10000000>;
++
++		handshake-gpios = <&pio 1 0 0>;	/*PB0*/
++		dataready-gpios = <&pio 1 1 0>;	/*PB1*/
++		reset-gpios = <&pio 1 2 0>;	/*PB2*/
++
++		status = "disabled";
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-fixup.scr-cmd b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-fixup.scr-cmd
+new file mode 100644
+index 0000000..faa877f
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-fixup.scr-cmd
+@@ -0,0 +1,132 @@
++# overlays fixup script
++# implements (or rather substitutes) overlay arguments functionality
++# using u-boot scripting, environment variables and "fdt" command
++
++if test "${param_codec_enabled}" = "yes"; then
++	fdt set /soc/codec@1c22c00 status "okay"
++else
++	fdt set /soc/codec@1c22c00 status "disabled"
++fi
++
++if test -n "${param_i2s0_slot_width}"; then
++	fdt set /soc/i2s@1c22000 allwinner,slot-width-override "<${param_i2s0_slot_width}>";
++fi
++
++if test "${param_esp32_spi_bus}" = "1"; then
++	setenv tmp_spi_path "spi@1c69000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/esp32-spi status "okay"
++
++	if test -n "${param_esp32_spi_freq}"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-max-frequency "<${param_esp32_spi_freq}>"
++	fi
++
++	if test -n "${param_esp32_spi_mode}"; then
++		fdt rm /soc/${tmp_spi_path}/esp32-spi spi-cpha
++		fdt rm /soc/${tmp_spi_path}/esp32-spi spi-cpol
++
++		if test "${param_esp32_spi_mode}" = "1"; then
++			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpha
++		elif test "${param_esp32_spi_mode}" = "2"; then
++			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpol
++		elif test "${param_esp32_spi_mode}" = "3"; then
++			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpha
++			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpol
++		fi
++	fi
++
++	if test "${param_esp32_spi_cs_auto}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-cs-auto
++	fi
++	if test "${param_esp32_spi_cs_change}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-cs-change
++	fi
++	if test -n "${param_esp32_spi_cs_setup_delay}"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-cs-setup-delay-ns "<${param_esp32_spi_cs_setup_delay}>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test -n "${param_spidev_spi_bus}"; then
++	test "${param_spidev_spi_bus}" = "1" && setenv tmp_spi_path "spi@1c69000"
++	test "${param_spidev_spi_bus}" = "2" && setenv tmp_spi_path "spi@1c6a000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/spidev status "okay"
++
++	if test -n "${param_spidev_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/spidev spi-max-frequency "<${param_spidev_max_freq}>"
++	fi
++	if test "${param_spidev_spi_cs}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/spidev reg "<1>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test "${param_nrf24_spi_bus}" = "1"; then
++	setenv tmp_spi_path "spi@1c69000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/nrf24 status "okay"
++
++	if test -n "${param_nrf24_spi_freq}"; then
++		fdt set /soc/${tmp_spi_path}/nrf24 spi-max-frequency "<${param_nrf24_spi_freq}>"
++	fi
++	if test "${param_nrf24_spi_cs}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/nrf24 reg "<1>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test "${param_ws35_spi_bus}" = "1"; then
++	setenv tmp_spi_path "spi@1c69000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/ws35-lcd status "okay"
++	fdt set /soc/${tmp_spi_path}/ws35-tp status "okay"
++
++	if test -n "${param_ws35_spi_freq}"; then
++		fdt set /soc/${tmp_spi_path}/ws35-lcd spi-max-frequency "<${param_ws35_spi_freq}>"
++	fi
++
++	if test -n "${param_ws35_rotation}"; then
++		fdt set /soc/${tmp_spi_path}/ws35-lcd rotation "<${param_ws35_rotation}>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test "${param_ertft_spi_bus}" = "1"; then
++	setenv tmp_spi_path "spi@1c69000"
++
++	setenv tmp_i2c_path "i2c@1c2b400"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/ertft status "okay"
++	fdt set /soc/${tmp_i2c_path} status "okay"
++	fdt set /soc/${tmp_i2c_path}/ertft-tp status "okay"
++
++	if test -n "${param_ertft_spi_freq}"; then
++		fdt set /soc/${tmp_spi_path}/ertft spi-max-frequency "<${param_ertft_spi_freq}>"
++	fi
++	if test -n "${param_ertft_rotation}"; then
++		fdt set /soc/${tmp_spi_path}/ertft rotation "<${param_ertft_rotation}>"
++	fi
++
++	if test "${param_ertft_tp_inverted_x}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft-tp touchscreen-inverted-x
++	fi
++	if test "${param_ertft_tp_inverted_y}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft-tp touchscreen-inverted-y
++	fi
++	if test "${param_ertft_tp_swapped_x_y}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft-tp touchscreen-swapped-x-y
++	fi
++
++	env delete tmp_spi_path
++	env delete tmp_i2c_path
++fi
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-gy-pcm5102-sound.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-gy-pcm5102-sound.dtso
+new file mode 100644
+index 0000000..4db7cdb
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-gy-pcm5102-sound.dtso
+@@ -0,0 +1,33 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++
++	fragment@0 {
++		target = <&i2s0>;
++		__overlay__ {
++			pinctrl-0 = <&i2s0_pins_bclk &i2s0_pins_lrck &i2s0_pins_do0>;
++			pinctrl-1 = <&i2s0_pins_mclk>;
++			pinctrl-names = "default", "default";
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target-path = "/soc@1c00000/";
++		__overlay__ {
++			pcm5102: pcm5102a-i2s@0 {
++				compatible = "ti,pcm5102a";
++				status = "okay";
++			};
++
++			sound-pcm5102 {
++				compatible = "orpaltech,gy-pcm5102-sound";
++				cpu-node = <&i2s0>;
++				codec-node = <&pcm5102>;
++				status = "okay";
++                        };
++                };
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-nrf24-spi.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-nrf24-spi.dtso
+new file mode 100644
+index 0000000..fd69ea4
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-nrf24-spi.dtso
+@@ -0,0 +1,24 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++        compatible = "allwinner,sun6i-a31s";
++};
++
++&spi1 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	nrf24: nrf24@0 {
++		compatible = "nordic,nrf24";
++		reg = <0>; /* CS0 */
++		spi-max-frequency = <5000000>;
++
++		interrupt-parent = <&pio>;
++		interrupts = <4 5 2>;		/* PE5, falling edge */
++		irq-gpios = <&pio 4 5 0>;	/* PE5 */
++		ce-gpios = <&pio 6 6 0>;	/* PG6 */
++
++		status = "disabled";
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-nrf24-spi_gpio2.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-nrf24-spi_gpio2.dtso
+new file mode 100644
+index 0000000..f06a26f
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-nrf24-spi_gpio2.dtso
+@@ -0,0 +1,48 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++        compatible = "allwinner,sun6i-a31s";
++
++	fragment@0 {
++                target = <&pio>;
++                __overlay__ {
++                        nrf24_int: nrf24@45 {
++                                pins = "PE5";		/*pin 10 on 40-pin GPIO connector*/
++                                function = "gpio_in";
++                        };
++
++			nrf24_ce: nrf24_@66 {
++                                pins = "PG6";		/*pin 13 on 40-pin GPIO connector */
++                                function = "gpio_out";
++                        };
++
++                };
++        };
++
++	fragment@1 {
++		target-path = "/soc@1c00000/spi_gpio@2/";
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			nrf24 {
++				compatible = "nordic,nrf24";
++				reg = <0>; /* CS0 */
++				spi-max-frequency = <1000000>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&nrf24_int &nrf24_ce>;
++
++				interrupt-parent = <&pio>;
++				interrupts = <4 5 2>;		/* PE5, falling edge */
++
++				irq-gpios = <&pio 4 5 0>;	/* PE5 */
++				ce-gpios = <&pio 6 6 0>;	/* PG6 */
++
++				status = "okay";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm0.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm0.dtso
+new file mode 100644
+index 0000000..2d94c1e
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm0.dtso
+@@ -0,0 +1,12 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm0_pin>;
++	status = "okay";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm1.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm1.dtso
+new file mode 100644
+index 0000000..ca18785
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm1.dtso
+@@ -0,0 +1,12 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm1_pin_p>;
++	status = "okay";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm2.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm2.dtso
+new file mode 100644
+index 0000000..292a668
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm2.dtso
+@@ -0,0 +1,12 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm2_pin_p>;
++	status = "okay";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm3.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm3.dtso
+new file mode 100644
+index 0000000..77f1c69
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-pwm3.dtso
+@@ -0,0 +1,12 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm3_pin_p>;
++	status = "okay";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-spi_gpio2.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-spi_gpio2.dtso
+new file mode 100644
+index 0000000..ee65885
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-spi_gpio2.dtso
+@@ -0,0 +1,52 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++        compatible = "allwinner,sun6i-a31s";
++
++        fragment@0 {
++                target = <&pio>;
++                __overlay__ {
++                        spi_gpio2_mosi: spi_gpio2@711 {
++                                pins = "PH11";
++                                function = "gpio_out";	/*master out*/
++                        };
++
++			spi_gpio2_miso: spi_gpio2@712 {
++                                pins = "PH12";
++                                function = "gpio_in";	/*master in*/
++                        };
++
++			spi_gpio2_sck: spi_gpio2@710 {
++                                pins = "PH10";
++                                function = "gpio_out";	/*clock output*/
++                        };
++
++			spi_gpio2_cs0: spi_gpio2@709 {
++                                pins = "PH9";
++                                function = "gpio_out";	/*chip select output*/
++                        };
++                };
++        };
++
++        fragment@1 {
++                target-path = "/soc@1c00000/";
++		__overlay__ {
++			spi_gpio@2 {
++				compatible = "spi-gpio";
++				#address-cells = <0x1>;
++				ranges;
++
++				gpio-sck = <&pio 7 10 0>;
++				gpio-miso = <&pio 7 12 0>;
++				gpio-mosi = <&pio 7 11 0>;
++				cs-gpios = <&pio 7 9 0>;
++
++				num-chipselects = <1>;
++
++				pinctrl-names = "default";
++				pinctrl-0 = <&spi_gpio2_mosi &spi_gpio2_miso &spi_gpio2_sck &spi_gpio2_cs0>;
++			};
++		};
++        };
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-spidev.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-spidev.dtso
+new file mode 100644
+index 0000000..63647e1
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-spidev.dtso
+@@ -0,0 +1,32 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++};
++
++&spi1 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	spidev {
++		compatible = "spidev";
++		reg = <0>;
++		spi-max-frequency = <2000000>;
++
++		status = "disabled";
++	};
++};
++
++&spi2 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	spidev {
++		compatible = "spidev";
++		reg = <0>;
++		spi-max-frequency = <2000000>;
++
++		status = "disabled";
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-waveshare35-drm.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-waveshare35-drm.dtso
+new file mode 100644
+index 0000000..b032ffd
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-waveshare35-drm.dtso
+@@ -0,0 +1,46 @@
++// Device Tree overlay for Waveshare 3.5inch TFT LCD
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/ {
++	compatible = "allwinner,sun6i-a31s";
++};
++
++&spi1 {
++	/* needed to avoid dtc warning */
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	ws35-lcd@0 {
++		compatible = "waveshare,waveshare35a";
++		reg = <0>;
++		spi-max-frequency = <16000000>;
++
++		reset-gpios = <&pio 6 8 GPIO_ACTIVE_HIGH>;	/* PG8 */
++		dc-gpios = <&pio 7 12 GPIO_ACTIVE_HIGH>;	/* PH12 */
++
++		rotation = <0>;
++
++		status = "disabled";
++	};
++
++	ws35-tp@1 {
++		compatible = "ti,ads7846";
++		reg = <1>;
++		spi-max-frequency = <2000000>;
++
++		interrupt-parent = <&pio>;
++		interrupts = <6 7 IRQ_TYPE_EDGE_FALLING>;	/* PG7 */
++		pendown-gpio = <&pio 6 7 GPIO_ACTIVE_HIGH>;	/* PG7 */
++
++		ti,swap-xy;
++		ti,x-plate-ohms = /bits/ 16 <60>;
++		ti,pressure-max = /bits/ 16 <255>;
++
++		status = "disabled";
++	};
++};
+-- 
+2.43.0
+

@@ -1,0 +1,34 @@
+From 6b9c17745d2852ced83a68294815d5d5530912d8 Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Sun, 16 Feb 2025 19:08:29 +0300
+Subject: [PATCH] pinctrl/sunxi fix use-after-free in sunxi_pmx_free()
+
+---
+ drivers/pinctrl/sunxi/pinctrl-sunxi.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/pinctrl/sunxi/pinctrl-sunxi.c b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
+index bde67ee..0778b91 100644
+--- a/drivers/pinctrl/sunxi/pinctrl-sunxi.c
++++ b/drivers/pinctrl/sunxi/pinctrl-sunxi.c
+@@ -855,7 +855,7 @@ static int sunxi_pmx_request(struct pinctrl_dev *pctldev, unsigned offset)
+ 
+ 	snprintf(supply, sizeof(supply), "vcc-p%c", 'a' + bank);
+ 	reg = regulator_get(pctl->dev, supply);
+-	if (IS_ERR(reg))
++	if (IS_ERR_OR_NULL(reg))
+ 		return dev_err_probe(pctl->dev, PTR_ERR(reg),
+ 				     "Couldn't get bank P%c regulator\n",
+ 				     'A' + bank);
+@@ -888,7 +888,7 @@ static int sunxi_pmx_free(struct pinctrl_dev *pctldev, unsigned offset)
+ 					    PINS_PER_BANK;
+ 	struct sunxi_pinctrl_regulator *s_reg = &pctl->regulators[bank_offset];
+ 
+-	if (!refcount_dec_and_test(&s_reg->refcount))
++	if (!s_reg->regulator || !refcount_dec_and_test(&s_reg->refcount))
+ 		return 0;
+ 
+ 	regulator_disable(s_reg->regulator);
+-- 
+2.43.0
+

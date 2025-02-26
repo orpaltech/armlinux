@@ -1,6 +1,6 @@
-From bef097ae4a54e8f53eb16b2e907c881396010e53 Mon Sep 17 00:00:00 2001
+From 146b34d41ffe23f78727f98739d73111f26be78d Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Wed, 16 Oct 2024 19:17:09 +0300
+Date: Sat, 7 Dec 2024 12:30:36 +0300
 Subject: [PATCH] net/wireless: Add Espressif ESP-Hosted-NG driver
 
 ---
@@ -11,34 +11,34 @@ Subject: [PATCH] net/wireless: Add Espressif ESP-Hosted-NG driver
  .../wireless/espressif/esp_hosted_ng/Kconfig  |   47 +
  .../wireless/espressif/esp_hosted_ng/LICENSE  |  359 +++
  .../wireless/espressif/esp_hosted_ng/Makefile |   45 +
- .../wireless/espressif/esp_hosted_ng/esp_bt.c |  259 ++
- .../espressif/esp_hosted_ng/esp_cfg80211.c    | 1237 ++++++++++
- .../espressif/esp_hosted_ng/esp_cmd.c         | 2155 +++++++++++++++++
- .../espressif/esp_hosted_ng/esp_debugfs.c     |  287 +++
+ .../wireless/espressif/esp_hosted_ng/esp_bt.c |  260 ++
+ .../espressif/esp_hosted_ng/esp_cfg80211.c    | 1277 +++++++++
+ .../espressif/esp_hosted_ng/esp_cmd.c         | 2332 +++++++++++++++++
+ .../espressif/esp_hosted_ng/esp_debugfs.c     |  287 ++
  .../espressif/esp_hosted_ng/esp_log.c         |   66 +
  .../espressif/esp_hosted_ng/esp_stats.c       |  196 ++
  .../espressif/esp_hosted_ng/esp_utils.c       |   50 +
- .../espressif/esp_hosted_ng/include/adapter.h |  438 ++++
- .../espressif/esp_hosted_ng/include/esp.h     |  180 ++
- .../espressif/esp_hosted_ng/include/esp_api.h |   47 +
+ .../espressif/esp_hosted_ng/include/adapter.h |  455 ++++
+ .../espressif/esp_hosted_ng/include/esp.h     |  181 ++
+ .../espressif/esp_hosted_ng/include/esp_api.h |   48 +
  .../esp_hosted_ng/include/esp_bt_api.h        |   36 +
  .../esp_hosted_ng/include/esp_cfg80211.h      |   25 +
- .../espressif/esp_hosted_ng/include/esp_cmd.h |   68 +
- .../esp_hosted_ng/include/esp_fw_version.h    |   14 +
+ .../espressif/esp_hosted_ng/include/esp_cmd.h |   72 +
+ .../esp_hosted_ng/include/esp_fw_version.h    |   19 +
  .../espressif/esp_hosted_ng/include/esp_if.h  |   23 +
- .../esp_hosted_ng/include/esp_kernel_port.h   |  239 ++
+ .../esp_hosted_ng/include/esp_kernel_port.h   |  225 ++
  .../esp_hosted_ng/include/esp_stats.h         |   33 +
  .../esp_hosted_ng/include/esp_utils.h         |   42 +
- .../espressif/esp_hosted_ng/include/main.h    |   30 +
+ .../espressif/esp_hosted_ng/include/main.h    |   23 +
  .../espressif/esp_hosted_ng/include/utils.h   |   45 +
- .../wireless/espressif/esp_hosted_ng/main.c   | 1031 ++++++++
- .../espressif/esp_hosted_ng/sdio/esp_sdio.c   | 1025 ++++++++
+ .../wireless/espressif/esp_hosted_ng/main.c   | 1094 ++++++++
+ .../espressif/esp_hosted_ng/sdio/esp_sdio.c   | 1026 ++++++++
  .../esp_hosted_ng/sdio/esp_sdio_api.c         |  149 ++
  .../esp_hosted_ng/sdio/esp_sdio_api.h         |   17 +
  .../esp_hosted_ng/sdio/esp_sdio_decl.h        |   85 +
- .../espressif/esp_hosted_ng/spi/esp_spi.c     |  642 +++++
+ .../espressif/esp_hosted_ng/spi/esp_spi.c     |  643 +++++
  .../espressif/esp_hosted_ng/spi/esp_spi.h     |   34 +
- 34 files changed, 8925 insertions(+)
+ 34 files changed, 9215 insertions(+)
  create mode 100644 drivers/net/wireless/espressif/Kconfig
  create mode 100644 drivers/net/wireless/espressif/Makefile
  create mode 100644 drivers/net/wireless/espressif/esp_hosted_ng/Kconfig
@@ -598,10 +598,10 @@ index 0000000..a6de820
 +endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/esp_bt.c b/drivers/net/wireless/espressif/esp_hosted_ng/esp_bt.c
 new file mode 100644
-index 0000000..40aa0a6
+index 0000000..bde9848
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/esp_bt.c
-@@ -0,0 +1,259 @@
+@@ -0,0 +1,260 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Espressif Systems Wireless LAN device driver
@@ -612,6 +612,7 @@ index 0000000..40aa0a6
 +#include "utils.h"
 +#include "esp_api.h"
 +#include "esp_kernel_port.h"
++#include "esp_bt_api.h"
 +
 +#define INVALID_HDEV_BUS (0xff)
 +
@@ -863,10 +864,10 @@ index 0000000..40aa0a6
 +}
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/esp_cfg80211.c b/drivers/net/wireless/espressif/esp_hosted_ng/esp_cfg80211.c
 new file mode 100644
-index 0000000..cb76ac7
+index 0000000..7287db8
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/esp_cfg80211.c
-@@ -0,0 +1,1237 @@
+@@ -0,0 +1,1277 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Espressif Systems Wireless LAN device driver
@@ -1121,6 +1122,11 @@ index 0000000..cb76ac7
 +	esp_wdev->stop_data = 1;
 +	esp_wdev->port_open = 0;
 +
++#ifdef TODO
++	if (cmd_update_fw_time(esp_wdev))
++		goto free_and_return;
++#endif
++
 +	if (cmd_init_interface(esp_wdev))
 +		goto free_and_return;
 +
@@ -1210,6 +1216,7 @@ index 0000000..cb76ac7
 +		esp_info("%u operating in same mode\n", __LINE__);
 +		return 0;
 +	}
++
 +	ret = cmd_set_mode(priv, esp_get_mode_from_iface_type(esp_if_type));
 +
 +	if (ret == 0) {
@@ -1267,13 +1274,13 @@ index 0000000..cb76ac7
 +}
 +#endif
 +
-+int esp_cfg80211_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev,
++static int esp_cfg80211_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev,
 +#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0))
-+		struct ieee80211_channel *chan,
-+		bool offchan, unsigned int wait, const u8 *buf, size_t len,
-+		bool no_cck, bool dont_wait_for_ack,
++				struct ieee80211_channel *chan,
++				bool offchan, unsigned int wait, const u8 *buf, size_t len,
++				bool no_cck, bool dont_wait_for_ack,
 +#else
-+		struct cfg80211_mgmt_tx_params *params,
++				struct cfg80211_mgmt_tx_params *params,
 +#endif
 +		u64 *cookie)
 +{
@@ -1709,6 +1716,25 @@ index 0000000..cb76ac7
 +        return rsn_ie;
 +}
 +
++static const uint8_t *esp_get_rsnx_ie(struct cfg80211_beacon_data *beacon, size_t *rsnx_ie_len)
++{
++        const u8 *rsnx_ie = NULL;
++
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0))
++        if (!beacon->tail)
++                return NULL;
++
++        rsnx_ie = cfg80211_find_ie(WLAN_EID_RSNX, beacon->tail, beacon->tail_len);
++        if (!rsnx_ie)
++                return NULL;
++
++        *rsnx_ie_len = *(rsnx_ie + 1);
++	*rsnx_ie_len += 2;
++#endif
++
++        return rsnx_ie;
++}
++
 +static int esp_cfg80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 +				 struct cfg80211_ap_settings *info)
 +{
@@ -1719,7 +1745,9 @@ index 0000000..cb76ac7
 +	int res;
 +	int i;
 +	size_t rsn_ie_len = 0;
++	size_t rsnx_ie_len = 0;
 +	const uint8_t *rsn_ie;
++	const uint8_t *rsnx_ie;
 +
 +	if (!wiphy || !dev) {
 +		esp_err("%u invalid params\n", __LINE__);
@@ -1776,8 +1804,21 @@ index 0000000..cb76ac7
 +
 +	//TODO ht and vht caps
 +	rsn_ie = esp_get_rsn_ie(&info->beacon, &rsn_ie_len);
-+	if (rsn_ie && (rsn_ie_len != 0)) {
-+		res = cmd_set_ie(priv, IE_RSN, rsn_ie, rsn_ie_len);
++	rsnx_ie = esp_get_rsnx_ie(&info->beacon, &rsnx_ie_len);
++	if (rsn_ie_len || rsnx_ie_len) {
++		size_t rsn_len = rsn_ie_len + rsnx_ie_len;
++		uint8_t *rsn = kmalloc(rsn_ie_len + rsnx_ie_len, GFP_KERNEL);
++		if (!rsn) {
++			return -1;
++		}
++		if (rsn_ie_len)
++			memcpy(rsn, rsn_ie, rsn_ie_len);
++		if (rsnx_ie_len)
++			memcpy(rsn + rsn_ie_len, rsnx_ie, rsnx_ie_len);
++
++		res = cmd_set_ie(priv, IE_RSN, rsn, rsn_len);
++
++		kfree(rsn);
 +		/* Dummy mode set set security */
 +#define WPA2_PSK_MODE 3
 +		ap_config.authmode = WPA2_PSK_MODE;
@@ -2106,10 +2147,10 @@ index 0000000..cb76ac7
 +}
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/esp_cmd.c b/drivers/net/wireless/espressif/esp_hosted_ng/esp_cmd.c
 new file mode 100644
-index 0000000..b8bb033
+index 0000000..d68665d
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/esp_cmd.c
-@@ -0,0 +1,2155 @@
+@@ -0,0 +1,2332 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Espressif Systems Wireless LAN device driver
@@ -2420,6 +2461,10 @@ index 0000000..b8bb033
 +	case CMD_RAW_TP_ESP_TO_HOST:
 +	case CMD_RAW_TP_HOST_TO_ESP:
 +	case CMD_SET_WOW_CONFIG:
++	case CMD_SET_TIME:
++	case CMD_START_OTA_UPDATE:
++	case CMD_START_OTA_WRITE:
++	case CMD_START_OTA_END:
 +		/* intentional fallthrough */
 +		if (ret == 0)
 +			ret = decode_common_resp(cmd_node);
@@ -2615,7 +2660,7 @@ index 0000000..b8bb033
 +
 +}
 +
-+struct command_node *prepare_command_request(struct esp_adapter *adapter, u8 cmd_code, u16 len)
++static struct command_node *prepare_command_request(struct esp_adapter *adapter, u8 cmd_code, u16 len)
 +{
 +	struct command_header *cmd;
 +	struct esp_payload_header *payload_header;
@@ -2634,6 +2679,15 @@ index 0000000..b8bb033
 +	if (!test_bit(ESP_CMD_INIT_DONE, &adapter->state_flags)) {
 +		esp_err("command queue init is not done yet\n");
 +		return NULL;
++	}
++
++	if (test_bit(ESP_OTA_IN_PROGRESS, &adapter->state_flags)) {
++		if (cmd_code != CMD_START_OTA_UPDATE &&
++			cmd_code != CMD_START_OTA_WRITE &&
++			cmd_code != CMD_START_OTA_END) {
++			esp_err("OTA in progress discarding other commands\n");
++			return NULL;
++		}
 +	}
 +
 +	node = get_free_cmd_node(adapter);
@@ -3166,6 +3220,11 @@ index 0000000..b8bb033
 +		return -EINVAL;
 +	}
 +
++	if (priv->if_type != ESP_STA_IF) {
++		esp_err("Invalid interface\n");
++		return -EINVAL;
++	}
++
 +	if (test_bit(ESP_CLEANUP_IN_PROGRESS, &priv->adapter->state_flags)) {
 +		esp_err("%u cleanup in progress, return failure", __LINE__);
 +		return -EFAULT;
@@ -3230,6 +3289,11 @@ index 0000000..b8bb033
 +
 +	if (!priv || !req || !req->bss || !priv->adapter) {
 +		esp_err("Invalid argument\n");
++		return -EINVAL;
++	}
++
++	if (priv->if_type != ESP_STA_IF) {
++		esp_err("Invalid interface\n");
 +		return -EINVAL;
 +	}
 +
@@ -3581,6 +3645,43 @@ index 0000000..b8bb033
 +	return 0;
 +}
 +
++int cmd_update_fw_time(struct esp_wifi_device *priv)
++{
++	u16 cmd_len;
++        struct timespec64 ts;
++	struct command_node *cmd_node = NULL;
++	struct cmd_set_time *val;
++
++	if (!priv || !priv->adapter) {
++		esp_err("Invalid argument\n");
++		return -EINVAL;
++	}
++	if (test_bit(ESP_CLEANUP_IN_PROGRESS, &priv->adapter->state_flags))
++		return 0;
++
++
++        ktime_get_real_ts64(&ts);
++	cmd_len = sizeof(struct cmd_set_time);
++
++	cmd_node = prepare_command_request(priv->adapter, CMD_SET_TIME, cmd_len);
++	if (!cmd_node) {
++		esp_err("Failed to get command node\n");
++		return -ENOMEM;
++	}
++	val = (struct cmd_set_time *) (cmd_node->cmd_skb->data +
++				sizeof(struct esp_payload_header));
++
++	val->sec = ts.tv_sec;
++        val->usec = ts.tv_nsec / 1000;
++
++	queue_cmd_node(priv->adapter, cmd_node, ESP_CMD_DFLT_PRIO);
++	queue_work(priv->adapter->cmd_wq, &priv->adapter->cmd_work);
++
++	RET_ON_FAIL(wait_and_decode_cmd_resp(priv, cmd_node));
++
++	return 0;
++}
++
 +int cmd_init_interface(struct esp_wifi_device *priv)
 +{
 +	u16 cmd_len;
@@ -3656,6 +3757,11 @@ index 0000000..b8bb033
 +		return -EBUSY;
 +	}
 +
++	if (priv->if_type != ESP_STA_IF) {
++		esp_err("Invalid interface\n");
++		return -EINVAL;
++	}
++
 +	if (test_bit(ESP_CLEANUP_IN_PROGRESS, &priv->adapter->state_flags)) {
 +		esp_err("%u cleanup in progress, return", __LINE__);
 +		return -EBUSY;
@@ -3710,6 +3816,11 @@ index 0000000..b8bb033
 +		return -EINVAL;
 +	}
 +
++	if (priv->if_type != ESP_STA_IF) {
++		esp_err("Invalid interface\n");
++		return -EINVAL;
++	}
++
 +	if (test_bit(ESP_CLEANUP_IN_PROGRESS, &priv->adapter->state_flags)) {
 +		esp_err("%u cleanup in progress, return", __LINE__);
 +		return -EBUSY;
@@ -3755,6 +3866,98 @@ index 0000000..b8bb033
 +	return 0;
 +}
 +
++int cmd_process_ota_start(struct esp_wifi_device *priv)
++{
++	u16 cmd_len;
++	struct command_node *cmd_node = NULL;
++
++	if (!priv || !priv->adapter) {
++		esp_err("Invalid argument\n");
++		return -EINVAL;
++	}
++
++	cmd_len = sizeof(struct command_header);
++
++	cmd_node = prepare_command_request(priv->adapter, CMD_START_OTA_UPDATE, cmd_len);
++
++	if (!cmd_node) {
++		esp_err("Failed to get command node\n");
++		return -ENOMEM;
++	}
++
++	queue_cmd_node(priv->adapter, cmd_node, ESP_CMD_DFLT_PRIO);
++	queue_work(priv->adapter->cmd_wq, &priv->adapter->cmd_work);
++
++	RET_ON_FAIL(wait_and_decode_cmd_resp(priv, cmd_node));
++
++	return 0;
++
++}
++
++int cmd_process_ota_write(struct esp_wifi_device *priv, char *ota_chunk, ssize_t nread)
++{
++	u16 cmd_len;
++	struct command_node *cmd_node = NULL;
++	struct cmd_ota_update_request * cmd_ota_req = NULL;
++
++
++	if (!priv || !priv->adapter) {
++		esp_err("Invalid argument\n");
++		return -EINVAL;
++	}
++
++	cmd_len = sizeof(struct cmd_ota_update_request) + nread;
++
++	cmd_node = prepare_command_request(priv->adapter, CMD_START_OTA_WRITE, cmd_len);
++
++	if (!cmd_node) {
++		esp_err("Failed to get command node\n");
++		return -ENOMEM;
++	}
++
++	cmd_ota_req = (struct cmd_ota_update_request *) (cmd_node->cmd_skb->data +
++			sizeof(struct esp_payload_header));
++
++	cmd_ota_req->ota_binary_len = nread;
++	memcpy(cmd_ota_req->ota_binary, ota_chunk, nread);
++
++	queue_cmd_node(priv->adapter, cmd_node, ESP_CMD_DFLT_PRIO);
++	queue_work(priv->adapter->cmd_wq, &priv->adapter->cmd_work);
++
++	RET_ON_FAIL(wait_and_decode_cmd_resp(priv, cmd_node));
++
++	return 0;
++
++}
++
++int cmd_process_ota_end(struct esp_wifi_device *priv)
++{
++	u16 cmd_len;
++	struct command_node *cmd_node = NULL;
++
++	if (!priv || !priv->adapter) {
++		esp_err("Invalid argument\n");
++		return -EINVAL;
++	}
++
++	cmd_len = sizeof(struct command_header);
++
++	cmd_node = prepare_command_request(priv->adapter, CMD_START_OTA_END, cmd_len);
++
++	if (!cmd_node) {
++		esp_err("Failed to get command node\n");
++		return -ENOMEM;
++	}
++
++	queue_cmd_node(priv->adapter, cmd_node, ESP_CMD_DFLT_PRIO);
++	queue_work(priv->adapter->cmd_wq, &priv->adapter->cmd_work);
++
++	RET_ON_FAIL(wait_and_decode_cmd_resp(priv, cmd_node));
++
++	return 0;
++
++}
++
 +int cmd_init_raw_tp_task_timer(struct esp_wifi_device *priv)
 +{
 +	u16 cmd_len;
@@ -3793,6 +3996,11 @@ index 0000000..b8bb033
 +
 +	if (!priv || !priv->adapter) {
 +		esp_err("Invalid argument\n");
++		return -EINVAL;
++	}
++
++	if (priv->if_type != ESP_STA_IF) {
++		esp_err("Invalid interface\n");
 +		return -EINVAL;
 +	}
 +
@@ -3944,6 +4152,11 @@ index 0000000..b8bb033
 +
 +	if (!priv || !priv->adapter) {
 +		esp_err("Invalid argument\n");
++		return -EINVAL;
++	}
++
++	if (priv->if_type != ESP_AP_IF) {
++		esp_err("Invalid interface\n");
 +		return -EINVAL;
 +	}
 +
@@ -4115,6 +4328,11 @@ index 0000000..b8bb033
 +
 +	if (!priv || !priv->adapter) {
 +		esp_err("Invalid argument\n");
++		return -EINVAL;
++	}
++
++	if (priv->if_type != ESP_AP_IF) {
++		esp_err("Invalid interface\n");
 +		return -EINVAL;
 +	}
 +
@@ -4890,10 +5108,10 @@ index 0000000..56e2b64
 +}
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/include/adapter.h b/drivers/net/wireless/espressif/esp_hosted_ng/include/adapter.h
 new file mode 100644
-index 0000000..b80446c
+index 0000000..9d6c4eb
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/include/adapter.h
-@@ -0,0 +1,438 @@
+@@ -0,0 +1,455 @@
 +// Copyright 2015-2024 Espressif Systems (Shanghai) PTE LTD
 +/* SPDX-License-Identifier: GPL-2.0-only OR Apache-2.0 */
 +
@@ -4916,6 +5134,7 @@ index 0000000..b80446c
 +/* ESP Payload Header Flags */
 +#define MORE_FRAGMENT                   (1 << 0)
 +#define MAX_SSID_LEN                    32
++#define OTA_CHUNK_SIZE                  1016
 +
 +#define MAX_MULTICAST_ADDR_COUNT        8
 +
@@ -5011,32 +5230,36 @@ index 0000000..b80446c
 +
 +enum COMMAND_CODE {
 +	CMD_INIT_INTERFACE = 1,
-+	CMD_SET_MAC,
-+	CMD_GET_MAC,
-+	CMD_SCAN_REQUEST,
-+	CMD_STA_CONNECT,
-+	CMD_DISCONNECT,
-+	CMD_DEINIT_INTERFACE,
-+	CMD_ADD_KEY,
-+	CMD_DEL_KEY,
-+	CMD_SET_DEFAULT_KEY,
-+	CMD_STA_AUTH,
-+	CMD_STA_ASSOC,
-+	CMD_SET_IP_ADDR,
-+	CMD_SET_MCAST_MAC_ADDR,
-+	CMD_GET_TXPOWER,
-+	CMD_SET_TXPOWER,
-+	CMD_GET_REG_DOMAIN,
-+	CMD_SET_REG_DOMAIN,
-+	CMD_RAW_TP_ESP_TO_HOST,
-+	CMD_RAW_TP_HOST_TO_ESP,
-+	CMD_SET_WOW_CONFIG,
-+	CMD_SET_MODE,
-+	CMD_SET_IE,
-+	CMD_AP_CONFIG,
-+	CMD_MGMT_TX,
-+	CMD_AP_STATION,
-+	CMD_STA_RSSI,
++	CMD_SET_MAC = 2,
++	CMD_GET_MAC = 3,
++	CMD_SCAN_REQUEST = 4,
++	CMD_STA_CONNECT = 5,
++	CMD_DISCONNECT = 6,
++	CMD_DEINIT_INTERFACE = 7,
++	CMD_ADD_KEY = 8,
++	CMD_DEL_KEY = 9,
++	CMD_SET_DEFAULT_KEY = 10,
++	CMD_STA_AUTH = 11,
++	CMD_STA_ASSOC = 12,
++	CMD_SET_IP_ADDR = 13,
++	CMD_SET_MCAST_MAC_ADDR = 14,
++	CMD_GET_TXPOWER = 15,
++	CMD_SET_TXPOWER = 16,
++	CMD_GET_REG_DOMAIN = 17,
++	CMD_SET_REG_DOMAIN = 18,
++	CMD_RAW_TP_ESP_TO_HOST = 19,
++	CMD_RAW_TP_HOST_TO_ESP = 20,
++	CMD_SET_WOW_CONFIG = 21,
++	CMD_SET_MODE = 22,
++	CMD_SET_IE = 23,
++	CMD_AP_CONFIG = 24,
++	CMD_MGMT_TX = 25,
++	CMD_AP_STATION = 26,
++	CMD_STA_RSSI = 27,
++	CMD_SET_TIME = 28,
++	CMD_START_OTA_UPDATE = 29,
++	CMD_START_OTA_WRITE = 30,
++	CMD_START_OTA_END = 31,
 +	CMD_MAX,
 +};
 +
@@ -5065,6 +5288,12 @@ index 0000000..b80446c
 +	uint16_t   seq_num;
 +	uint8_t    reserved1;
 +	uint8_t    reserved2;
++} __packed;
++
++struct cmd_ota_update_request {
++	struct command_header header;
++	uint16_t   ota_binary_len;
++	char       ota_binary[];
 +} __packed;
 +
 +struct scan_request {
@@ -5295,6 +5524,12 @@ index 0000000..b80446c
 +	uint8_t    pad[2];
 +} __packed;
 +
++struct cmd_set_time {
++	struct     command_header header;
++	uint64_t   sec;
++	uint64_t   usec;
++} __packed;
++
 +struct esp_internal_bootup_event {
 +	struct     event_header header;
 +	uint8_t    len;
@@ -5334,10 +5569,10 @@ index 0000000..b80446c
 +#endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/include/esp.h b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp.h
 new file mode 100644
-index 0000000..580863d
+index 0000000..ec4cf8d
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp.h
-@@ -0,0 +1,180 @@
+@@ -0,0 +1,181 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Espressif Systems Wireless LAN device driver
@@ -5407,6 +5642,7 @@ index 0000000..580863d
 +	ESP_CMD_INIT_DONE,          /* Cmd component is initialized with esp_commands_setup() */
 +	ESP_DRIVER_ACTIVE,          /* kernel module __exit is not yet invoked */
 +	ESP_INIT_DONE,              /* Driver init done */
++	ESP_OTA_IN_PROGRESS,        /* Firmware OTA in progress */
 +};
 +
 +enum priv_flags_e {
@@ -5520,10 +5756,10 @@ index 0000000..580863d
 +#endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_api.h b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_api.h
 new file mode 100644
-index 0000000..cf7da56
+index 0000000..e7a1870
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_api.h
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,48 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Espressif Systems Wireless LAN device driver
@@ -5570,6 +5806,7 @@ index 0000000..cf7da56
 +bool esp_is_valid_hardware_id(int hardware_id);
 +char *esp_get_hardware_name(int hardware_id);
 +int generate_slave_intr(void *context, u8 data);
++int esp_start_ota(struct esp_adapter *adapter, char *ota_file);
 +#endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_bt_api.h b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_bt_api.h
 new file mode 100644
@@ -5646,10 +5883,10 @@ index 0000000..05f71f2
 +#endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_cmd.h b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_cmd.h
 new file mode 100644
-index 0000000..1c23676
+index 0000000..1f8e7f5
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_cmd.h
-@@ -0,0 +1,68 @@
+@@ -0,0 +1,72 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Espressif Systems Wireless LAN device driver
@@ -5717,13 +5954,17 @@ index 0000000..1c23676
 +		     struct cfg80211_mgmt_tx_params *req);
 +int cmd_sta_change(struct esp_wifi_device *priv,
 +		     struct station_parameters *sta_info);
++int cmd_update_fw_time(struct esp_wifi_device *priv);
++int cmd_process_ota_start(struct esp_wifi_device *priv);
++int cmd_process_ota_write(struct esp_wifi_device *priv, char *ota_chunk, ssize_t nread);
++int cmd_process_ota_end(struct esp_wifi_device *priv);
 +#endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_fw_version.h b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_fw_version.h
 new file mode 100644
-index 0000000..09baa65
+index 0000000..4d1d397
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_fw_version.h
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,19 @@
 +// Copyright 2024 Espressif Systems (Shanghai) PTE LTD
 +/* SPDX-License-Identifier: GPL-2.0-only OR Apache-2.0 */
 +
@@ -5735,7 +5976,12 @@ index 0000000..09baa65
 +#define PROJECT_VERSION_MAJOR_2     0
 +#define PROJECT_VERSION_MINOR       3
 +#define PROJECT_REVISION_PATCH_1    0
-+#define PROJECT_REVISION_PATCH_2    0
++#define PROJECT_REVISION_PATCH_2    1
++
++#define STRINGIFY_HELPER(x)	#x
++#define STRINGIFY(x)		STRINGIFY_HELPER(x)
++
++#define RELEASE_VERSION	PROJECT_NAME "-" STRINGIFY(PROJECT_VERSION_MAJOR_1) "." STRINGIFY(PROJECT_VERSION_MAJOR_2) "." STRINGIFY(PROJECT_VERSION_MINOR) "." STRINGIFY(PROJECT_REVISION_PATCH_1) "." STRINGIFY(PROJECT_REVISION_PATCH_2)
 +
 +#endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_if.h b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_if.h
@@ -5769,10 +6015,10 @@ index 0000000..47ff713
 +#endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_kernel_port.h b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_kernel_port.h
 new file mode 100644
-index 0000000..e827acf
+index 0000000..b633ee3
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/include/esp_kernel_port.h
-@@ -0,0 +1,239 @@
+@@ -0,0 +1,225 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Espressif Systems Wireless LAN device driver
@@ -5806,20 +6052,6 @@ index 0000000..e827acf
 +	a[2] = b[2];
 +}
 +#endif
-+
-+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0))
-+  #define ESP_MGMT_TX_PROTOTYPE()                                              \
-+    int esp_cfg80211_mgmt_tx(struct wiphy *wiphy,                              \
-+	    struct wireless_dev *wdev, struct ieee80211_channel *chan,         \
-+	    bool offchan, unsigned int wait, const u8 *buf, size_t len,        \
-+	    bool no_cck, bool dont_wait_for_ack, u64 *cookie)
-+#else
-+  #define ESP_MGMT_TX_PROTOTYPE()                                              \
-+    int esp_cfg80211_mgmt_tx(struct wiphy *wiphy,                              \
-+	    struct wireless_dev *wdev, struct cfg80211_mgmt_tx_params *params, \
-+	    u64 *cookie)
-+#endif
-+
 +
 +#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
 +  #define ALLOC_NETDEV(size, name, type, setup) \
@@ -6101,10 +6333,10 @@ index 0000000..38b3a65
 +#endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/include/main.h b/drivers/net/wireless/espressif/esp_hosted_ng/include/main.h
 new file mode 100644
-index 0000000..8bf9585
+index 0000000..87165e0
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/include/main.h
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,23 @@
 +/*
 + * Copyright (C) 2015-2021 Espressif Systems (Shanghai) PTE LTD
 + *
@@ -6123,13 +6355,6 @@ index 0000000..8bf9585
 + */
 +#ifndef _ESP_MAIN_H_
 +#define _ESP_MAIN_H_
-+
-+#include "esp_fw_version.h"
-+
-+#define STRINGIFY_HELPER(x) #x
-+#define STRINGIFY(x) STRINGIFY_HELPER(x)
-+
-+#define RELEASE_VERSION	PROJECT_NAME "-" STRINGIFY(PROJECT_VERSION_MAJOR_1) "." STRINGIFY(PROJECT_VERSION_MAJOR_2) "." STRINGIFY(PROJECT_VERSION_MINOR) "." STRINGIFY(PROJECT_REVISION_PATCH_1) "." STRINGIFY(PROJECT_REVISION_PATCH_2)
 +
 +int esp_init(void);
 +void esp_exit(void);
@@ -6188,10 +6413,10 @@ index 0000000..23dae83
 +#endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/main.c b/drivers/net/wireless/espressif/esp_hosted_ng/main.c
 new file mode 100644
-index 0000000..b74b535
+index 0000000..f6d3a95
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/main.c
-@@ -0,0 +1,1031 @@
+@@ -0,0 +1,1094 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Espressif Systems Wireless LAN device driver
@@ -6221,6 +6446,7 @@ index 0000000..b74b535
 +
 +#define CONFIG_ALLOW_MULTICAST_WAKEUP 1
 +
++static char *ota_file = NULL;
 +extern u8 ap_bssid[MAC_ADDR_LEN];
 +extern volatile u8 host_sleep;
 +u32 raw_tp_mode = 0;
@@ -6401,7 +6627,7 @@ index 0000000..b74b535
 +	}
 +}
 +
-+void init_bt(struct esp_adapter *adapter)
++static void init_bt(struct esp_adapter *adapter)
 +{
 +
 +	if ((adapter->capabilities & ESP_BT_SPI_SUPPORT) ||
@@ -6462,7 +6688,7 @@ index 0000000..b74b535
 +	return check_esp_version(&fw_p->version);
 +}
 +
-+int process_event_esp_bootup(struct esp_adapter *adapter, u8 *evt_buf, u8 len)
++static int process_event_esp_bootup(struct esp_adapter *adapter, u8 *evt_buf, u8 len)
 +{
 +	int len_left = len, tag_len, ret = 0;
 +	u8 *pos;
@@ -6532,6 +6758,13 @@ index 0000000..b74b535
 +		return -1;
 +	}
 +	init_bt(adapter);
++
++	if (ota_file && strlen(ota_file) != 0) {
++		esp_info("OTA update requested: bin(%s)\n", ota_file);
++		esp_start_ota(adapter, ota_file);
++		ota_file = NULL;
++		return 0;
++	}
 +
 +	if (raw_tp_mode !=0) {
 +#if TEST_RAW_TP
@@ -6673,6 +6906,56 @@ index 0000000..b74b535
 +	return -1;
 +}
 +
++int esp_start_ota(struct esp_adapter *adapter, char *ota_file)
++{
++	char ota_chunk[OTA_CHUNK_SIZE] = {0};
++	struct file *file;
++	ssize_t nread;
++	int ret = 0;
++
++	file = filp_open(ota_file, O_RDONLY, 0);
++
++	if (IS_ERR(file)) {
++		esp_err("Error reading ota bin, or ota bin not found at %s \n", ota_file);
++		return -EINVAL;
++	}
++
++	set_bit(ESP_OTA_IN_PROGRESS, &adapter->state_flags);
++	if (cmd_process_ota_start(adapter->priv[ESP_STA_NW_IF]) != 0) {
++		esp_err("OTA Start failed\n");
++		ret = EINVAL;
++		goto done;
++    }
++
++	while ((nread = kernel_read(file, ota_chunk, OTA_CHUNK_SIZE, &file->f_pos)) > 0) {
++		if (cmd_process_ota_write(adapter->priv[ESP_STA_NW_IF], ota_chunk, nread) !=0) {
++			esp_err("OTA Write failed\n");
++			ret = EINVAL;
++			goto done;
++		}
++		if (nread < OTA_CHUNK_SIZE) {
++			break;
++		}
++	}
++
++	if (nread < 0) {
++		esp_err("Failed to read ota binary file %s \n", ota_file);
++		ret = EINVAL;
++		goto done;
++	}
++
++
++	ret = cmd_process_ota_end(adapter->priv[ESP_STA_NW_IF]);
++	if (ret != 0) {
++		esp_err("cmd_process_ota_end failed %d \n", ret);
++	}
++
++done:
++	filp_close(file, NULL);
++	clear_bit(ESP_OTA_IN_PROGRESS, &adapter->state_flags);
++	return ret;
++}
++
 +int esp_init_raw_tp(struct esp_adapter *adapter)
 +{
 +	RET_ON_FAIL(cmd_init_raw_tp_task_timer(adapter->priv[ESP_STA_NW_IF]));
@@ -6751,7 +7034,7 @@ index 0000000..b74b535
 +	return 0;
 +}
 +
-+int esp_stop_network_ifaces(struct esp_adapter *adapter)
++static int esp_stop_network_ifaces(struct esp_adapter *adapter)
 +{
 +	uint8_t iface_idx = 0;
 +
@@ -6801,12 +7084,18 @@ index 0000000..b74b535
 +	for (i = 0; i < ESP_MAX_INTERFACE; i++) {
 +		priv = adapter.priv[i];
 +
-+		if (!priv)
++		if (!priv) {
++			esp_err("dropping pkt, driver not initialized\n");
 +			continue;
++		}
 +
 +		if (priv->if_type == header->if_type &&
-+				priv->if_num == header->if_num) {
++		    priv->if_num == header->if_num) {
 +			return priv;
++		} else if (priv->if_type == header->if_type) {
++			esp_err("dropping pkt, priv ifnum=%d, header ifnum=%d\n", priv->if_num, header->if_num);
++		} else {
++			esp_err("dropping pkt, priv iftype=%d, header iftype=%d\n", priv->if_type, header->if_type);
 +		}
 +	}
 +	return NULL;
@@ -6900,7 +7189,6 @@ index 0000000..b74b535
 +		priv = get_priv_from_payload_header(payload_header);
 +
 +		if (!priv) {
-+			esp_err("Empty priv\n");
 +			dev_kfree_skb_any(skb);
 +			return;
 +		}
@@ -7184,7 +7472,7 @@ index 0000000..b74b535
 +	int ret = 0;
 +	struct esp_adapter *adapter = NULL;
 +
-+	esp_dbg("%s: begin\n", __func__);
++	esp_dbg("begin\n");
 +
 +	adapter = init_adapter();
 +
@@ -7201,7 +7489,7 @@ index 0000000..b74b535
 +
 +	ret = debugfs_init();
 +
-+	esp_info("%s: end %d\n", __func__, ret);
++	esp_info("end %d\n", ret);
 +	return ret;
 +}
 +
@@ -7225,10 +7513,10 @@ index 0000000..b74b535
 +}
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/sdio/esp_sdio.c b/drivers/net/wireless/espressif/esp_hosted_ng/sdio/esp_sdio.c
 new file mode 100644
-index 0000000..e39f700
+index 0000000..636deda
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/sdio/esp_sdio.c
-@@ -0,0 +1,1025 @@
+@@ -0,0 +1,1026 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Espressif Systems Wireless LAN device driver
@@ -7237,6 +7525,7 @@ index 0000000..e39f700
 + *
 + */
 +
++#include <linux/device.h>
 +#include <linux/kthread.h>
 +#include <linux/mutex.h>
 +#include <linux/mmc/sdio.h>
@@ -7246,13 +7535,14 @@ index 0000000..e39f700
 +#include <linux/mmc/host.h>
 +#include <linux/module.h>
 +#include <linux/of.h>
-+#include "esp_if.h"
-+#include "esp_sdio_api.h"
 +#include "esp_api.h"
 +#include "esp_bt_api.h"
++#include "esp_fw_version.h"
++#include "esp_if.h"
++#include "esp_kernel_port.h"
++#include "esp_sdio_api.h"
 +#include "esp_stats.h"
 +#include "esp_utils.h"
-+#include "esp_kernel_port.h"
 +#include "main.h"
 +#include "utils.h"
 +
@@ -7279,15 +7569,7 @@ index 0000000..e39f700
 +static int init_context(struct esp_sdio_context *context);
 +static struct sk_buff *read_packet(struct esp_adapter *adapter);
 +static int write_packet(struct esp_adapter *adapter, struct sk_buff *skb);
-+/*int deinit_context(struct esp_adapter *adapter);*/
 +
-+static const struct sdio_device_id esp_devices[] = {
-+	{ SDIO_DEVICE(ESP_VENDOR_ID_1, ESP_DEVICE_ID_ESP32_1) },
-+	{ SDIO_DEVICE(ESP_VENDOR_ID_1, ESP_DEVICE_ID_ESP32_2) },
-+	{ SDIO_DEVICE(ESP_VENDOR_ID_2, ESP_DEVICE_ID_ESP32C6_1) },
-+	{ SDIO_DEVICE(ESP_VENDOR_ID_2, ESP_DEVICE_ID_ESP32C6_2) },
-+	{}
-+};
 +
 +static void esp_process_interrupt(struct esp_sdio_context *context, u32 int_status)
 +{
@@ -7928,7 +8210,6 @@ index 0000000..e39f700
 +	if (ret < 0)
 +		esp_warn("sdio-clk-mhz was not specified\n");
 +
-+
 +	context->func = func;
 +
 +	sdio_claim_host(func);
@@ -7937,8 +8218,7 @@ index 0000000..e39f700
 +	ret = sdio_enable_func(func);
 +	if (ret) {
 +		esp_err("sdio_enable_func ret: %d\n", ret);
-+		if (sdio_ret)
-+			*sdio_ret = ret;
++		*sdio_ret = ret;
 +		sdio_release_host(func);
 +
 +		return NULL;
@@ -7950,8 +8230,7 @@ index 0000000..e39f700
 +		esp_err("sdio_claim_irq ret: %d\n", ret);
 +		sdio_disable_func(func);
 +
-+		if (sdio_ret)
-+			*sdio_ret = ret;
++		*sdio_ret = ret;
 +		sdio_release_host(func);
 +
 +		return NULL;
@@ -8021,10 +8300,12 @@ index 0000000..e39f700
 +#endif
 +
 +static int esp_probe(struct sdio_func *func,
-+			  const struct sdio_device_id *id)
++				  const struct sdio_device_id *id)
 +{
 +	struct esp_sdio_context *context;
 +	int ret = 0;
++
++	esp_dbg("Probing ESP-SDIO driver...\n");
 +
 +	if (func->num != 1) {
 +		return -EINVAL;
@@ -8076,9 +8357,9 @@ index 0000000..e39f700
 +		esp_err("Failed to create monitor thread\n");
 +#endif
 +
-+	esp_dbg("ESP SDIO probe completed\n");
++	esp_dbg("ESP-SDIO driver probe complete\n");
 +
-+	return ret;
++	return 0;
 +}
 +
 +static int esp_suspend(struct device *dev)
@@ -8157,24 +8438,32 @@ index 0000000..e39f700
 +	.resume = esp_resume,
 +};
 +
-+static const struct of_device_id esp_sdio_of_match[] = {
-+	{ .compatible = "espressif,esp-sdio", },
++static const struct sdio_device_id esp_sdio_ids[] = {
++	{ SDIO_DEVICE(ESP_VENDOR_ID_1, ESP_DEVICE_ID_ESP32_1) },
++	{ SDIO_DEVICE(ESP_VENDOR_ID_1, ESP_DEVICE_ID_ESP32_2) },
++	{ SDIO_DEVICE(ESP_VENDOR_ID_2, ESP_DEVICE_ID_ESP32C6_1) },
++	{ SDIO_DEVICE(ESP_VENDOR_ID_2, ESP_DEVICE_ID_ESP32C6_2) },
++	{}
++};
++MODULE_DEVICE_TABLE(sdio, esp_sdio_ids);
++
++static const struct of_device_id esp_sdio_dt_ids[] = {
++	{ .compatible = "espressif,esp32-sdio" },
 +	{ /* sentinel */ }
 +};
-+MODULE_DEVICE_TABLE(of, esp_sdio_of_match);
++MODULE_DEVICE_TABLE(of, esp_sdio_dt_ids);
 +
 +/* SDIO driver structure to be registered with kernel */
 +static struct sdio_driver esp_sdio_driver = {
-+	.name		= KBUILD_MODNAME,
-+	.id_table	= esp_devices,
++	.drv = {
++		.name = "esp32_sdio",
++		.pm = &esp_pm_ops,
++		.of_match_table = of_match_ptr(esp_sdio_dt_ids),
++	},
++	.name		= "esp32_sdio",
++	.id_table	= esp_sdio_ids,
 +	.probe		= esp_probe,
 +	.remove		= esp_remove,
-+	.drv = {
-+		.name = KBUILD_MODNAME,
-+		.owner = THIS_MODULE,
-+		.pm = &esp_pm_ops,
-+		.of_match_table = esp_sdio_of_match,
-+	},
 +};
 +
 +int esp_init_interface_layer(struct esp_adapter *adapter)
@@ -8253,7 +8542,7 @@ index 0000000..e39f700
 +MODULE_AUTHOR("Amey Inamdar <amey.inamdar@espressif.com>");
 +MODULE_AUTHOR("Mangesh Malusare <mangesh.malusare@espressif.com>");
 +MODULE_AUTHOR("Yogesh Mantri <yogesh.mantri@espressif.com>");
-+MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.ru>");
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/sdio/esp_sdio_api.c b/drivers/net/wireless/espressif/esp_hosted_ng/sdio/esp_sdio_api.c
 new file mode 100644
 index 0000000..889ee8f
@@ -8434,7 +8723,7 @@ index 0000000..a078924
 +#endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/sdio/esp_sdio_decl.h b/drivers/net/wireless/espressif/esp_hosted_ng/sdio/esp_sdio_decl.h
 new file mode 100644
-index 0000000..c3c6bf8
+index 0000000..5794595
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/sdio/esp_sdio_decl.h
 @@ -0,0 +1,85 @@
@@ -8514,21 +8803,21 @@ index 0000000..c3c6bf8
 +#define ESP_DEVICE_ID_ESP32C6_2     0x7777
 +
 +struct esp_sdio_context {
-+	struct esp_adapter	*adapter;
-+	struct sdio_func	*func;
-+	struct sk_buff_head	tx_q[MAX_PRIORITY_QUEUES];
-+	u32		rx_byte_count;
-+	u32		tx_buffer_count;
-+	u32		sdio_clk_mhz;
++	struct esp_adapter     *adapter;
++	struct sdio_func       *func;
++	struct sk_buff_head    tx_q[MAX_PRIORITY_QUEUES];
++	u32                    rx_byte_count;
++	u32                    tx_buffer_count;
++	u32			sdio_clk_mhz;
 +};
 +
 +#endif
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/spi/esp_spi.c b/drivers/net/wireless/espressif/esp_hosted_ng/spi/esp_spi.c
 new file mode 100644
-index 0000000..56e2a5c
+index 0000000..56053fd
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/spi/esp_spi.c
-@@ -0,0 +1,642 @@
+@@ -0,0 +1,643 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
@@ -8542,14 +8831,15 @@ index 0000000..56e2a5c
 +#include <linux/module.h>
 +#include <linux/of.h>
 +#include <linux/spi/spi.h>
-+#include "esp_spi.h"
-+#include "esp_if.h"
 +#include "esp_api.h"
 +#include "esp_bt_api.h"
++#include "esp_cfg80211.h"
++#include "esp_fw_version.h"
++#include "esp_if.h"
 +#include "esp_kernel_port.h"
++#include "esp_spi.h"
 +#include "esp_stats.h"
 +#include "esp_utils.h"
-+#include "esp_cfg80211.h"
 +#include "main.h"
 +
 +#define TX_MAX_PENDING_COUNT    100
@@ -9173,7 +9463,7 @@ index 0000000..56e2a5c
 +MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.com>");
 diff --git a/drivers/net/wireless/espressif/esp_hosted_ng/spi/esp_spi.h b/drivers/net/wireless/espressif/esp_hosted_ng/spi/esp_spi.h
 new file mode 100644
-index 0000000..ec14501
+index 0000000..425e4ac
 --- /dev/null
 +++ b/drivers/net/wireless/espressif/esp_hosted_ng/spi/esp_spi.h
 @@ -0,0 +1,34 @@
@@ -9192,10 +9482,10 @@ index 0000000..ec14501
 +
 +struct esp_spi_context {
 +	struct esp_adapter		*adapter;
-+	struct spi_device			*spi;
-+	struct gpio_desc			*reset;
-+	struct gpio_desc			*handshake;
-+	struct gpio_desc			*data_ready;
++	struct spi_device		*spi;
++	struct gpio_desc	*reset;
++	struct gpio_desc	*handshake;
++	struct gpio_desc	*data_ready;
 +	struct sk_buff_head		tx_q[MAX_PRIORITY_QUEUES];
 +	struct sk_buff_head		rx_q[MAX_PRIORITY_QUEUES];
 +	struct workqueue_struct	*spi_workqueue;

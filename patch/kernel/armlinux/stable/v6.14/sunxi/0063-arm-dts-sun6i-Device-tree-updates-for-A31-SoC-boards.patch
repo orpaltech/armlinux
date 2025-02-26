@@ -1,0 +1,279 @@
+From 5f146d939c7e45e3161744f524378bbb53d25b82 Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Tue, 4 Feb 2025 13:13:11 +0300
+Subject: [PATCH] arm/dts/sun6i: Device tree updates for A31 SoC boards
+
+---
+ arch/arm/boot/dts/allwinner/sun6i-a31.dtsi    | 92 +++++++++++++++++++
+ .../allwinner/sun6i-a31s-sinovoip-bpi-m2.dts  | 45 ++++++++-
+ 2 files changed, 135 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/boot/dts/allwinner/sun6i-a31.dtsi b/arch/arm/boot/dts/allwinner/sun6i-a31.dtsi
+index f0145d6..fa25838 100644
+--- a/arch/arm/boot/dts/allwinner/sun6i-a31.dtsi
++++ b/arch/arm/boot/dts/allwinner/sun6i-a31.dtsi
+@@ -186,6 +186,13 @@
+ 					type = "passive";
+ 				};
+ 
++				cpu_hot: cpu-hot {
++					/* milliCelsius */
++					temperature = <85000>;
++					hysteresis = <2000>;
++					type = "hot";
++				};
++
+ 				cpu_crit: cpu-crit {
+ 					/* milliCelsius */
+ 					temperature = <100000>;
+@@ -674,6 +681,27 @@
+ 				function = "i2c2";
+ 			};
+ 
++			i2s0_mclk_pin: i2s0-mclk-pin {
++				pins = "PB0";
++				function = "i2s0";
++			};
++			i2s0_bclk_pin: i2s0-bclk-pin {
++				pins = "PB1";
++				function = "i2s0";
++			};
++			i2s0_lrck_pin: i2s0-lrck-pin {
++				pins = "PB2";
++				function = "i2s0";
++			};
++			i2s0_do0_pin: i2s0-do0-pin {
++				pins = "PB3";
++				function = "i2s0";
++			};
++			i2s0_di_pin: i2s0-di-pin {
++				pins = "PB7";
++				function = "i2s0";
++			};
++
+ 			lcd0_rgb888_pins: lcd0-rgb888-pins {
+ 				pins = "PD0", "PD1", "PD2", "PD3",
+ 						 "PD4", "PD5", "PD6", "PD7",
+@@ -729,6 +757,54 @@
+ 				bias-pull-up;
+ 			};
+ 
++			pwm0_pin: pwm0-pin {
++				pins = "PH13";
++				function = "pwm0";
++			};
++			pwm1_pin_p: pwm1-pin-p {
++				pins = "PH9";
++				function = "pwm1";
++			};
++			pwm1_pin_n: pwm1-pin-n {
++				pins = "PH10";
++				function = "pwm1";
++			};
++			pwm2_pin_p: pwm2-pin-p {
++				pins = "PH11";
++				function = "pwm2";
++			};
++			pwm2_pin_n: pwm2-pin-n {
++				pins = "PH12";
++				function = "pwm2";
++			};
++			pwm3_pin_p: pwm3-pin-p {
++				pins = "PA19";
++				function = "pwm3";
++			};
++			pwm3_pin_n: pwm3-pin-n {
++				pins = "PA20";
++				function = "pwm3";
++			};
++
++			spi0_pins: spi0-pins {
++				pins = "PC0", "PC1", "PC2", "PC27";
++				function = "spi0";
++			};
++
++			spi1_pins: spi1-pins {
++				pins = "PG15", "PG16", "PG14", "PG13";
++				function = "spi1";
++			};
++			spi1_cs1_pin: spi1-cs1-pin {
++				pins = "PG12";
++				function = "spi1";
++			};
++
++			spi2_pins: spi2-pins {
++				pins = "PH11", "PH12", "PH10", "PH9";
++				function = "spi2";
++			};
++
+ 			spdif_tx_pin: spdif-tx-pin {
+ 				pins = "PH28";
+ 				function = "spdif";
+@@ -738,6 +814,16 @@
+ 				pins = "PH20", "PH21";
+ 				function = "uart0";
+ 			};
++
++			uart2_pins: uart2-pins {
++				pins = "PG6", "PG7";
++				function = "uart2";
++			};
++
++			uart5_pins: uart5-pins {
++				pins = "PE4", "PE5";
++				function = "uart5";
++			};
+ 		};
+ 
+ 		timer@1c20c00 {
+@@ -1007,6 +1093,8 @@
+ 			dmas = <&dma 23>, <&dma 23>;
+ 			dma-names = "rx", "tx";
+ 			resets = <&ccu RST_AHB1_SPI0>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&spi0_pins>;
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+@@ -1021,6 +1109,8 @@
+ 			dmas = <&dma 24>, <&dma 24>;
+ 			dma-names = "rx", "tx";
+ 			resets = <&ccu RST_AHB1_SPI1>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&spi1_pins>;
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+@@ -1035,6 +1125,8 @@
+ 			dmas = <&dma 25>, <&dma 25>;
+ 			dma-names = "rx", "tx";
+ 			resets = <&ccu RST_AHB1_SPI2>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&spi2_pins>;
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+diff --git a/arch/arm/boot/dts/allwinner/sun6i-a31s-sinovoip-bpi-m2.dts b/arch/arm/boot/dts/allwinner/sun6i-a31s-sinovoip-bpi-m2.dts
+index f63d67e..461efb9 100644
+--- a/arch/arm/boot/dts/allwinner/sun6i-a31s-sinovoip-bpi-m2.dts
++++ b/arch/arm/boot/dts/allwinner/sun6i-a31s-sinovoip-bpi-m2.dts
+@@ -49,6 +49,7 @@
+ 	compatible = "sinovoip,bpi-m2", "allwinner,sun6i-a31s";
+ 
+ 	aliases {
++		ethernet0 = &gmac;
+ 		serial0 = &uart0;
+ 	};
+ 
+@@ -56,22 +57,36 @@
+ 		stdout-path = "serial0:115200n8";
+ 	};
+ 
++	hdmi_connector {
++		compatible = "hdmi-connector";
++		type = "a";
++
++		port {
++			hdmi_con_in: endpoint {
++				remote-endpoint = <&hdmi_con_out>;
++			};
++		};
++	};
++
+ 	leds {
+ 		compatible = "gpio-leds";
+ 
+ 		led-0 {
+ 			label = "bpi-m2:blue:usr";
+ 			gpios = <&pio 6 11 GPIO_ACTIVE_HIGH>; /* PG11 */
++			linux,default-trigger = "heartbeat";
+ 		};
+ 
+ 		led-1 {
+ 			label = "bpi-m2:green:usr";
+ 			gpios = <&pio 6 10 GPIO_ACTIVE_HIGH>; /* PG10 */
++			linux,default-trigger = "mmc0";
+ 		};
+ 
+ 		led-2 {
+ 			label = "bpi-m2:red:usr";
+ 			gpios = <&pio 6 5 GPIO_ACTIVE_HIGH>; /* PG5 */
++			default-state = "on";
+ 		};
+ 	};
+ 
+@@ -85,6 +100,10 @@
+ 	cpu-supply = <&reg_dcdc3>;
+ };
+ 
++&de {
++	status = "okay";
++};
++
+ &ehci0 {
+ 	status = "okay";
+ };
+@@ -93,15 +112,25 @@
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&gmac_rgmii_pins>;
+ 	phy-handle = <&phy1>;
+-	phy-mode = "rgmii";
++	phy-mode = "rgmii-id";
+ 	phy-supply = <&reg_dldo1>;
+ 	status = "okay";
+ };
+ 
++&hdmi {
++	status = "okay";
++};
++
++&hdmi_out {
++	hdmi_con_out: endpoint {
++		remote-endpoint = <&hdmi_con_in>;
++	};
++};
++
+ &ir {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&s_ir_rx_pin>;
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &mdio {
+@@ -168,6 +197,7 @@
+ 	regulator-min-microvolt = <2500000>;
+ 	regulator-max-microvolt = <2500000>;
+ 	regulator-name = "vcc-gmac";
++	regulator-enable-ramp-delay = <100000>;
+ };
+ 
+ &reg_aldo3 {
+@@ -222,6 +252,7 @@
+ 	regulator-min-microvolt = <3000000>;
+ 	regulator-max-microvolt = <3000000>;
+ 	regulator-name = "vcc-mac";
++	regulator-enable-ramp-delay = <100000>;
+ };
+ 
+ &reg_dldo2 {
+@@ -258,6 +289,16 @@
+ 	status = "okay";
+ };
+ 
++&uart2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart2_pins>;
++};
++
++&uart5 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart5_pins>;
++};
++
+ &usbphy {
+ 	status = "okay";
+ };
+-- 
+2.43.0
+

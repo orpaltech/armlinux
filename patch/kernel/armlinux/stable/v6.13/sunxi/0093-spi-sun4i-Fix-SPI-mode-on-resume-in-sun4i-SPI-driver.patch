@@ -1,0 +1,36 @@
+From 8e77d26e85aa0f4d369853ae4a7fd7aa6ecbab0c Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Sun, 6 Oct 2024 20:39:27 +0300
+Subject: [PATCH] spi/sun4i: Fix SPI-mode on resume in sun4i SPI-driver
+
+---
+ drivers/spi/spi-sun4i.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/spi/spi-sun4i.c b/drivers/spi/spi-sun4i.c
+index 2ee6755..fa3e86a 100644
+--- a/drivers/spi/spi-sun4i.c
++++ b/drivers/spi/spi-sun4i.c
+@@ -390,6 +390,7 @@ static int sun4i_spi_runtime_resume(struct device *dev)
+ 	struct spi_controller *host = dev_get_drvdata(dev);
+ 	struct sun4i_spi *sspi = spi_controller_get_devdata(host);
+ 	int ret;
++	u32 reg;
+ 
+ 	ret = clk_prepare_enable(sspi->hclk);
+ 	if (ret) {
+@@ -403,8 +404,10 @@ static int sun4i_spi_runtime_resume(struct device *dev)
+ 		goto err;
+ 	}
+ 
++	reg = sun4i_spi_read(sspi, SUN4I_CTL_REG);
++
+ 	sun4i_spi_write(sspi, SUN4I_CTL_REG,
+-			SUN4I_CTL_ENABLE | SUN4I_CTL_MASTER | SUN4I_CTL_TP);
++			reg | SUN4I_CTL_ENABLE | SUN4I_CTL_MASTER | SUN4I_CTL_TP);
+ 
+ 	return 0;
+ 
+-- 
+2.34.1
+
