@@ -108,9 +108,9 @@ fi
 #  KERNEL_BOOT_ARGS="drm_kms_helper.edid_firmware=${DRM_CONNECTOR}:${DRM_EDID_BINARY} video=${DRM_CONNECTOR}:${DRM_VIDEO_MODE} ${KERNEL_BOOT_ARGS}"
 #fi
 
-#if [ ! -z "${DRM_DEBUG}" ] ; then
-#  KERNEL_BOOT_ARGS="drm.debug=${DRM_DEBUG} ${KERNEL_BOOT_ARGS}"
-#fi
+if [ ! -z "${DRM_DEBUG}" ] ; then
+  KERNEL_BOOT_ARGS="drm.debug=${DRM_DEBUG} ${KERNEL_BOOT_ARGS}"
+fi
 
 if [ ! -z "${DMESG_BUF_LEN}" ] ; then
   KERNEL_BOOT_ARGS="log_buf_len=${DMESG_BUF_LEN} ${KERNEL_BOOT_ARGS}"
@@ -125,6 +125,7 @@ fi
 
 # Install sysctl configuration files
 install_readonly ${FILES_DIR}/sysctl/81-vm.conf	${ETC_DIR}/sysctl.d/
+
 
 if [ -n "${KERNEL_MODULES}" ] ; then
     make_array ${KERNEL_MODULES}

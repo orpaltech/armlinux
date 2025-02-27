@@ -19,5 +19,6 @@ DTB_FILE="broadcom/bcm2711-rpi-cm4-io.dtb"
 
 QT_DEVICE_CONFIG="linux-rpi4-arm64-vc4-g++"
 
+SUPPORT_ETHERNET=yes
 # WiFi/Bluetooth adapter is optional for CM4
 SUPPORT_WLAN=no

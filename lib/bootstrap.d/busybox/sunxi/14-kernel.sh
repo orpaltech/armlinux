@@ -1,5 +1,5 @@
 #
-# Setup Kernel (sunxi script)
+# Setup Kernel (sunxi)
 #
 
 # Setup kernel boot cmdline

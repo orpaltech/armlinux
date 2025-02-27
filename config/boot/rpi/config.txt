@@ -82,7 +82,7 @@ kernel=
 # initramfs file name
 ramfsfile=
 
-overlay_prefix=overlays/bcm2835-
+overlay_prefix=
 
 # Device-Tree overlays
 #dtoverlay=

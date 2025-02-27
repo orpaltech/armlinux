@@ -77,6 +77,7 @@ CLEAN=bluetooth
 ENABLE_BTH=yes
 ENABLE_SDR=yes
 ENABLE_SOUND=yes
+ENABLE_MESA=yes
 SOUND_FORCE_REBUILD=yes
 BTH_FORCE_REBUILD=yes
 
@@ -91,6 +92,49 @@ set_cross_compile
 
 . ${LIBDIR}/meson-build.sh
 
+
+
+
+meson_cross_init()
+{
+    local CROSS_FILE=$1
+    cat <<-EOF > ${CROSS_FILE}
+# Meson cross-file
+[constants]
+compile_flags = [ '-I${R}/usr/include' ]
+linker_flags = [ '-L${R}/usr/lib' ]
+
+[binaries]
+c = '${BB_GCC}'
+cpp = '${BB_CXX}'
+strip = '${BB_STRIP}'
+ar = '${BB_AR}'
+objcopy = '${BB_OBJCOPY}'
+pkg-config = '/usr/bin/pkg-config'
+# exe_wrapper = 'QEMU_LD_PREFIX=${R} ${QEMU_BINARY}'
+
+[built-in options]
+c_args = compile_flags
+cpp_args = compile_flags
+c_link_args = linker_flags
+cpp_link_args = linker_flags
+
+[properties]
+sys_root = '${R}'
+pkg_config_libdir = '${R}/lib/pkgconfig:${R}/usr/lib/pkgconfig:${R}/usr/share/pkgconfig'
+
+[host_machine]
+system = 'linux'
+cpu_family = '${MESON_CPU_FAMILY}'
+cpu = '${MESON_CPU}'
+endian = 'little'
+EOF
+}
+
+
+
+
+
 #. ./11-sysroot.sh
 #. ./17-ncurses.sh
 #. ./19-linux-utils.sh
@@ -99,8 +143,11 @@ set_cross_compile
 #SND_FORCE_REBUILD=yes
 #. ./65-sound.sh
 
-BTH_FORCE_REBUILD=yes
-. ./67-bluetooh.sh
+#BTH_FORCE_REBUILD=yes
+#. ./67-bluetooh.sh
 
 #SDR_FORCE_REBUILD=yes
 #. ./71-sdr.sh
+
+. ./44-libdrm.sh
+#. ../sunxi/45-mesa-lima.sh

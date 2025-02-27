@@ -18,7 +18,8 @@ SOURCE_NAME=$(basename ${BASH_SOURCE[0]})
 
 ntp_install()
 {
-    update_src_pkg "ntp" \
+    PKG_FORCE_CLEAN=${NTP_REBUILD} \
+	update_src_pkg "ntp" \
                     $NTP_VERSION \
                     $NTP_SRC_DIR \
                     $NTP_REPO_URL \
@@ -29,12 +30,12 @@ ntp_install()
         rm -rf ${NTP_BUILD_DIR}
     fi
 
-    mkdir -p ${NTP_BUILD_DIR}
-
     cd ${NTP_SRC_DIR}/
     ./bootstrap
 
+    mkdir -p ${NTP_BUILD_DIR}
     cd ${NTP_BUILD_DIR}/
+
     echo "${SOURCE_NAME}: Configure ntp ..."
 
     CC=${BB_GCC} CXX=${BB_CXX} NM=${BB_NM} OBJDUMP=${BB_OBJDUMP} STRIP=${BB_STRIP} RANLIB=${BB_RANLIB} AR=${BB_AR} \

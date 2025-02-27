@@ -1,10 +1,10 @@
-EXPAT_REPO_URL="https://github.com/libexpat/libexpat.git"
-EXPAT_VERSION=2_6_4
-EXPAT_BRANCH=master
-EXPAT_TAG="R_${EXPAT_VERSION}"
-EXPAT_SRC_DIR=${EXTRADIR}/libexpat
-EXPAT_BUILD_DIR=${EXPAT_SRC_DIR}/expat/${BB_BUILD_OUT}
-EXPAT_REBUILD=yes
+LIBEXPAT_REPO_URL="https://github.com/libexpat/libexpat.git"
+LIBEXPAT_VERSION=2_6_4
+LIBEXPAT_BRANCH=master
+LIBEXPAT_TAG="R_${LIBEXPAT_VERSION}"
+LIBEXPAT_SRC_DIR=${EXTRADIR}/libexpat
+LIBEXPAT_BUILD_DIR=${LIBEXPAT_SRC_DIR}/expat/${BB_BUILD_OUT}
+LIBEXPAT_REBUILD=yes
 
 
 libexpat_install()
@@ -12,31 +12,30 @@ libexpat_install()
     local PKG_NAME=${1:-"libexpat"}
 
     # build EXPAT library
-    local PKG_FORCE_CLEAN="${EXPAT_REBUILD}"
+    PKG_FORCE_CLEAN="${LIBEXPAT_REBUILD}" \
+	update_src_pkg "${PKG_NAME}" \
+                    $LIBEXPAT_VERSION \
+                    $LIBEXPAT_SRC_DIR \
+                    $LIBEXPAT_REPO_URL \
+                    $LIBEXPAT_BRANCH \
+                    $LIBEXPAT_TAG
 
-    update_src_pkg "${PKG_NAME}" \
-                    $EXPAT_VERSION \
-                    $EXPAT_SRC_DIR \
-                    $EXPAT_REPO_URL \
-                    $EXPAT_BRANCH \
-                    $EXPAT_TAG
-
-    if [ "${EXPAT_REBUILD}" = yes ] ; then
-        rm -rf ${EXPAT_BUILD_DIR}
+    if [ "${LIBEXPAT_REBUILD}" = yes ] ; then
+        rm -rf ${LIBEXPAT_BUILD_DIR}
     fi
 
-    cd ${EXPAT_SRC_DIR}/expat
+    cd ${LIBEXPAT_SRC_DIR}/expat
     ./buildconf.sh
 
-    mkdir -p ${EXPAT_BUILD_DIR}
-    cd ${EXPAT_BUILD_DIR}/
+    mkdir -p ${LIBEXPAT_BUILD_DIR}
+    cd ${LIBEXPAT_BUILD_DIR}/
 
 
     echo "${SOURCE_NAME}: Configure ${PKG_NAME} ..."
 
     CC=${BB_GCC} CXX=${BB_CXX} NM=${BB_NM} OBJDUMP=${BB_OBJDUMP} STRIP=${BB_STRIP} RANLIB=${BB_RANLIB} AR=${BB_AR} \
         ../configure \
-                --srcdir=${EXPAT_SRC_DIR}/expat \
+                --srcdir=${LIBEXPAT_SRC_DIR}/expat \
                 --host=${BB_PLATFORM} \
                 --prefix=/usr \
                 --without-tests --without-docbook

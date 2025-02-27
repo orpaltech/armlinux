@@ -36,9 +36,9 @@ write_image()
 	local block_size=1024
 	local rootfs_size=$(sudo du --block-size=1 --max-depth=0 ${ROOTFS_DIR} 2>/dev/null | tail -n 1 | tr -dc '0-9')
 
-	# Find number of blocks needed, add around 200MB extra space
+	# Find number of blocks needed, add around 100MB extra space
 	local mbyte=1048576
-	local blocks_count=$(((rootfs_size + (mbyte * 200)) / block_size))
+	local blocks_count=$(((rootfs_size + (mbyte * 100)) / block_size))
 	local img_size=$((blocks_count * block_size))
 
 	echo "Create img file [rootfs size=${rootfs_size}; image size=${img_size}, block size=${block_size}, blocks=${blocks_count}]"
@@ -60,7 +60,7 @@ write_image()
 	if [ "${DEST_DEV_TYPE}" = mmc ]; then
 		DISK_NAME="SD-card"
 	elif [ "${DEST_DEV_TYPE}" = nvme ]; then
-		DISK_NAME="NVME-disk"
+		DISK_NAME="NVME disk"
 	fi
 
 	BLOCK_DEV="${DEST_BLOCK_DEV}"
