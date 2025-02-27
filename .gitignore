@@ -2,8 +2,11 @@ output
 sources
 toolchains
 patching
-wlan
+logs
+test
 *.disabled
 *log
 *.backup
 *.save
+*.swp
+wlan
