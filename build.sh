@@ -196,9 +196,9 @@ fi
 #------------------------------------------------------------------------------
 
 if [ -z "${UBOOT_REPO_TAG}" ] ; then
-  UBOOT_REPO_TAG="${UBOOT_RELEASE}"
+  UBOOT_REPO_TAG="v${UBOOT_RELEASE}"
 elif [ "${UBOOT_REPO_BRANCH}" = no ] ; then
-  UBOOT_REPO_TAG=""
+  UBOOT_REPO_TAG=
 fi
 [ -z "${UBOOT_REPO_BRANCH}" ] && UBOOT_REPO_BRANCH="master"
 

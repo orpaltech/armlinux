@@ -66,43 +66,43 @@ patch_bootloader()
 {
 if [ "${BOOTLOADER}" = uboot ] ; then
 
-	local PATCH_BASE_DIR=${BASEDIR}/patch/u-boot/${UBOOT_REPO_NAME}
-	local PATCH_OUT_DIR=${OUTPUTDIR}/patches
+	local patch_base_dir=${BASEDIR}/patch/u-boot/${UBOOT_REPO_NAME}
+	local patch_out_dir=${OUTPUTDIR}/patches
 
-	rm -rf ${PATCH_OUT_DIR}/u-boot.*
+	rm -rf ${patch_out_dir}/u-boot.*
 
-	if [ "${UBOOT_PATCH_DISABLE}" != yes ]  && [ -d "${PATCH_BASE_DIR}" ] ; then
-		local PATCH_TMP_DIR=$(mktemp -u ${PATCH_OUT_DIR}/u-boot.XXXXXXXXX)
+	if [ "${UBOOT_PATCH_DISABLE}" != yes ]  && [ -d $patch_base_dir ] ; then
+		local patch_tmp_dir=$(mktemp -u ${patch_out_dir}/u-boot.XXXXXXXXX)
 
 		# Prepare files for patching
-		mkdir -p $PATCH_TMP_DIR
+		mkdir -p $patch_tmp_dir
 
 		echo "Copy U-Boot base patches"
 
 		# Copy normal-priority patches
-		copy_patches $PATCH_BASE_DIR $PATCH_TMP_DIR
+		copy_patches  $patch_base_dir  $patch_tmp_dir
 
 		# Check if high-priority patches are available and, if yes, copy too
-		local PATCH_HIGH_DIR="${UBOOT_PATCH_HIGH_PRIORITY_DIR}"
-		if [ -z "${PATCH_HIGH_DIR}" ] ; then
-			PATCH_HIGH_DIR="${UBOOT_REPO_TAG}"
+		local dir_name="${UBOOT_PATCH_HIGH_PRIORITY_DIR}"
+		if [ -z "${dir_name}" ] ; then
+			dir_name="${UBOOT_RELEASE}"
 		fi
-		if [ -n "${PATCH_HIGH_DIR}" ]  && [ -d "${PATCH_BASE_DIR}/${PATCH_HIGH_DIR}" ] ; then
-			echo "Copy U-Boot high-priority patches from '${PATCH_HIGH_DIR}', allow overwrite base patches"
+		if [ -n "${dir_name}" ]  && [ -d ${patch_base_dir}/${dir_name} ] ; then
+			echo "Copy U-Boot high-priority patches from '${dir_name}', allow overwrite base patches"
 
-			copy_patches $PATCH_BASE_DIR/$PATCH_HIGH_DIR  $PATCH_TMP_DIR
+			copy_patches  ${patch_base_dir}/${dir_name}  $patch_tmp_dir
 		fi
 
 		display_alert "Patching U-Boot..." "" "info"
 
-		local patch_count=$(count_files "${PATCH_TMP_DIR}/*.patch")
+		local patch_count=$(count_files "${patch_tmp_dir}/*.patch")
 		if [ $patch_count -gt 0 ] ; then
 			# patching
-			for PATCHFILE in $PATCH_TMP_DIR/*.patch; do
-				echo "Applying patch '${PATCHFILE}' to U-Boot..."
-				patch -d $UBOOT_SOURCE_DIR --batch -p1 -N < $PATCHFILE
+			for patch_file in ${patch_tmp_dir}/*.patch; do
+				echo "Applying patch '${patch_file}' to U-Boot..."
+				patch -d $UBOOT_SOURCE_DIR --batch -p1 -N -F5 < $patch_file
 # TODO: An alternative way to apply patches, needs to be investigated
-#				git -C $UBOOT_SOURCE_DIR apply $PATCHFILE
+#				git -C $UBOOT_SOURCE_DIR apply $patch_file
 #				git -C $UBOOT_SOURCE_DIR add --patch
 #				git -C $UBOOT_SOURCE_DIR commit
 				[ $? -eq 0 ] || exit $?;
@@ -124,17 +124,17 @@ patch_kernel()
 
 	rm -rf ${patch_out_dir}/kernel.*
 
-	if [ "${KERNEL_PATCH_DISABLE}" != yes ]  && [ -d ${patch_base_dir} ] ; then
+	if [ "${KERNEL_PATCH_DISABLE}" != yes ]  && [ -d $patch_base_dir ] ; then
                 local patch_tmp_dir=$(mktemp -u ${patch_out_dir}/kernel.XXXXXXXXX)
 
 		display_alert "Patching kernel..." "" "info"
 
-		mkdir -p ${patch_tmp_dir}
+		mkdir -p $patch_tmp_dir
 
                 echo "Copy Kernel base patches"
 
 		# Copy normal-priority patches
-                copy_patches ${patch_base_dir} ${patch_tmp_dir}
+                copy_patches  $patch_base_dir  $patch_tmp_dir
 
 		# Check if high-priority patches are available and, if yes, copy too
 		local dir_name="${KERNEL_PATCH_HIGH_PRIORITY_DIR}"
