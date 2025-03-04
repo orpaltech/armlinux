@@ -178,6 +178,9 @@ CHROOT_SCRIPTS=${CHROOT_SCRIPTS:=""}
 
 set +x
 
+# configs are stored in ${CONFIGDIR}/busybox/${CONFIG}/${BUSYBOX_VERSION}/ directiory
+BB_BUILD_CONFIG=${BB_BUILD_CONFIG:="busybox.config"}
+
 BB_LIBC=${BB_LIBC:="gnu"}
 
 if [ $BB_LIBC = gnu ] ; then

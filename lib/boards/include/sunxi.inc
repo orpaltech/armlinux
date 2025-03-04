@@ -29,6 +29,3 @@ KERNEL_BUILD_FAMILY_CONFIG="linux-sunxi.config"
 
 # must be yes for arm 32bit
 KERNEL_IMAGE_COMPRESSED=yes
-
-# busybox configs are stored in ${CONFIGDIR}/busybox/${CONFIG}/${BUSYBOX_VERSION}/ directiory
-BUSYBOX_BUILD_CONFIG="busybox-${LINUX_PLATFORM}.config"

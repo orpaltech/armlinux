@@ -43,6 +43,3 @@ KERNEL_BUILD_FAMILY_CONFIG="linux-sunxi64.config"
 
 # yes" - compressed (Image.gz), or "no" - uncompressed (Image)
 KERNEL_IMAGE_COMPRESSED=no
-
-# busybox configs are stored in ${CONFIGDIR}/busybox/${CONFIG}/${BUSYBOX_VERSION}/ directiory
-BUSYBOX_BUILD_CONFIG="busybox-${LINUX_PLATFORM}.config"

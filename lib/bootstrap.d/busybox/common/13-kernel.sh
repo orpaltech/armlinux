@@ -75,6 +75,9 @@ if [ "${BOOTLOADER}" = uboot ] && [ "${KERNEL_MKIMAGE_WRAP}" = yes ] ; then
         -A ${KERNEL_ARCH} -O linux -T kernel -C ${KERNEL_MKIMAGE_COMPRESS} -a ${KERNEL_MKIMAGE_LOADADDR} -e ${KERNEL_MKIMAGE_LOADADDR} \
         -d ${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_FILE}  ${BOOT_DIR}/${KERNEL_IMAGE_TARGET}
   else
+    #
+    # TODO: this needs to be investigated 
+    #
     ${UBOOT_SOURCE_DIR}/tools/mkimage -f auto -b ${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/dts/${DTB_FILE} \
         -A ${KERNEL_ARCH} -O linux -T kernel -C ${KERNEL_MKIMAGE_COMPRESS} -a ${KERNEL_MKIMAGE_LOADADDR} -e ${KERNEL_MKIMAGE_LOADADDR} \
         -d ${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_FILE}  ${BOOT_DIR}/${KERNEL_IMAGE_TARGET}

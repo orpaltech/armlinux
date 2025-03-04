@@ -66,9 +66,9 @@ busybox_install()
 
 
     # check user config
-    local user_config=${CONFIGDIR}/busybox/${CONFIG}/${BUSYBOX_VERSION}/${BUSYBOX_BUILD_CONFIG}
+    local user_config=${CONFIGDIR}/busybox/${CONFIG}/${BUSYBOX_VERSION}/${BB_BUILD_CONFIG}
 
-    if [ -n "${BUSYBOX_BUILD_CONFIG}" ] && [ -f ${user_config} ] ; then
+    if [ -n "${BB_BUILD_CONFIG}" ] && [ -f ${user_config} ] ; then
 	echo "Select user-provided config file: ${user_config}"
 	cp ${user_config}  ${BUSYBOX_BUILD_DIR}/.config
 	make  oldconfig

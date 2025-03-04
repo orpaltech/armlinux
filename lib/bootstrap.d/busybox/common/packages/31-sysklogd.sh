@@ -12,9 +12,8 @@ sysklogd_install()
     local PKG_NAME=${1:-"sysklogd"}
 
     # build sysklogd
-    local PKG_FORCE_CLEAN="${SYSKLOGD_REBUILD}"
-
-    update_src_pkg "${PKG_NAME}" \
+    PKG_FORCE_CLEAN="${SYSKLOGD_REBUILD}" \
+	update_src_pkg "${PKG_NAME}" \
                     $SYSKLOGD_VERSION \
                     $SYSKLOGD_SRC_DIR \
                     $SYSKLOGD_REPO_URL \

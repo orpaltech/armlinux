@@ -12,9 +12,8 @@ readline_install()
     local PKG_NAME=${1:-"readline"}
 
     # build readline
-    local PKG_FORCE_CLEAN="${READLINE_REBUILD}"
-
-    update_src_pkg "${PKG_NAME}" \
+    PKG_FORCE_CLEAN="${READLINE_REBUILD}" \
+	update_src_pkg "${PKG_NAME}" \
                     $READLINE_VERSION \
                     $READLINE_SRC_DIR \
                     $READLINE_REPO_URL \

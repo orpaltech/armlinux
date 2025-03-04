@@ -1,6 +1,6 @@
-From f1276372aabae2068a6118ca80e2c67adb5b71c5 Mon Sep 17 00:00:00 2001
+From 4923c99df1284667659c5fae710db7befb7682da Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Sun, 22 Dec 2024 18:46:11 +0300
+Date: Tue, 4 Mar 2025 00:14:50 +0300
 Subject: [PATCH] sun6i-a31s: Add DT-overlays for A31-based boards
 
 ---
@@ -12,7 +12,7 @@ Subject: [PATCH] sun6i-a31s: Add DT-overlays for A31-based boards
  .../overlays/sun6i-a31s-disable-wlan.dtso     |  14 ++
  .../overlays/sun6i-a31s-ertft0356-drm.dtso    |  63 +++++++++
  .../overlays/sun6i-a31s-esp32-spi.dtso        |  25 ++++
- .../overlays/sun6i-a31s-fixup.scr-cmd         | 126 ++++++++++++++++++
+ .../overlays/sun6i-a31s-fixup.scr-cmd         | 132 ++++++++++++++++++
  .../overlays/sun6i-a31s-gy-pcm5102-sound.dtso |  33 +++++
  .../overlays/sun6i-a31s-nrf24-spi.dtso        |  24 ++++
  .../overlays/sun6i-a31s-nrf24-spi_gpio2.dtso  |  48 +++++++
@@ -20,10 +20,10 @@ Subject: [PATCH] sun6i-a31s: Add DT-overlays for A31-based boards
  .../allwinner/overlays/sun6i-a31s-pwm1.dtso   |  12 ++
  .../allwinner/overlays/sun6i-a31s-pwm2.dtso   |  12 ++
  .../allwinner/overlays/sun6i-a31s-pwm3.dtso   |  12 ++
- .../overlays/sun6i-a31s-spi_gpio2.dtso        |  52 ++++++++
+ .../overlays/sun6i-a31s-spi_gpio2.dtso        |  52 +++++++
  .../allwinner/overlays/sun6i-a31s-spidev.dtso |  32 +++++
- .../overlays/sun6i-a31s-waveshare35-drm.dtso  |  46 +++++++
- 19 files changed, 653 insertions(+)
+ .../overlays/sun6i-a31s-waveshare35-drm.dtso  |  46 ++++++
+ 19 files changed, 659 insertions(+)
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/README.sun6i-a31s-overlays
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-audioinjector-pi.dtso
@@ -134,30 +134,24 @@ index 0000000..be44892
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-bananapi-lcd.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-bananapi-lcd.dtso
 new file mode 100644
-index 0000000..af72a25
+index 0000000..da43ada
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-bananapi-lcd.dtso
 @@ -0,0 +1,79 @@
-+#include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/pwm/pwm.h>
++/* Device-tree overlay for BananaPi 7inch display */
 +
 +/dts-v1/;
 +/plugin/;
++
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
 +
 +/ {
 +	compatible = "allwinner,sun6i-a31s";
 +};
 +
 +&{/soc} {
-+	panel_bl: backlight {
-+		compatible = "pwm-backlight";
-+		pwms = <&pwm0 0 50000 PWM_POLARITY_INVERTED>;
-+		brightness-levels = <1 2 4 8 16 32 64 128 255>;
-+		default-brightness-level = <8>;
-+		enable-gpios = <&pio 6 3 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PG3 */
-+	};
-+
 +	panel {
 +		compatible = "bananapi,s070wv20-ct16";
 +		enable-gpios = <&pio 6 4 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PG4 */
@@ -172,9 +166,19 @@ index 0000000..af72a25
 +			};
 +		};
 +	};
++
++	panel_bl: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
++		brightness-levels = <0 16 32 64 96 128 160 192 255>;
++		default-brightness-level = <5>;
++		enable-gpios = <&pio 6 3 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PG3 */
++		post-pwm-on-delay-ms = <10>;
++		pwm-off-delay-ms = <10>;
++	};
 +};
 +
-+&pwm0 {
++&pwm {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&pwm0_pin>;
 +	status = "okay";
@@ -200,16 +204,12 @@ index 0000000..af72a25
 +	status = "okay";
 +};
 +
-+&hdmi {
-+	status = "disabled";
-+};
-+
 +&i2c1 {
 +	#address-cells = <1>;
 +        #size-cells = <0>;
 +	status = "okay";
 +
-+	panel-ts@5d {
++	panel_ts: panel-ts@5d {
 +		compatible = "goodix,gt928";
 +		reg = <0x5d>;
 +		interrupt-parent = <&pio>;
@@ -339,13 +339,19 @@ index 0000000..31d3346
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-fixup.scr-cmd b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-fixup.scr-cmd
 new file mode 100644
-index 0000000..7b8b6b5
+index 0000000..faa877f
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-fixup.scr-cmd
-@@ -0,0 +1,126 @@
+@@ -0,0 +1,132 @@
 +# overlays fixup script
 +# implements (or rather substitutes) overlay arguments functionality
 +# using u-boot scripting, environment variables and "fdt" command
++
++if test "${param_codec_enabled}" = "yes"; then
++	fdt set /soc/codec@1c22c00 status "okay"
++else
++	fdt set /soc/codec@1c22c00 status "disabled"
++fi
 +
 +if test -n "${param_i2s0_slot_width}"; then
 +	fdt set /soc/i2s@1c22000 allwinner,slot-width-override "<${param_i2s0_slot_width}>";
@@ -510,7 +516,7 @@ index 0000000..4db7cdb
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-nrf24-spi.dtso b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-nrf24-spi.dtso
 new file mode 100644
-index 0000000..fd69ea4
+index 0000000..16b2ac3
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/sun6i-a31s-nrf24-spi.dtso
 @@ -0,0 +1,24 @@
@@ -518,7 +524,7 @@ index 0000000..fd69ea4
 +/plugin/;
 +
 +/ {
-+        compatible = "allwinner,sun6i-a31s";
++	compatible = "allwinner,sun6i-a31s";
 +};
 +
 +&spi1 {
@@ -813,5 +819,5 @@ index 0000000..b032ffd
 +	};
 +};
 -- 
-2.34.1
+2.43.0
 

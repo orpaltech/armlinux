@@ -6,11 +6,11 @@
 setenv overlay_error false
 setenv kernel_file "linux_image_file"
 # IMPORTANT: if "dtb_file" is set to a value other than "none"
-# then "dtb_addr" must have a valid RAM address
+# then "fdt_addr_r" must be set to a valid RAM address
 setenv dtb_file "none"
 setenv ramdisk_file "none"
 setenv load_addr 0x00000000
-setenv dtb_addr ${fdt_addr_r}
+setenv fdt_addr_r ${fdt_addr_r}
 
 setenv devtype mmc
 #setenv devnum 0
@@ -37,9 +37,9 @@ fatload ${devtype} ${devnum}:${partition} ${kernel_addr_r} ${prefix}${kernel_fil
 # If "dtb_file" isn't specified then the system will use device tree prepared by 1st stage bootloader
 # IMPORTANT: We DO NOT touch this device tree anymore
 if test "${dtb_file}" != "none"; then
-    fatload ${devtype} ${devnum}:${partition} ${dtb_addr} ${prefix}${dtb_file}
+    fatload ${devtype} ${devnum}:${partition} ${fdt_addr_r} ${prefix}${dtb_file}
 
-    fdt addr ${dtb_addr}
+    fdt addr ${fdt_addr_r}
     fdt resize 65536
 
     for overlay_file in ${overlays}; do

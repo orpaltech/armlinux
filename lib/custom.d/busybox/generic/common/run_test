@@ -21,7 +21,7 @@ if [ "${SOC_ARCH}" = arm ]; then
 
 	LINUX_PLATFORM=arm-linux-gnueabihf
 
-	BOARD=bananapi-m2m
+	BOARD=bananapi-m2
 
 elif [ "${SOC_ARCH}" = arm64 ]; then
 
@@ -78,8 +78,6 @@ ENABLE_BTH=yes
 ENABLE_SDR=yes
 ENABLE_SOUND=yes
 ENABLE_MESA=yes
-SOUND_FORCE_REBUILD=yes
-BTH_FORCE_REBUILD=yes
 
 #----------------------
 
@@ -143,11 +141,13 @@ EOF
 #SND_FORCE_REBUILD=yes
 #. ./65-sound.sh
 
+. ./66-ffmpeg.sh
+
 #BTH_FORCE_REBUILD=yes
 #. ./67-bluetooh.sh
 
 #SDR_FORCE_REBUILD=yes
 #. ./71-sdr.sh
 
-. ./44-libdrm.sh
+#. ./44-libdrm.sh
 #. ../sunxi/45-mesa-lima.sh

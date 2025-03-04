@@ -14,7 +14,7 @@ iw_install()
 
     # build iw
     PKG_FORCE_CLEAN="${IW_REBUILD}" \
-	update_src_pkg "jberg_iw" \
+	update_src_pkg "jberg-iw" \
                     $IW_VERSION \
                     $IW_SRC_DIR \
                     $IW_REPO_URL \

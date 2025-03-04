@@ -1,13 +1,13 @@
-From 7f4d1bdba7888b050e58bb076b2315109ac3a00a Mon Sep 17 00:00:00 2001
+From 61efd5ee54819d70931439c80733269c3fc5c3e0 Mon Sep 17 00:00:00 2001
 From: ssuloev <ssuloev@orpaltech.com>
-Date: Fri, 21 Feb 2025 15:42:14 +0300
+Date: Sun, 2 Mar 2025 20:46:15 +0300
 Subject: [PATCH] scripts: Add DT-overlay compilation support
 
 ---
  .gitignore               |  1 +
  scripts/Makefile.dtbinst | 11 ++++++++++-
- scripts/Makefile.dtbs    | 15 ++++++++++++++-
- 3 files changed, 25 insertions(+), 2 deletions(-)
+ scripts/Makefile.dtbs    | 14 ++++++++++++++
+ 3 files changed, 25 insertions(+), 1 deletion(-)
 
 diff --git a/.gitignore b/.gitignore
 index 5937c74..3a2bea9 100644
@@ -53,7 +53,7 @@ index 9d92041..5119b7c 100644
  
  .PHONY: $(PHONY)
 diff --git a/scripts/Makefile.dtbs b/scripts/Makefile.dtbs
-index 8d56c08..efad4f9 100644
+index 8d56c08..4c993b3 100644
 --- a/scripts/Makefile.dtbs
 +++ b/scripts/Makefile.dtbs
 @@ -17,6 +17,12 @@ real-dtb-y      := $(addprefix $(obj)/, $(real-dtb-y))
@@ -69,17 +69,16 @@ index 8d56c08..efad4f9 100644
  # dtbs-list
  # ---------------------------------------------------------------------------
  
-@@ -108,7 +114,8 @@ DTC_FLAGS += -Wnode_name_chars_strict \
-              -Wunique_unit_address
+@@ -109,6 +115,8 @@ DTC_FLAGS += -Wnode_name_chars_strict \
  endif
  
--DTC_FLAGS += $(DTC_FLAGS_$(target-stem))
+ DTC_FLAGS += $(DTC_FLAGS_$(target-stem))
 +DTC_FLAGS += $(DTC_FLAGS_$(target-stem)) \
 +	-@
  
  # Set -@ if the target is a base DTB that overlay is applied onto
  DTC_FLAGS += $(if $(filter $(patsubst $(obj)/%,%,$@), $(base-dtb-y)), -@)
-@@ -133,6 +140,12 @@ $(obj)/%.dtb: $(obj)/%.dts $(DTC) $(DT_TMP_SCHEMA) FORCE
+@@ -133,6 +141,12 @@ $(obj)/%.dtb: $(obj)/%.dts $(DTC) $(DT_TMP_SCHEMA) FORCE
  $(obj)/%.dtbo: $(src)/%.dtso $(DTC) FORCE
  	$(call if_changed_dep,dtc)
  

@@ -33,4 +33,4 @@ fi
 echo "${CMDLINE}" > ${BOOT_DIR}/cmdline.txt
 
 # Install firmware config file
-install_readonly "${FILES_DIR}/boot/config.txt"	${BOOT_DIR}/
+install_readonly "${CONFIGDIR}/boot/rpi/config.txt"	${BOOT_DIR}/
