@@ -21,22 +21,22 @@ GCC_VERSION=13
 
 REQUIRED_PACKAGES="autoconf autogen automake "\
 "build-essential bc binfmt-support bison bmap-tools "\
-"ccache cmake cpio "\
+"ccache cmake cpio crossbuild-essential-armhf crossbuild-essential-arm64 "\
 "debootstrap debian-archive-keyring device-tree-compiler dialog dosfstools dropbear "\
 "debhelper "\
 "fakeroot flex "\
-"git gpg gpgv "\
+"gawk git gpg gpgv "\
 "kmod "\
-"libmpc-dev libelf-dev libssl-dev libncurses-dev libtool lynx "\
+"libmpc-dev libelf-dev libglib2.0-dev libgnutls28-dev libssl-dev libncurses-dev libtool lynx "\
 "ninja-build "\
-"qemu-system-arm qemu-efi qemu-user-static quilt "\
-"patch python2.7 python3 python3-pip python3-mako "\
+"qemu-system-arm qemu-user-static quilt "\
+"patch python3 python3-pip python3-mako "\
 "rsync "\
 "sunxi-tools swig "\
 "texi2html texinfo "\
 "u-boot-tools "\
 "whois "\
-"xz-utils "\
+"xdotool xz-utils "\
 "zstd "\
 "gcc-${GCC_VERSION} g++-${GCC_VERSION}"
 

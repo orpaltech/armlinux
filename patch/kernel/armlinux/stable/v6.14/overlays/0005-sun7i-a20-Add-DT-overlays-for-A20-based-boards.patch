@@ -1,28 +1,34 @@
-From 1df64693d78a9f79e568f5d9213a951d8d59b63e Mon Sep 17 00:00:00 2001
-From: ssuloev <ssuloev@orpaltech.com>
-Date: Wed, 5 Mar 2025 02:36:57 +0300
+From 3a5dbde97f3ded1b5f13a703f96df11f2cba8e9f Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Sun, 9 Mar 2025 00:10:59 +0300
 Subject: [PATCH] sun7i-a20: Add DT-overlays for A20-based boards
 
 ---
  arch/arm/boot/dts/allwinner/Makefile          |   2 +
- arch/arm/boot/dts/allwinner/overlays/Makefile |  22 +++
+ arch/arm/boot/dts/allwinner/overlays/Makefile |  21 +++
  .../overlays/README.sun7i-a20-overlays        |  15 ++
  .../overlays/sun7i-a20-bananapi-lcd.dtso      |  79 ++++++++++
+ .../overlays/sun7i-a20-bpi-lcd-tcon1.dtso     |  79 ++++++++++
+ .../allwinner/overlays/sun7i-a20-bpi-lcd.dtso |  79 ++++++++++
  .../overlays/sun7i-a20-ertft0356-drm.dtso     | 130 +++++++++++++++++
- .../overlays/sun7i-a20-esp32-spi.dtso         |  25 ++++
+ .../overlays/sun7i-a20-esp32-spi.dtso         |  27 ++++
  .../overlays/sun7i-a20-fixup.scr-cmd          | 135 ++++++++++++++++++
  .../overlays/sun7i-a20-gy-pcm5102-sound.dtso  |  33 +++++
  .../allwinner/overlays/sun7i-a20-nand.dtso    | 103 +++++++++++++
  .../overlays/sun7i-a20-nrf24-spi.dtso         |  67 +++++++++
- .../allwinner/overlays/sun7i-a20-pwm0.dtso    |  15 ++
- .../allwinner/overlays/sun7i-a20-pwm1.dtso    |  15 ++
+ .../allwinner/overlays/sun7i-a20-pwm0.dtso    |  12 ++
+ .../allwinner/overlays/sun7i-a20-pwm1.dtso    |  12 ++
  .../overlays/sun7i-a20-spi0-cs1.dtso          |  14 ++
  .../allwinner/overlays/sun7i-a20-spidev.dtso  |  56 ++++++++
  .../overlays/sun7i-a20-waveshare35-drm.dtso   |  71 +++++++++
- 15 files changed, 782 insertions(+)
+ .../allwinner/overlays/sun7i-a20-wlan.dtso    |  26 ++++
+ .../allwinner/overlays/sun7i-a20-wlan0.dtso   |  21 +++
+ 19 files changed, 982 insertions(+)
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/README.sun7i-a20-overlays
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bananapi-lcd.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd-tcon1.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd.dtso
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-ertft0356-drm.dtso
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-esp32-spi.dtso
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-fixup.scr-cmd
@@ -34,6 +40,8 @@ Subject: [PATCH] sun7i-a20: Add DT-overlays for A20-based boards
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spi0-cs1.dtso
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spidev.dtso
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-waveshare35-drm.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan0.dtso
 
 diff --git a/arch/arm/boot/dts/allwinner/Makefile b/arch/arm/boot/dts/allwinner/Makefile
 index 48666f7..f816caf 100644
@@ -47,18 +55,17 @@ index 48666f7..f816caf 100644
 +subdir-y := overlays
 diff --git a/arch/arm/boot/dts/allwinner/overlays/Makefile b/arch/arm/boot/dts/allwinner/overlays/Makefile
 new file mode 100644
-index 0000000..fa846b7
+index 0000000..dd78958
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/Makefile
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,21 @@
 +# SPDX-License-Identifier: GPL-2.0
 +ifeq ($(CONFIG_OF_OVERLAY),y)
 +
 +dtb-$(CONFIG_MACH_SUN7I) += \
-+	sun7i-a20-bananapi-lcd.dtbo \
-+	sun7i-a20-esp32-spi.dtbo \
++	sun7i-a20-bpi-lcd.dtbo \
 +	sun7i-a20-gy-pcm5102-sound.dtbo \
-+	sun7i-a20-nand.dtbo \
++	sun7i-a20-wlan.dtbo \
 +	sun7i-a20-nrf24-spi.dtbo \
 +	sun7i-a20-pwm0.dtbo \
 +	sun7i-a20-pwm1.dtbo \
@@ -137,6 +144,176 @@ index 0000000..09e4697
 +		enable-gpios = <&pio 7 9 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PH9 */
 +		post-pwm-on-delay-ms = <10>;
 +		pwm-off-delay-ms = <10>;
++	};
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm0_pin>;
++	status = "okay";
++};
++
++&tcon0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&lcd0_rgb888_pins>;
++};
++
++&tcon0_out {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	tcon0_out_lcd: endpoint@0 {
++		reg = <0>;
++		remote-endpoint = <&panel_dpi_in>;
++		allwinner,tcon-channel = <0>;
++	};
++};
++
++&de {
++	status = "okay";
++};
++
++&i2c3 {
++	#address-cells = <1>;
++        #size-cells = <0>;
++	status = "okay";
++
++	panel_ts: panel-ts@5d {
++		compatible = "goodix,gt928";
++		reg = <0x5d>;
++		interrupt-parent = <&pio>;
++		interrupts = <7 7 IRQ_TYPE_EDGE_FALLING>; /* PH7 */
++		reset-gpios = <&pio 7 8 GPIO_ACTIVE_LOW>; /* PH8 */
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd-tcon1.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd-tcon1.dtso
+new file mode 100644
+index 0000000..070a73f
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd-tcon1.dtso
+@@ -0,0 +1,79 @@
++/* Device-tree overlay for BananaPi 7inch display */
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
++
++/ {
++	compatible = "allwinner,sun7i-a20";
++};
++
++&{/soc} {
++	panel {
++		compatible = "bananapi,s070wv20-ct16";
++		enable-gpios = <&pio 7 12 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH12 */
++		backlight = <&panel_bl>;
++
++		port {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			panel_dpi_in: endpoint {
++				remote-endpoint = <&tcon1_out_lcd>;
++			};
++		};
++	};
++
++	panel_bl: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
++		brightness-levels = <0 16 32 64 96 128 160 192 255>;
++		default-brightness-level = <6>;
++		enable-gpios = <&pio 7 9 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PH9 */
++		post-pwm-on-delay-ms = <10>;
++		pwm-off-delay-ms = <10>;
++	};
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm0_pin>;
++	status = "okay";
++};
++
++&tcon1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&lcd0_rgb888_pins>;
++};
++
++&tcon1_out {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	tcon1_out_lcd: endpoint@0 {
++		reg = <0>;
++		remote-endpoint = <&panel_dpi_in>;
++		allwinner,tcon-channel = <0>;
++	};
++};
++
++&de {
++	status = "okay";
++};
++
++&i2c3 {
++	#address-cells = <1>;
++        #size-cells = <0>;
++	status = "okay";
++
++	panel_ts: panel-ts@5d {
++		compatible = "goodix,gt928";
++		reg = <0x5d>;
++		interrupt-parent = <&pio>;
++		interrupts = <7 7 IRQ_TYPE_EDGE_FALLING>; /* PH7 */
++		reset-gpios = <&pio 7 8 GPIO_ACTIVE_LOW>; /* PH8 */
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd.dtso
+new file mode 100644
+index 0000000..a49231a
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd.dtso
+@@ -0,0 +1,79 @@
++/* Device-tree overlay for BananaPi 7inch display */
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
++
++/ {
++	compatible = "allwinner,sun7i-a20";
++};
++
++&{/soc} {
++	panel {
++		compatible = "bananapi,s070wv20-ct16";
++		enable-gpios = <&pio 7 12 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH12 */
++		backlight = <&panel_bl>;
++
++		port {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			panel_dpi_in: endpoint {
++				remote-endpoint = <&tcon0_out_lcd>;
++			};
++		};
++	};
++
++	panel_bl: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
++		brightness-levels = <0 16 32 64 96 128 160 192 255>;
++		default-brightness-level = <6>;
++		enable-gpios = <&pio 7 9 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PH9 */
++		/*post-pwm-on-delay-ms = <10>;
++		pwm-off-delay-ms = <10>;*/
 +	};
 +};
 +
@@ -317,10 +494,10 @@ index 0000000..0d3a089
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-esp32-spi.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-esp32-spi.dtso
 new file mode 100644
-index 0000000..084bbd1
+index 0000000..409a09e
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-esp32-spi.dtso
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,27 @@
 +// Overlay for ESP32 SPI shield
 +
 +/dts-v1/;
@@ -333,6 +510,8 @@ index 0000000..084bbd1
 +&spi0 {
 +	#address-cells = <1>;
 +	#size-cells = <0>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi0_pi_pins &spi0_cs0_pi_pin>;
 +
 +	esp32_spi: esp32-spi@0 {
 +		compatible = "espressif,esp32-spi";
@@ -710,45 +889,39 @@ index 0000000..df99236
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm0.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm0.dtso
 new file mode 100644
-index 0000000..77dd141
+index 0000000..9cd78cb
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm0.dtso
-@@ -0,0 +1,15 @@
+@@ -0,0 +1,12 @@
 +/dts-v1/;
 +/plugin/;
 +
 +/ {
 +       compatible = "allwinner,sun7i-a20";
++};
 +
-+       fragment@0 {
-+               target = <&pwm>;
-+               __overlay__ {
-+                       pinctrl-names = "default";
-+                       pinctrl-0 = <&pwm0_pin>;
-+                       status = "okay";
-+               };
-+       };
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm0_pin>;
++	status = "okay";
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm1.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm1.dtso
 new file mode 100644
-index 0000000..931b4b7
+index 0000000..adf7c8a
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm1.dtso
-@@ -0,0 +1,15 @@
+@@ -0,0 +1,12 @@
 +/dts-v1/;
 +/plugin/;
 +
 +/ {
 +       compatible = "allwinner,sun7i-a20";
++};
 +
-+       fragment@0 {
-+               target = <&pwm>;
-+               __overlay__ {
-+                       pinctrl-names = "default";
-+                       pinctrl-0 = <&pwm1_pin>;
-+                       status = "okay";
-+               };
-+       };
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm1_pin>;
++	status = "okay";
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spi0-cs1.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spi0-cs1.dtso
 new file mode 100644
@@ -908,6 +1081,65 @@ index 0000000..cc11c6f
 +                       };
 +               };
 +       };
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan.dtso
+new file mode 100644
+index 0000000..fa9cf0c
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan.dtso
+@@ -0,0 +1,26 @@
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/ {
++       compatible = "allwinner,sun7i-a20";
++};
++
++&mmc3 {
++	status = "okay";
++
++	brcmf0: wifi@0 {
++		reg = <0>;
++		compatible = "brcm,bcm4329-fmac";
++		interrupt-parent = <&pio>;
++		interrupts = <7 15 IRQ_TYPE_LEVEL_LOW>;
++		interrupt-names = "host-wake";
++		status = "disabled";
++	};
++};
++
++&brcmf {
++	status = "okay";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan0.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan0.dtso
+new file mode 100644
+index 0000000..a58ccac
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan0.dtso
+@@ -0,0 +1,21 @@
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/ {
++       compatible = "allwinner,sun7i-a20";
++};
++
++&mmc3 {
++	status = "okay";
++
++	brcmf0: wifi@0 {
++		reg = <0>;
++		compatible = "brcm,bcm4329-fmac";
++		interrupt-parent = <&pio>;
++		interrupts = <7 15 IRQ_TYPE_LEVEL_LOW>;
++		interrupt-names = "host-wake";
++	};
 +};
 -- 
 2.43.0

@@ -5,7 +5,7 @@ source "${BASH_SOURCE%/*}/rpi-common.inc"
 #
 SOC_ARCH=arm64
 
-DEBIAN_RELEASE_ARCH=arm64
+DPKG_ARCH=arm64
 KERNEL_ARCH="${SOC_ARCH}"
 UBOOT_ARCH="${SOC_ARCH}"
 LINUX_PLATFORM="aarch64-linux-gnu"

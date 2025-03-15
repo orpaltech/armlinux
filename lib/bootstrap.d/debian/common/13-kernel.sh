@@ -18,7 +18,7 @@ fi
 # make -C "${KERNEL_DIR}" INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH="${R}" modules_install
 
 # Install kernel image DEB-package
-KERNEL_IMAGE_DEB_PKG="linux-image-${KERNEL_VERSION}_${KERNEL_DEB_PKG_VER}_${DEBIAN_RELEASE_ARCH}"
+KERNEL_IMAGE_DEB_PKG="linux-image-${KERNEL_VERSION}_${KERNEL_DEB_PKG_VER}_${DPKG_ARCH}"
 cp ${BASEDIR}/debs/${KERNEL_IMAGE_DEB_PKG}.deb	${R}/tmp/
 chroot_exec dpkg -i  /tmp/${KERNEL_IMAGE_DEB_PKG}.deb
 rm -f ${R}/tmp/${KERNEL_IMAGE_DEB_PKG}.deb
@@ -31,7 +31,7 @@ rm -f ${R}/tmp/${KERNEL_IMAGE_DEB_PKG}.deb
 
 # Install kernel headers
 if [ "${KERNEL_INSTALL_HEADERS}" = yes ] ; then
-  KERNEL_HEADERS_DEB_PKG="linux-headers-${KERNEL_VERSION}_${KERNEL_DEB_PKG_VER}_${DEBIAN_RELEASE_ARCH}"
+  KERNEL_HEADERS_DEB_PKG="linux-headers-${KERNEL_VERSION}_${KERNEL_DEB_PKG_VER}_${DPKG_ARCH}"
   cp ${BASEDIR}/debs/${KERNEL_HEADERS_DEB_PKG}.deb	${R}/tmp/
   chroot_exec dpkg -i  /tmp/${KERNEL_HEADERS_DEB_PKG}.deb
   rm -f ${R}/tmp/${KERNEL_HEADERS_DEB_PKG}.deb

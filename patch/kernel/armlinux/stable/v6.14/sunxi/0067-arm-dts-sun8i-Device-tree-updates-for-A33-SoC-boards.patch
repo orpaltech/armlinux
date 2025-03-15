@@ -1,16 +1,16 @@
-From 587887877aaa16e77cbeb8bd2e162c100f03b032 Mon Sep 17 00:00:00 2001
-From: ssuloev <ssuloev@orpaltech.com>
-Date: Wed, 5 Feb 2025 23:01:54 +0300
+From 2807aa374c4c4aa6d398c1385a71bfe6ef6da897 Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Tue, 11 Mar 2025 02:37:52 +0300
 Subject: [PATCH] arm/dts/sun8i: Device tree updates for A33 SoC boards
 
 ---
  .../arm/boot/dts/allwinner/sun8i-a23-a33.dtsi | 19 ++++++
- arch/arm/boot/dts/allwinner/sun8i-a33.dtsi    | 62 ++++++++++++++++++-
- .../dts/allwinner/sun8i-r16-bananapi-m2m.dts  | 27 ++++++--
- 3 files changed, 100 insertions(+), 8 deletions(-)
+ arch/arm/boot/dts/allwinner/sun8i-a33.dtsi    | 61 ++++++++++++++++++-
+ .../dts/allwinner/sun8i-r16-bananapi-m2m.dts  | 28 +++++++--
+ 3 files changed, 101 insertions(+), 7 deletions(-)
 
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi b/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi
-index 2af8382..85fdf9f 100644
+index 2af8382..6693355 100644
 --- a/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi
 +++ b/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi
 @@ -275,6 +275,20 @@
@@ -38,7 +38,7 @@ index 2af8382..85fdf9f 100644
  				function = "pwm0";
  			};
  
-+			spi0_pins_a: spi0-pins-a {
++			spi0_pins: spi0-pins {
 +				pins = "PC3", "PC0", "PC1", "PC2";
 +				function = "spi0";
 +			};
@@ -47,7 +47,7 @@ index 2af8382..85fdf9f 100644
  				pins = "PF2", "PF4";
  				function = "uart0";
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi b/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
-index 36b2d78..74453f4 100644
+index 36b2d78..36692a3 100644
 --- a/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
 +++ b/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
 @@ -125,6 +125,9 @@
@@ -70,7 +70,7 @@ index 36b2d78..74453f4 100644
  			clocks = <&ccu CLK_CPUX>;
  			clock-names = "cpu";
  			operating-points-v2 = <&cpu0_opp_table>;
-@@ -268,9 +274,20 @@
+@@ -268,9 +274,19 @@
  			#address-cells = <1>;
  			#size-cells = <0>;
  
@@ -83,7 +83,6 @@ index 36b2d78..74453f4 100644
 +
 +				dsi_in: port@0 {
 +					reg = <0>;
-+
 +					dsi_in_tcon0: endpoint {
 +						remote-endpoint = <&tcon0_out_dsi>;
 +					};
@@ -94,7 +93,7 @@ index 36b2d78..74453f4 100644
  				};
  			};
  		};
-@@ -286,6 +303,32 @@
+@@ -286,6 +302,32 @@
  			status = "disabled";
  			#phy-cells = <0>;
  		};
@@ -127,12 +126,12 @@ index 36b2d78..74453f4 100644
  	};
  
  	thermal-zones {
-@@ -400,6 +443,19 @@
+@@ -400,6 +442,19 @@
  	interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>,
  		     <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
  
 +	i2s1_pins: i2s1-pins {
-+		pins = "PG10", "PG11";	/* LRCK, BCLK*/
++		pins = "PG10", "PG11";  /* LRCK, BCLK*/
 +		function = "i2s1";
 +	};
 +	i2s1_do0_pin: i2s1-do0-pin {
@@ -148,7 +147,7 @@ index 36b2d78..74453f4 100644
  		pins = "PB0", "PB1";
  		function = "uart0";
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts b/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
-index f4bf46b..84e525c 100644
+index f4bf46b..8a45576 100644
 --- a/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
 @@ -67,11 +67,13 @@
@@ -174,7 +173,7 @@ index f4bf46b..84e525c 100644
  };
  
  &cpu0 {
-@@ -119,7 +121,7 @@
+@@ -119,13 +121,17 @@
  };
  
  &dai {
@@ -183,7 +182,17 @@ index f4bf46b..84e525c 100644
  };
  
  &ehci0 {
-@@ -141,6 +143,14 @@
+ 	status = "okay";
+ };
+ 
++&i2c1 {
++	status = "okay";
++};
++
+ &mmc0 {
+ 	vmmc-supply = <&reg_dcdc1>;
+ 	bus-width = <4>;
+@@ -141,6 +147,14 @@
  	bus-width = <4>;
  	non-removable;
  	status = "okay";
@@ -198,20 +207,20 @@ index f4bf46b..84e525c 100644
  };
  
  &mmc2 {
-@@ -170,6 +180,12 @@
+@@ -170,6 +184,12 @@
  	};
  };
  
 +&spi0 {
 +	compatible = "allwinner,sun8i-h3-spi";
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&spi0_pins_a>;
++	pinctrl-0 = <&spi0_pins>;
 +};
 +
  #include "axp223.dtsi"
  
  &ac_power_supply {
-@@ -266,7 +282,7 @@
+@@ -266,7 +286,7 @@
  };
  
  &sound {
@@ -220,7 +229,7 @@ index f4bf46b..84e525c 100644
  };
  
  &uart0 {
-@@ -279,7 +295,7 @@
+@@ -279,7 +299,7 @@
  	pinctrl-names = "default";
  	pinctrl-0 = <&uart1_pg_pins>, <&uart1_cts_rts_pg_pins>;
  	uart-has-rtscts;
@@ -229,21 +238,6 @@ index f4bf46b..84e525c 100644
  
  	bluetooth {
  		compatible = "brcm,bcm43438-bt";
-@@ -290,12 +306,13 @@
- 		device-wakeup-gpios = <&r_pio 0 10 GPIO_ACTIVE_HIGH>; /* PL10 */
- 		host-wakeup-gpios = <&r_pio 0 9 GPIO_ACTIVE_HIGH>; /* PL9 */
- 		shutdown-gpios = <&r_pio 0 8 GPIO_ACTIVE_HIGH>; /* PL8 */
-+		status = "disabled";
- 	};
- };
- 
- &usb_otg {
- 	dr_mode = "otg";
--	status = "okay";
-+	status = "disabled";
- };
- 
- &usb_power_supply {
 -- 
 2.43.0
 

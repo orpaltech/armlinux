@@ -68,6 +68,7 @@ alsa_lib_install()
 		--host=${BB_PLATFORM} \
 		--srcdir=${ALSALIB_SRC_DIR} \
 		--prefix=/usr \
+		--enable-shared	--disable-static \
 		--with-plugindir="/usr/lib/alsa-lib"
 
     echo "${SOURCE_NAME}: Done."
@@ -100,7 +101,27 @@ alsa_utils_install()
     fi
 
     cd ${ALSA_UTILS_SRC_DIR}/
-    autoreconf --install --force
+
+    # see gitcompile source
+    if test -d ${ALSALIB_SRC_DIR}/utils && ! test -r `aclocal --print-ac-dir`/alsa.m4; then
+	ACLOCAL_FLAGS="$ACLOCAL_FLAGS -I ${ALSALIB_SRC_DIR}/utils"
+    fi
+    aclocal $ACLOCAL_FLAGS
+    # save original files to avoid stupid modifications by gettextize
+    cp Makefile.am Makefile.am.ok
+    cp configure.ac configure.ac.ok
+    setsid gettextize -c -f --no-changelog
+    echo "EXTRA_DIST = gettext.m4" > m4/Makefile.am
+    cp Makefile.am.ok Makefile.am
+    cp configure.ac.ok configure.ac
+    touch ltconfig
+    libtoolize --force --copy --automake
+    aclocal $ACLOCAL_FLAGS
+    autoheader
+    automake --foreign --copy --add-missing
+    touch depcomp		# for older automake
+    autoconf
+
 
     mkdir -p ${ALSA_UTILS_BUILD_DIR}
     cd ${ALSA_UTILS_BUILD_DIR}/
@@ -172,6 +193,7 @@ sndfile_install()
                 --host=${BB_PLATFORM} \
                 --srcdir=${SNDFILE_SRC_DIR} \
                 --prefix=/usr \
+		--enable-shared --disable-static \
 		--disable-full-suite  --enable-werror
 
     echo "${SOURCE_NAME}: Done."

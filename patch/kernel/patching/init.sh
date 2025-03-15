@@ -1,9 +1,9 @@
 #!/bin/bash
 
 DST_DIR=$(pwd)
-#$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-source $DST_DIR/../common.sh
-source $DST_DIR/patch.info
+SCRIPT_DIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
+. $SCRIPT_DIR/common.sh
+. $DST_DIR/patch.info
 
 git -C $SRC_DIR checkout -f tags/$TAG
 

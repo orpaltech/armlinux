@@ -330,7 +330,8 @@ mkdir ${CUSTOM_DIR}
 copy_custom_files "${FILES_D}" "${FILES_DIR}"
 
 # Prepare bootstrap scripts
-copy_custom_files "${BOOTSTRAP_D}" "${BOOTSTRAP_DIR}" ".sh"
+copy_custom_files "${BOOTSTRAP_D}/generic"  "${BOOTSTRAP_DIR}"  ".sh"
+copy_custom_files "${BOOTSTRAP_D}/${CONFIG}"  "${BOOTSTRAP_DIR}"  ".sh"
 
 
 # Execute bootstrapping scripts
@@ -350,8 +351,8 @@ mkdir -p "${R}/chroot_scripts"
 
 if [ -d "${CUSTOM_D}" ] ; then
   # Prepare custom scripts
-  copy_custom_files "${CUSTOM_D}/generic" "${CUSTOM_DIR}" ".sh"
-  copy_custom_files "${CUSTOM_D}/${CONFIG}" "${CUSTOM_DIR}" ".sh"
+  copy_custom_files "${CUSTOM_D}/generic"  "${CUSTOM_DIR}"  ".sh"
+  copy_custom_files "${CUSTOM_D}/${CONFIG}"  "${CUSTOM_DIR}"  ".sh"
 
   num_chroot_files=$(count_files "${CUSTOM_DIR}/chroot-*.sh")
   if [ ${num_chroot_files} -gt 0 ] ; then

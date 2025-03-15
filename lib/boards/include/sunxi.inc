@@ -5,7 +5,7 @@ source "${BASH_SOURCE%/*}/sunxi-common.inc"
 #
 SOC_ARCH=arm
 
-DEBIAN_RELEASE_ARCH=armhf
+DPKG_ARCH=armhf
 KERNEL_ARCH="${SOC_ARCH}"
 UBOOT_ARCH="${SOC_ARCH}"
 LINUX_PLATFORM="arm-linux-gnueabihf"

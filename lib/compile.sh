@@ -22,8 +22,13 @@
 NUM_CPU_CORES=$((CPUINFO_NUM_CORES / 2))
 
 [[ "${KERNEL_VERBOSE}" = yes ]] && KERNEL_V_OPTION="V=1"
-[[ -z "${KERNEL_MAKE_DEB_PKG}" ]] && KERNEL_MAKE_DEB_PKG="yes"
-[[ -z "${KERNEL_DEB_COMPRESS}" ]] && KERNEL_DEB_COMPRESS="none"
+
+if [ "${ROOTFS}" = debian ]; then
+  [[ -z "${KERNEL_MAKE_DEB_PKG}" ]] && KERNEL_MAKE_DEB_PKG=yes
+  [[ -z "${KERNEL_DEB_COMPRESS}" ]] && KERNEL_DEB_COMPRESS=none
+else
+  KERNEL_MAKE_DEB_PKG=no
+fi
 
 . ${LIBDIR}/sources-update.sh
 . ${LIBDIR}/sources-patch.sh
@@ -149,38 +154,14 @@ compile_kernel()
 	if [ "${KERNEL_MAKE_DEB_PKG}" = yes ] ; then
 		echo "Create Kernel DEB-packages..."
 
-		# TODO: cleanup here
-		#
-		# create directory structure for the .deb package
-	#	if [ -z "${KERNEL_REPO_TAG}" ] ; then
-	#		KERNEL_DEB_PKG_VER="${KERNEL_REPO_TAG}-${KERNEL_ARCH}"
-	#	else
-	#		KERNEL_DEB_PKG_VER="${KERNEL_RELEASE}-${KERNEL_BRANCH}-${KERNEL_ARCH}"
-	#	fi
-
-	#	KERNEL_NAME="${KERNEL_REPO_NAME}-${KERNEL_DEB_PKG_VER}-${VERSION}"
-	#	KERNEL_DEB_PKG="kernel-${KERNEL_NAME}"
-	#	KERNEL_DEB_DIR="${DEBS_DIR}/${KERNEL_DEB_PKG}-deb"
-
-	#	mkdir -p ${KERNEL_DEB_DIR}
-	#	rm -rf ${KERNEL_DEB_DIR}/*
-	#	mkdir -p ${KERNEL_DEB_DIR}/usr/lib/${UBOOT_NAME}
-	#	mkdir ${KERNEL_DEB_DIR}/DEBIAN
-
-#			KDEB_SOURCENAME="linux-${KERNEL_REPO_NAME}" \
-#                        KDEB_PKGVERSION=${KERNEL_DEB_PKG_VER} \
-#                        KDEB_COMPRESS=${KERNEL_DEB_COMPRESS} \
-#                        KBUILD_DEBARCH=${DEBIAN_RELEASE_ARCH} \
-#                        DEBFULLNAME=${MAINTAINER_NAME} \
-#                        DEBEMAIL=${MAINTAINER_EMAIL}
-
 		export KDEB_SOURCENAME="linux-${KERNEL_REPO_NAME}"
 		export KDEB_PKGVERSION=${KERNEL_DEB_PKG_VER}
 		export KDEB_COMPRESS=${KERNEL_DEB_COMPRESS}
-		export KBUILD_DEBARCH=${DEBIAN_RELEASE_ARCH}
+		export KBUILD_DEBARCH=${DPKG_ARCH}
 		export DEBFULLNAME=${MAINTAINER_NAME}
 		export DEBEMAIL=${MAINTAINER_EMAIL}
 		export DPKG_FLAGS="-d -nc"
+
 
 		chrt -i 0 make -j${NUM_CPU_CORES} bindeb-pkg
 		[ $? -eq 0 ] || exit $?;

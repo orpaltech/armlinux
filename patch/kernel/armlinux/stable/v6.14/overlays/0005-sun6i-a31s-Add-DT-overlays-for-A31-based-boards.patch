@@ -1,6 +1,6 @@
-From 4923c99df1284667659c5fae710db7befb7682da Mon Sep 17 00:00:00 2001
-From: ssuloev <ssuloev@orpaltech.com>
-Date: Tue, 4 Mar 2025 00:14:50 +0300
+From 5fe4e327ba45e4753ba82abbad9a3d65fc2a16d0 Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Sun, 9 Mar 2025 23:45:40 +0300
 Subject: [PATCH] sun6i-a31s: Add DT-overlays for A31-based boards
 
 ---

@@ -4,7 +4,7 @@
 
 if [ "${ROOTFS}" = debian ] ; then
   [ "${DEBIAN_MINBASE}" = yes ] && MINBASE_="minbase_"
-  ROOTFS_PKG="rootfs-${DEBIAN_RELEASE}-${DEBIAN_RELEASE_ARCH}_${MINBASE_}${PRODUCT_FULL_VER}-${SOC_FAMILY}-${CONFIG}"
+  ROOTFS_PKG="rootfs-${DEBIAN_RELEASE}-${DPKG_ARCH}_${MINBASE_}${PRODUCT_FULL_VER}-${SOC_FAMILY}-${CONFIG}"
 
   mkdir -p ${BASEDIR}/debs
 
@@ -48,7 +48,7 @@ EOF
 
     # Base debootstrap (unpack only)
     http_proxy=${APT_PROXY} \
-      debootstrap --arch="${DEBIAN_RELEASE_ARCH}" \
+      debootstrap --arch="${DPKG_ARCH}" \
 		--foreign \
 		${DEBIAN_VARIANT} \
 		--components="${COMPONENTS}" \

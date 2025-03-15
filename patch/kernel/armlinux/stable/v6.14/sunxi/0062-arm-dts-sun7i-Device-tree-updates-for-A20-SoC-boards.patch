@@ -1,18 +1,29 @@
-From 107f6a55fcabade500dc676f9574869b11841614 Mon Sep 17 00:00:00 2001
-From: ssuloev <ssuloev@orpaltech.com>
-Date: Wed, 5 Mar 2025 02:15:30 +0300
+From 8ae494c4341411b1cf15282d457c97ad30c66ee6 Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Sat, 8 Mar 2025 22:38:05 +0300
 Subject: [PATCH] arm/dts/sun7i: Device tree updates for A20 SoC boards
 
 ---
- .../allwinner/sun7i-a20-bananapi-m1-plus.dts  |   5 +-
+ .../allwinner/sun7i-a20-bananapi-m1-plus.dts  |  27 ++--
  arch/arm/boot/dts/allwinner/sun7i-a20.dtsi    | 123 +++++++++++++++---
- 2 files changed, 108 insertions(+), 20 deletions(-)
+ 2 files changed, 124 insertions(+), 26 deletions(-)
 
 diff --git a/arch/arm/boot/dts/allwinner/sun7i-a20-bananapi-m1-plus.dts b/arch/arm/boot/dts/allwinner/sun7i-a20-bananapi-m1-plus.dts
-index f2d7fab..399621a 100644
+index f2d7fab..6ade86d 100644
 --- a/arch/arm/boot/dts/allwinner/sun7i-a20-bananapi-m1-plus.dts
 +++ b/arch/arm/boot/dts/allwinner/sun7i-a20-bananapi-m1-plus.dts
-@@ -77,6 +77,7 @@
+@@ -45,8 +45,10 @@
+ /dts-v1/;
+ #include "sun7i-a20.dtsi"
+ #include "sunxi-common-regulators.dtsi"
++
+ #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/interrupt-controller/arm-gic.h>
++#include <dt-bindings/interrupt-controller/irq.h>
+ 
+ / {
+ 	model = "Banana Pi BPI-M1-Plus";
+@@ -77,6 +79,7 @@
  		led-0 {
  			label = "bananapi-m1-plus:green:usr";
  			gpios = <&pio 7 24 GPIO_ACTIVE_HIGH>;
@@ -20,7 +31,33 @@ index f2d7fab..399621a 100644
  		};
  
  		led-1 {
-@@ -164,7 +165,7 @@
+@@ -86,7 +89,7 @@
+ 		};
+ 	};
+ 
+-	mmc3_pwrseq: pwrseq {
++	wifi_pwrseq: pwrseq {
+ 		compatible = "mmc-pwrseq-simple";
+ 		reset-gpios = <&pio 7 22 GPIO_ACTIVE_LOW>; /* PH22 WL-PMU-EN */
+ 	};
+@@ -98,7 +101,15 @@
+ 		regulator-max-microvolt = <3300000>;
+ 		startup-delay-us = <100000>;
+ 		enable-active-high;
+-		gpio = <&pio 7 23 GPIO_ACTIVE_HIGH>;
++		gpio = <&pio 7 23 0>;
++	};
++
++	reg_vcc_wifi: vcc-wifi {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc-wifi";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		vin-supply = <&reg_vcc3v3>;
+ 	};
+ };
+ 
+@@ -164,7 +175,7 @@
  &ir0 {
  	pinctrl-names = "default";
  	pinctrl-0 = <&ir0_rx_pin>;
@@ -29,7 +66,31 @@ index f2d7fab..399621a 100644
  };
  
  &gmac_mdio {
-@@ -214,7 +215,7 @@
+@@ -183,12 +194,11 @@
+ &mmc3 {
+ 	#address-cells = <1>;
+ 	#size-cells = <0>;
+-	vmmc-supply = <&reg_vcc3v3>;
+-	mmc-pwrseq = <&mmc3_pwrseq>;
++	vmmc-supply = <&reg_vcc_wifi>;
++	mmc-pwrseq = <&wifi_pwrseq>;
+ 	bus-width = <4>;
+ 	non-removable;
+-	wakeup-source;
+-	status = "okay";
++	status = "disabled";
+ 
+ 	brcmf: wifi@1 {
+ 		reg = <1>;
+@@ -196,6 +206,7 @@
+ 		interrupt-parent = <&pio>;
+ 		interrupts = <7 15 IRQ_TYPE_LEVEL_LOW>;
+ 		interrupt-names = "host-wake";
++		status = "disabled";
+ 	};
+ };
+ 
+@@ -214,7 +225,7 @@
  &reg_dcdc2 {
  	regulator-always-on;
  	regulator-min-microvolt = <1000000>;
