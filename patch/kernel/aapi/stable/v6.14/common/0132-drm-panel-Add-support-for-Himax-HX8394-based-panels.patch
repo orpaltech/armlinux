@@ -1,0 +1,485 @@
+From c002547bfbc715ce0ac40d4452cc2055a0be4a46 Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Wed, 26 Mar 2025 12:55:57 +0300
+Subject: [PATCH] drm: panel: Add support for Himax HX8394-based panels
+
+---
+ drivers/gpu/drm/panel/panel-himax-hx8394.c | 448 ++++++++++++++++++++-
+ 1 file changed, 447 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/panel/panel-himax-hx8394.c b/drivers/gpu/drm/panel/panel-himax-hx8394.c
+index 92b03a2..289ce77 100644
+--- a/drivers/gpu/drm/panel/panel-himax-hx8394.c
++++ b/drivers/gpu/drm/panel/panel-himax-hx8394.c
+@@ -34,7 +34,7 @@
+ #define HX8394_CMD_SETVCOM	  0xb6
+ #define HX8394_CMD_SETTE	  0xb7
+ #define HX8394_CMD_SETSENSOR	  0xb8
+-#define HX8394_CMD_SETEXTC	  0xb9
++#define HX8394_CMD_SETEXTC	  0xB9
+ #define HX8394_CMD_SETMIPI	  0xba
+ #define HX8394_CMD_SETOTP	  0xbb
+ #define HX8394_CMD_SETREGBANK	  0xbd
+@@ -489,6 +489,451 @@ static const struct hx8394_panel_desc mchp_ac40t08a_desc = {
+ 	.init_sequence = mchp_ac40t08a_init_sequence,
+ };
+ 
++/* SETMIPI */
++#define HX8394_MIPI_LPTX_BTA_READ	BIT(6)
++#define HX8394_MIPI_LP_CD_DIS		BIT(5)
++#define HX8394_MIPI_TA_6TL		0x03
++#define HX8394_MIPI_DPHYCMD_LPRX_8NS	0x40
++#define HX8394_MIPI_DPHYCMD_LPRX_66mV	0x20
++#define HX8394_MIPI_DPHYCMD_LPTX_SRLIM	0x08
++#define HX8394_MIPI_DPHYCMD_LDO_1_55V	0x60
++#define HX8394_MIPI_DPHYCMD_HSRX_7X	0x08
++#define HX8394_MIPI_DPHYCMD_HSRX_100OHM	0x02
++#define HX8394_MIPI_DPHYCMD_LPCD_1X	0x01
++#define HX8394_MIPI_LANES_4		0x03
++
++/* SETEXTC */
++#define HX8394_EXTC1_MAGIC	0xFF
++#define HX8394_EXTC2_MAGIC	0x83
++#define HX8394_EXTC3_MAGIC	0x94
++
++/* SETPOWER */
++#define HX8394_POWER_AP_1_0UA	0x08
++#define HX8394_POWER_HX5186	0x40
++#define HX8394_POWER_VRHP_4_8V	0x12
++#define HX8394_POWER_VRHN_4_8V	0x12
++#define HX8394_POWER_VPPS_8_25V	0x60
++#define HX8394_POWER_XDK_X2	0x01
++#define HX8394_POWER_VSP_FBOFF	0x08
++#define HX8394_POWER_FS0_DIV_8	0x02
++#define HX8394_POWER_CLK_OPT_VGH_HSYNC_RST 0x10
++#define HX8394_POWER_CLK_OPT_VGL_HSYNC_RST 0x20
++#define HX8394_POWER_FS2_DIV_192	0x04
++#define HX8394_POWER_FS1_DIV_224	0x50
++#define HX8394_POWER_BTP_5_55V		0x11
++#define HX8394_POWER_VGH_RATIO_2VSPVSN	0x60
++#define HX8394_POWER_BTN_5_55V		0x11
++#define HX8394_POWER_VGL_RATIO_2VSPVSN	0x60
++#define HX8394_POWER_VGHS_16V		0x57
++#define HX8394_POWER_VGLS_12_4V		0x47
++
++/* SETDISP */
++#define HX8394_DISP_COL_INV	0x00
++#define HX8394_DISP_MESSI_ENB	0x80
++#define HX8394_DISP_NL_1280	0x64
++#define HX8394_DISP_BP_14	0x0C
++#define HX8394_DISP_FP_15	0x0D
++#define HX8394_DISP_RTN_144	0x2F
++
++/* SETGIP0 */
++#define HX8394_GIP0_EQ_OPT_BOTH	0x00
++#define HX8394_GIP0_EQ_HSYNC_NORMAL	0x00
++#define HX8394_GIP0_EQ_VSEL_VSSA	0x00
++#define HX8394_SHP_START_4	0x40
++#define HX8394_SCP_WIDTH_7X_HSYNC	0x07
++#define HX8394_CHR0_12X_HSYNC	0x0A
++#define HX8394_CHR1_18X_HSYNC	0x10
++
++/* SETVCOM */
++#define HX8394_VCMC_F_1_76V	0x92
++#define HX8394_VCMC_B_1_76V	0x92
++
++/* SETPANEL */
++#define HX8394_COLOR_BGR	BIT(0)
++#define HX8394_REV_PANEL	BIT(1)
++
++
++#define HX8394_FLIP_HORIZONTAL	BIT(1)
++#define HX8394_FLIP_VERTICAL	BIT(0)
++
++
++
++static int mtf0500hdi_22_init(struct hx8394 *ctx)
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	struct mipi_dsi_multi_context dsi_ctx = { .dsi = dsi };
++
++
++	/* 5.19.8 SETEXTC: Set extension command (B9h) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETEXTC,
++				HX8394_EXTC1_MAGIC,
++				HX8394_EXTC2_MAGIC,
++				HX8394_EXTC3_MAGIC);
++
++	/* 5.19.9 SETMIPI: Set MIPI control (BAh) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETMIPI,
++				(HX8394_MIPI_LPTX_BTA_READ | HX8394_MIPI_LP_CD_DIS | HX8394_MIPI_LANES_4),
++				HX8394_MIPI_TA_6TL,
++				(HX8394_MIPI_DPHYCMD_LPRX_8NS |
++				HX8394_MIPI_DPHYCMD_LPRX_66mV |
++				HX8394_MIPI_DPHYCMD_LPTX_SRLIM),
++				(HX8394_MIPI_DPHYCMD_LDO_1_55V |
++				HX8394_MIPI_DPHYCMD_HSRX_7X |
++				HX8394_MIPI_DPHYCMD_HSRX_100OHM |
++				HX8394_MIPI_DPHYCMD_LPCD_1X),
++				/* The remaining parameters here are not documented */
++				0xB2U, 0xC0U);
++
++	/* Set scan direction */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, MIPI_DCS_SET_ADDRESS_MODE,
++				HX8394_FLIP_HORIZONTAL);
++
++	/* 5.19.2 SETPOWER: Set power (B1h) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETPOWER,
++				(HX8394_POWER_HX5186 | HX8394_POWER_AP_1_0UA),
++				HX8394_POWER_VRHP_4_8V,
++				(HX8394_POWER_VPPS_8_25V | HX8394_POWER_VRHN_4_8V),
++				(HX8394_POWER_VSP_FBOFF | HX8394_POWER_XDK_X2),
++				(HX8394_POWER_CLK_OPT_VGL_HSYNC_RST |
++				HX8394_POWER_CLK_OPT_VGH_HSYNC_RST |
++				HX8394_POWER_FS0_DIV_8),
++				(HX8394_POWER_FS1_DIV_224 | HX8394_POWER_FS2_DIV_192),
++				(HX8394_POWER_VGH_RATIO_2VSPVSN | HX8394_POWER_BTP_5_55V),
++				(HX8394_POWER_VGL_RATIO_2VSPVSN | HX8394_POWER_BTN_5_55V),
++				HX8394_POWER_VGHS_16V,
++				HX8394_POWER_VGLS_12_4V);
++
++	/* 5.19.3 SETDISP: Set display related register (B2h) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETDISP,
++				HX8394_DISP_COL_INV,
++				HX8394_DISP_MESSI_ENB,
++				HX8394_DISP_NL_1280,
++				HX8394_DISP_BP_14,
++				HX8394_DISP_FP_15,
++				HX8394_DISP_RTN_144);
++
++	/* 5.19.4 SETCYC: Set display waveform cycles (B4h) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETCYC,
++				0x73, /* SPON delay */
++				0x74, /* SPOFF delay */
++				0x73, /* CON delay */
++				0x74, /* COFF delay */
++				0x73, /* CON1 delay */
++				0x74, /* COFF1 delay */
++				0x01, /* EQON time */
++				0x0C, /* SON time */
++				0x86, /* SOFF time */
++				0x75, /* SAP1_P, SAP2 (1st and second stage op amp bias) */
++				0x00, /* DX2 off, EQ off, EQ_MI off */
++				0x3F, /* DX2 off period setting */
++				0x73, /* SPON_MPU delay */
++				0x74, /* SPOFF_MPU delay */
++				0x73, /* CON_MPU delay */
++				0x74, /* COFF_MPU delay */
++				0x73, /* CON1_MPU delay */
++				0x74, /* COFF1_MPU delay */
++				0x01, /* EQON_MPU time */
++				0x0C, /* SON_MPU time */
++				0x86 /* SOFF_MPU time */
++				);
++
++
++	/* 5.19.19 SETGIP0: Set GIP Option0 (D3h) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETGIP0,
++				(HX8394_GIP0_EQ_OPT_BOTH | HX8394_GIP0_EQ_HSYNC_NORMAL),
++				HX8394_GIP0_EQ_VSEL_VSSA,
++				0x07, /* EQ_DELAY_ON1 (in cycles of TCON CLK */
++				0x07, /* EQ_DELAY_OFF1 (in cycles of TCON CLK */
++				0x40, /* GPWR signal frequency (64x per frame) */
++				0x07, /* GPWR signal non overlap timing (in cycles of TCON */
++				0x0C, /* GIP dummy clock for first CKV */
++				0x00, /* GIP dummy clock for second CKV */
++				/* Group delays. Sets start/end signal delay from VYSNC
++				 * falling edge in multiples of HSYNC
++				 */
++				0x08, /* SHR0_2 = 8, SHR0_3 = 0 */
++				0x10, /* SHR0_1 = 1, SHR0[11:8] = 0x0 */
++				0x08, /* SHR0 = 0x8 */
++				0x00, /* SHR0_GS[11:8]. Unset. */
++				0x08, /* SHR0_GS = 0x8 */
++				0x54, /* SHR1_3 = 0x5, SHR1_2 = 0x4 */
++				0x15, /* SHR1_1 = 0x1, SHR1[11:8] = 0x5 */
++				0x0A, /* SHR1[7:0] = 0xA (SHR1 = 0x50A) */
++				0x05, /* SHR1_GS[11:8] = 0x5 */
++				0x0A, /* SHR1_GS[7:0] = 0xA (SHR1_GS = 0x50A) */
++				0x02, /* SHR2_3 = 0x0, SHR2_2 = 0x2 */
++				0x15, /* SHR2_1 = 0x1, SHR2[11:8] = 0x5 */
++				0x06, /* SHR2[7:0] = 0x6 (SHR2 = 0x506) */
++				0x05, /* SHR2_GS[11:8] = 0x5 */
++				0x06, /* SHR2_GS[7:0 = 0x6 (SHR2_GS = 0x506) */
++				(HX8394_SHP_START_4 | HX8394_SCP_WIDTH_7X_HSYNC),
++				0x44, /* SHP2 = 0x4, SHP1 = 0x4 */
++				HX8394_CHR0_12X_HSYNC,
++				HX8394_CHR0_12X_HSYNC,
++				0x4B, /* CHP0 = 4x hsync, CCP0 = 0xB */
++				HX8394_CHR1_18X_HSYNC,
++				0x07, /* CHR1_GS = 9x hsync */
++				0x07, /* CHP1 = 1x hsync, CCP1 = 0x7 */
++				/* These parameters are not documented in datasheet */
++				0x0C,
++				0x40
++				);
++
++	/* 5.19.20 Set GIP Option1 (D5h) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETGIP1,
++				/* Select output clock sources
++				 * See COSn_L/COSn_R values in datasheet
++				 */
++				0x1C, /* COS1_L */
++				0x1C, /* COS1_R */
++				0x1D, /* COS2_L */
++				0x1D, /* COS2_R */
++				0x00, /* COS3_L */
++				0x01, /* COS3_R */
++				0x02, /* COS4_L */
++				0x03, /* COS4_R */
++				0x04, /* COS5_L */
++				0x05, /* COS5_R */
++				0x06, /* COS6_L */
++				0x07, /* COS6_R */
++				0x08, /* COS7_L */
++				0x09, /* COS7_R */
++				0x0A, /* COS8_L */
++				0x0B, /* COS8_R */
++				0x24, /* COS9_L */
++				0x25, /* COS9_R */
++				0x18, /* COS10_L */
++				0x18, /* COS10_R */
++				0x26, /* COS11_L */
++				0x27, /* COS11_R */
++				0x18, /* COS12_L */
++				0x18, /* COS12_R */
++				0x18, /* COS13_L */
++				0x18, /* COS13_R */
++				0x18, /* COS14_L */
++				0x18, /* COS14_R */
++				0x18, /* COS15_L */
++				0x18, /* COS15_R */
++				0x18, /* COS16_L */
++				0x18, /* COS16_R */
++				0x18, /* COS17_L */
++				0x18, /* COS17_R */
++				0x18, /* COS18_L */
++				0x18, /* COS18_R */
++				0x18, /* COS19_L */
++				0x18, /* COS19_R */
++				0x20, /* COS20_L */
++				0x21, /* COS20_R */
++				0x18, /* COS21_L */
++				0x18, /* COS21_R */
++				0x18, /* COS22_L */
++				0x18 /* COS22_R */
++				);
++
++	/* 5.19.21 Set GIP Option2 (D6h) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETGIP2,
++				/* Select output clock sources for GS mode.
++				 * See COSn_L_GS/COSn_R_GS values in datasheet
++				 */
++				0x1C, /* COS1_L_GS */
++				0x1C, /* COS1_R_GS */
++				0x1D, /* COS2_L_GS */
++				0x1D, /* COS2_R_GS */
++				0x07, /* COS3_L_GS */
++				0x06, /* COS3_R_GS */
++				0x05, /* COS4_L_GS */
++				0x04, /* COS4_R_GS */
++				0x03, /* COS5_L_GS */
++				0x02, /* COS5_R_GS */
++				0x01, /* COS6_L_GS */
++				0x00, /* COS6_R_GS */
++				0x0B, /* COS7_L_GS */
++				0x0A, /* COS7_R_GS */
++				0x09, /* COS8_L_GS */
++				0x08, /* COS8_R_GS */
++				0x21, /* COS9_L_GS */
++				0x20, /* COS9_R_GS */
++				0x18, /* COS10_L_GS */
++				0x18, /* COS10_R_GS */
++				0x27, /* COS11_L_GS */
++				0x26, /* COS11_R_GS */
++				0x18, /* COS12_L_GS */
++				0x18, /* COS12_R_GS */
++				0x18, /* COS13_L_GS */
++				0x18, /* COS13_R_GS */
++				0x18, /* COS14_L_GS */
++				0x18, /* COS14_R_GS */
++				0x18, /* COS15_L_GS */
++				0x18, /* COS15_R_GS */
++				0x18, /* COS16_L_GS */
++				0x18, /* COS16_R_GS */
++				0x18, /* COS17_L_GS */
++				0x18, /* COS17_R_GS */
++				0x18, /* COS18_L_GS */
++				0x18, /* COS18_R_GS */
++				0x18, /* COS19_L_GS */
++				0x18, /* COS19_R_GS */
++				0x25, /* COS20_L_GS */
++				0x24, /* COS20_R_GS */
++				0x18, /* COS21_L_GS */
++				0x18, /* COS21_R_GS */
++				0x18, /* COS22_L_GS */
++				0x18  /* COS22_R_GS */
++				);
++
++	/* Delay for a moment before setting VCOM. It is not clear
++	 * from the datasheet why this is required, but without this
++	 * delay the panel stops responding to additional commands
++	 */
++	usleep_range(3000, 5000);
++
++	/* 5.19.5 SETVCOM: Set VCOM voltage (B6h) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETVCOM,
++				HX8394_VCMC_F_1_76V,
++				HX8394_VCMC_B_1_76V);
++
++
++	/* 5.19.25 SETGAMMA: Set gamma curve related setting (E0h) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETGAMMA,
++				0x00, /* VHP0 */
++				0x0A, /* VHP1 */
++				0x15, /* VHP2 */
++				0x1B, /* VHP3 */
++				0x1E, /* VHP4 */
++				0x21, /* VHP5 */
++				0x24, /* VHP6 */
++				0x22, /* VHP7 */
++				0x47, /* VMP0 */
++				0x56, /* VMP1 */
++				0x65, /* VMP2 */
++				0x66, /* VMP3 */
++				0x6E, /* VMP4 */
++				0x82, /* VMP5 */
++				0x88, /* VMP6 */
++				0x8B, /* VMP7 */
++				0x9A, /* VMP8 */
++				0x9D, /* VMP9 */
++				0x98, /* VMP10 */
++				0xA8, /* VMP11 */
++				0xB9, /* VMP12 */
++				0x5D, /* VLP0 */
++				0x5C, /* VLP1 */
++				0x61, /* VLP2 */
++				0x66, /* VLP3 */
++				0x6A, /* VLP4 */
++				0x6F, /* VLP5 */
++				0x7F, /* VLP6 */
++				0x7F, /* VLP7 */
++				0x00, /* VHN0 */
++				0x0A, /* VHN1 */
++				0x15, /* VHN2 */
++				0x1B, /* VHN3 */
++				0x1E, /* VHN4 */
++				0x21, /* VHN5 */
++				0x24, /* VHN6 */
++				0x22, /* VHN7 */
++				0x47, /* VMN0 */
++				0x56, /* VMN1 */
++				0x65, /* VMN2 */
++				0x65, /* VMN3 */
++				0x6E, /* VMN4 */
++				0x81, /* VMN5 */
++				0x87, /* VMN6 */
++				0x8B, /* VMN7 */
++				0x98, /* VMN8 */
++				0x9D, /* VMN9 */
++				0x99, /* VMN10 */
++				0xA8, /* VMN11 */
++				0xBA, /* VMN12 */
++				0x5D, /* VLN0 */
++				0x5D, /* VLN1 */
++				0x62, /* VLN2 */
++				0x67, /* VLN3 */
++				0x6B, /* VLN4 */
++				0x72, /* VLN5 */
++				0x7F, /* VLN6 */
++				0x7F  /* VLN7 */
++				);
++
++	/* Unknown command, not listed in the HX8394-F datasheet */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xC0U,
++				0x1FU,
++				0x31U);
++
++	/* 5.19.17 SETPANEL (CCh) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETPANEL,
++				(HX8394_COLOR_BGR | HX8394_REV_PANEL));
++
++	/* Unknown command, not listed in the HX8394-F datasheet */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xD4U,
++				0x02U);
++
++	/*
++	 * Write values to manufacturer register banks
++	 */
++	/* Set register bank 2 (BDh) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETREGBANK,
++			       0x02U);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx,
++				0xD8U, 0xFFU, 0xFFU, 0xFFU,
++				0xFFU, 0xFFU, 0xFFU, 0xFFU,
++				0xFFU, 0xFFU, 0xFFU, 0xFFU,
++				0xFFU);
++
++	/* Why is this needed ? */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETREGBANK,
++			       0x00);
++
++	/* Set register bank 1 (BDh) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETREGBANK,
++			       0x01);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx,
++				0xB1U, 0x00U);
++
++	/* Set register bank 0 (BDh) */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, HX8394_CMD_SETREGBANK,
++				0x00);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx,
++				0xBFU, 0x40U, 0x81U, 0x50U,
++				0x00U, 0x1AU, 0xFCU, 0x01);
++
++	/* Unknown command, not listed in the HX8394-F datasheet */
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xC6U,
++				0xEDU);
++
++	mipi_dsi_dcs_set_tear_on_multi(&dsi_ctx, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
++
++	return dsi_ctx.accum_err;
++}
++
++static const struct drm_display_mode mtf0500hdi_22_mode = {
++	/*
++	 * Pixel clock is given by the following formula:
++	 * (height + vsync-len + vfront-porch + vback-porch) *
++	 * (width + hsync-len + hfront-porch + hback-porch) * frame rate
++	 */
++	.clock		= 60000, /*((1280 + 16 + 2 + 14) * (720 + 12 + 6 + 24) * 60 / 1000),*/
++	.hdisplay	= 720,
++	.hsync_start	= 720 + 12,
++	.hsync_end	= 720 + 12 + 6,
++	.htotal		= 720 + 12 + 6 + 24,
++	.vdisplay	= 1280,
++	.vsync_start	= 1280 + 16,
++	.vsync_end	= 1280 + 16 + 2,
++	.vtotal		= 1280 + 16 + 2 + 14,
++	.flags		= DRM_MODE_FLAG_NHSYNC | DRM_MODE_FLAG_NVSYNC,
++	.width_mm	= 62,
++	.height_mm	= 110,
++};
++
++static const struct hx8394_panel_desc mtf0500hdi_22_desc = {
++	.mode		= &mtf0500hdi_22_mode,
++	.lanes		= 4,
++	.mode_flags	= MIPI_DSI_MODE_VIDEO_SYNC_PULSE, /*MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST,*/
++	.format		= MIPI_DSI_FMT_RGB888,
++	.init_sequence	= mtf0500hdi_22_init,
++};
++
+ static int hx8394_enable(struct drm_panel *panel)
+ {
+ 	struct hx8394 *ctx = panel_to_hx8394(panel);
+@@ -706,6 +1151,7 @@ static const struct of_device_id hx8394_of_match[] = {
+ 	{ .compatible = "hannstar,hsd060bhw4", .data = &hsd060bhw4_desc },
+ 	{ .compatible = "powkiddy,x55-panel", .data = &powkiddy_x55_desc },
+ 	{ .compatible = "microchip,ac40t08a-mipi-panel", .data = &mchp_ac40t08a_desc },
++	{ .compatible = "microtech,mtf0500hdi-22", .data = &mtf0500hdi_22_desc },
+ 	{ /* sentinel */ }
+ };
+ MODULE_DEVICE_TABLE(of, hx8394_of_match);
+-- 
+2.43.0
+

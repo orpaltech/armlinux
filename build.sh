@@ -45,7 +45,7 @@ get_host_pkgs
 if [ -z "${CONFIG}" ] ; then
 . ${LIBDIR}/ui/config-select.sh
 fi
-ARMLINUX_CONF=${BASEDIR}/${CONFIG}.conf
+ARMLINUX_CONF=${CONFIGDIR}/product/${CONFIG}.conf
 if [ ! -f ${ARMLINUX_CONF} ] ; then
   display_alert "No config file found. Cannot continue." "${ARMLINUX_CONF}" "err"
   exit 1

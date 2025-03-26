@@ -7,7 +7,7 @@ LABEL_MENU="Choose one of supported configurations:"
 declare -a config_options
 
 config_index=0
-for config_file in $BASEDIR/*.conf; do
+for config_file in ${CONFIGDIR}/product/*.conf; do
 	config_key=$(basename $config_file .conf)
 	config_name=$(sed -n 's/^DESCRIPTION=\([^ ]\+\)/\1/p' $config_file)
 	config_options[$config_index]=$config_key

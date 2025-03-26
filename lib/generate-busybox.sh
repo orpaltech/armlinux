@@ -30,7 +30,7 @@ fi
 
 LIBDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 PATCHDIR=$(realpath -s "${LIBDIR}/../patch")
-ARMLINUX_CONF=${LIBDIR}/../${CONFIG}.conf
+ARMLINUX_CONF=${CONFIGDIR}/product/${CONFIG}.conf
 WLAN_CONF=${LIBDIR}/../wlan
 
 # IMPORTANT: Preserve variables that may be cleared by config

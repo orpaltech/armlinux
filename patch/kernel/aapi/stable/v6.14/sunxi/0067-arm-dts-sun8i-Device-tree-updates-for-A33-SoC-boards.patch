@@ -1,13 +1,13 @@
-From 8aa204ca7c8d77ffcbfb8836042b17b266bbb52c Mon Sep 17 00:00:00 2001
+From dcf80eda57a424491df5d12f33f1dabaf0516e03 Mon Sep 17 00:00:00 2001
 From: Sergey <ssuloev@orpaltech.com>
-Date: Thu, 13 Mar 2025 21:51:26 +0300
+Date: Sun, 23 Mar 2025 22:37:01 +0300
 Subject: [PATCH] arm/dts/sun8i: Device tree updates for A33 SoC boards
 
 ---
- .../arm/boot/dts/allwinner/sun8i-a23-a33.dtsi | 19 ++++++
- arch/arm/boot/dts/allwinner/sun8i-a33.dtsi    | 65 ++++++++++++++++++-
- .../dts/allwinner/sun8i-r16-bananapi-m2m.dts  | 28 ++++++--
- 3 files changed, 105 insertions(+), 7 deletions(-)
+ .../arm/boot/dts/allwinner/sun8i-a23-a33.dtsi | 19 +++++
+ arch/arm/boot/dts/allwinner/sun8i-a33.dtsi    | 69 ++++++++++++++++++-
+ .../dts/allwinner/sun8i-r16-bananapi-m2m.dts  | 42 ++++++++---
+ 3 files changed, 116 insertions(+), 14 deletions(-)
 
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi b/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi
 index 2af8382..6693355 100644
@@ -47,7 +47,7 @@ index 2af8382..6693355 100644
  				pins = "PF2", "PF4";
  				function = "uart0";
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi b/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
-index 36b2d78..c765f30 100644
+index 36b2d78..1394fe2 100644
 --- a/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
 +++ b/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
 @@ -125,6 +125,9 @@
@@ -126,7 +126,7 @@ index 36b2d78..c765f30 100644
  	};
  
  	thermal-zones {
-@@ -400,6 +442,23 @@
+@@ -400,11 +442,32 @@
  	interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>,
  		     <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
  
@@ -150,10 +150,28 @@ index 36b2d78..c765f30 100644
  	uart0_pb_pins: uart0-pb-pins {
  		pins = "PB0", "PB1";
  		function = "uart0";
+ 	};
+ 
++	uart3_pins: uart3-pins {
++		pins = "PH6", "PH7";
++		function = "uart3";
++	};
+ };
+ 
+ &tcon0 {
 diff --git a/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts b/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
-index f4bf46b..8a45576 100644
+index f4bf46b..b9d4953 100644
 --- a/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
 +++ b/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
+@@ -53,7 +53,7 @@
+ 		i2c0 = &i2c0;
+ 		i2c1 = &i2c1;
+ 		i2c2 = &i2c2;
+-		serial0 = &uart0;
++		serial0 = &uart3;
+ 		serial1 = &uart1;
+ 	};
+ 
 @@ -67,11 +67,13 @@
  		led-0 {
  			label = "bpi-m2m:blue:usr";
@@ -224,16 +242,21 @@ index f4bf46b..8a45576 100644
  #include "axp223.dtsi"
  
  &ac_power_supply {
-@@ -266,7 +286,7 @@
+@@ -266,20 +286,14 @@
  };
  
  &sound {
 -	status = "okay";
+-};
+-
+-&uart0 {
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&uart0_pb_pins>;
+-	status = "okay";
 +	status = "disabled";
  };
  
- &uart0 {
-@@ -279,7 +299,7 @@
+ &uart1 {
  	pinctrl-names = "default";
  	pinctrl-0 = <&uart1_pg_pins>, <&uart1_cts_rts_pg_pins>;
  	uart-has-rtscts;
@@ -242,6 +265,19 @@ index f4bf46b..8a45576 100644
  
  	bluetooth {
  		compatible = "brcm,bcm43438-bt";
+@@ -293,6 +307,12 @@
+ 	};
+ };
+ 
++&uart3 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart3_pins>;
++	status = "okay";
++};
++
+ &usb_otg {
+ 	dr_mode = "otg";
+ 	status = "okay";
 -- 
 2.43.0
 
