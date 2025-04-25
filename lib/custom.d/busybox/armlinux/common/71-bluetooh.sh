@@ -5,7 +5,7 @@
 
 ICAL_REPO_URL="https://github.com/libical/libical.git"
 ICAL_BRANCH=master
-ICAL_VERSION=3.0.19
+ICAL_VERSION=3.0.20
 ICAL_TAG="v${ICAL_VERSION}"
 ICAL_SRC_DIR=${EXTRADIR}/libical
 ICAL_BUILD_DIR=${ICAL_SRC_DIR}/${BB_BUILD_OUT}
@@ -13,7 +13,7 @@ ICAL_BUILD_DIR=${ICAL_SRC_DIR}/${BB_BUILD_OUT}
 
 BLUEZ_REPO_URL="https://github.com/bluez/bluez.git"
 BLUEZ_BRANCH=master
-BLUEZ_VERSION=5.79
+BLUEZ_VERSION=5.82
 BLUEZ_TAG="${BLUEZ_VERSION}"
 BLUEZ_SRC_DIR=${EXTRADIR}/bluez
 BLUEZ_BUILD_DIR=${BLUEZ_SRC_DIR}/${BB_BUILD_OUT}
@@ -36,7 +36,7 @@ LIBBSD_BUILD_DIR=${LIBBSD_SRC_DIR}/${BB_BUILD_OUT}
 
 LIBSBC_REPO_URL="https://git.kernel.org/pub/scm/bluetooth/sbc.git"
 LIBSBC_BRANCH=master
-LIBSBC_VERSION=2.0
+LIBSBC_VERSION=2.1
 LIBSBC_TAG="${LIBSBC_VERSION}"
 LIBSBC_SRC_DIR=${EXTRADIR}/libsbc
 LIBSBC_BUILD_DIR=${LIBSBC_SRC_DIR}/${BB_BUILD_OUT}
@@ -405,6 +405,7 @@ if [ "${ENABLE_BTH}" = yes ] ; then
     echo -n -e "\n*** Build Settings ***\n"
 
     [[ ${CLEAN} =~ (^|,)bluetooth(,|$) ]] && BTH_FORCE_REBUILD=yes
+
     set -x
     BTH_FORCE_REBUILD=${BTH_FORCE_REBUILD:="no"}
     set +x

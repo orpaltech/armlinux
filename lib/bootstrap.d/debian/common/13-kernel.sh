@@ -2,6 +2,18 @@
 # Setup Kernel (Main script)
 #
 
+SOURCE_NAME=$(basename ${BASH_SOURCE[0]})
+
+#
+# ############ helper functions ##############
+#
+
+
+#
+# ############ configure kernel ##############
+#
+
+
 export ARCH="${KERNEL_ARCH}"
 export CROSS_COMPILE="${CROSS_COMPILE}"
 
@@ -73,12 +85,21 @@ else
 fi
 
 if [ "${BOOTLOADER}" = uboot ] && [ "${KERNEL_MKIMAGE_WRAP}" = yes ] ; then
-  ${UBOOT_SOURCE_DIR}/tools/mkimage -A ${KERNEL_ARCH} -O linux -T kernel \
-	-C ${KERNEL_MKIMAGE_COMPRESS} \
-	-a ${KERNEL_MKIMAGE_LOADADDR} -e ${KERNEL_MKIMAGE_LOADADDR} \
-	-d "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_SOURCE_IMAGE}" "${BOOT_DIR}/${KERNEL_IMAGE_TARGET}"
+
+  if [ "${KERNEL_MKIMAGE_LEGACY_FORMAT}" = yes ] ; then
+    ${UBOOT_SOURCE_DIR}/tools/mkimage \
+        -A ${KERNEL_ARCH} -O linux -T kernel -C ${KERNEL_MKIMAGE_COMPRESS} -a ${KERNEL_MKIMAGE_LOADADDR} -e ${KERNEL_MKIMAGE_LOADADDR} \
+        -d ${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_FILE}  ${BOOT_DIR}/${KERNEL_IMAGE_TARGET}
+  else
+    #
+    # TODO: this needs to be investigated
+    #
+    ${UBOOT_SOURCE_DIR}/tools/mkimage -f auto -b ${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/dts/${DTB_FILE} \
+        -A ${KERNEL_ARCH} -O linux -T kernel -C ${KERNEL_MKIMAGE_COMPRESS} -a ${KERNEL_MKIMAGE_LOADADDR} -e ${KERNEL_MKIMAGE_LOADADDR} \
+        -d ${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_FILE}  ${BOOT_DIR}/${KERNEL_IMAGE_TARGET}
+  fi
 else
-  install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_SOURCE_IMAGE}" "${BOOT_DIR}/${KERNEL_IMAGE_TARGET}"
+  install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_FILE}" "${BOOT_DIR}/${KERNEL_IMAGE_TARGET}"
 fi
 
 if [ "${KERNEL_DIR}" != "${KERNEL_SOURCE_DIR}" ] ; then
@@ -128,6 +149,6 @@ install_readonly "${FILES_DIR}/sysctl.d/81-vm.conf" "${ETC_DIR}/sysctl.d/81-vm.c
 if [ ! -z "${KERNEL_MODULES}" ] ; then
   for kmod in ${KERNEL_MODULES}
   do
-	echo "${kmod}" > "${ETC_DIR}/modules-load.d/${kmod}.conf"
+    echo "${kmod}" > "${ETC_DIR}/modules-load.d/${kmod}.conf"
   done
 fi

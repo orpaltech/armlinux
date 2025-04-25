@@ -2,8 +2,7 @@
 # Build kernel module for RTL8189-series Ethernet adapter (sunxi)
 #
 
-RTL8189_REPO_URL="https://github.com/sergey-suloev/rtl8189ES_linux.git"
-#https://github.com/jwrdegoede/rtl8189ES_linux.git"
+RTL8189_REPO_URL="https://github.com/jwrdegoede/rtl8189ES_linux.git"
 
 REALTEK_DIR=${EXTRADIR}/drivers/realtek
 
@@ -22,7 +21,7 @@ rtl8189_install()
 {
 	mkdir -p ${REALTEK_DIR}
 
-        display_alert "Prepare rtl8189 sources..." "${RTL8189_URL} | ${RTL8189_BRANCH}" "info"
+        display_alert "Prepare rtl8189 sources..." "${RTL8189_REPO_URL} | ${RTL8189_BRANCH}" "info"
 
         rm -rf ${RTL8189_DIR}
 
@@ -30,19 +29,21 @@ rtl8189_install()
 	${GIT} clone ${RTL8189_REPO_URL} -b ${RTL8189_BRANCH} --depth=1 ${RTL8189_DIR}
 	[ $? -eq 0 ] || exit $?;
 
-	display_alert "Sources ready" "${RTL8189_URL} | ${RTL8189_BRANCH}" "info"
+	display_alert "Sources ready" "${RTL8189_REPO_URL} | ${RTL8189_BRANCH}" "info"
 
 	echo "${SOURCE_NAME}: Building rtl8189 kernel driver..."
 
         cd ${RTL8189_DIR}/
 
+set -x
         export ARCH="${KERNEL_ARCH}"
 	# always use kernel toolchain to compile drivers
 	export CROSS_COMPILE="${KERNEL_CROSS_COMPILE}"
 	export KSRC="${KERNEL_SOURCE_DIR}"
 	export CONFIG_RTW_LOG_LEVEL=2
+set +x
 
-	chrt -i 0 make -s -j${HOST_CPU_CORES}
+	chrt -i 0 make  -s -j${HOST_CPU_CORES}
 	[ $? -eq 0 ] || exit $?;
 
 	MOD_DESTDIR=${R}/lib/modules/${KERNEL_VERSION}/extra

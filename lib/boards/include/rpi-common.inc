@@ -13,10 +13,10 @@ BOOTLOADER="${BOOTLOADER}"
 TARGET_BOOT_DIR="/boot/firmware"
 
 FIRMWARE_URL="https://github.com/raspberrypi/firmware.git"
-FIRMWARE_BRANCH="stable"
-FIRMWARE_VER="1.20250127"
+FIRMWARE_BRANCH=stable
+FIRMWARE_VER=1.20250326
 FIRMWARE_TAG="${FIRMWARE_VER}"
-FIRMWARE_NAME="raspberrypi"
+FIRMWARE_NAME=raspberrypi
 
 KERNEL_OVERLAY_DIR="broadcom/overlays"
 

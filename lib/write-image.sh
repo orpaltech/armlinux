@@ -31,17 +31,7 @@ write_image()
 
 	local img_name="${DEST_IMAGE_NAME}"
 	local img_file="${OUTPUTDIR}/images/${img_name}.img"
-
-	# calculate directory size
-	local block_size=1024
-	local rootfs_size=$(sudo du --block-size=1 --max-depth=0 ${ROOTFS_DIR} 2>/dev/null | tail -n 1 | tr -dc '0-9')
-
-	# Find number of blocks needed, add around 100MB extra space
-	local mbyte=1048576
-	local blocks_count=$(((rootfs_size + (mbyte * 100)) / block_size))
-	local img_size=$((blocks_count * block_size))
-
-	echo "Create img file [rootfs size=${rootfs_size}; image size=${img_size}, block size=${block_size}, blocks=${blocks_count}]"
+	local img_size=$(calc_image_size)
 
 	[[ -f ${img_file} ]] && sudo rm -f ${img_file}
 

@@ -66,10 +66,15 @@ patch_bootloader()
 {
 if [ "${BOOTLOADER}" = uboot ] ; then
 
-	local patch_base_dir=${BASEDIR}/patch/u-boot/${UBOOT_REPO_NAME}
+	local patch_base_dir=${BASEDIR}/patch/u-boot/${CONFIG}/${UBOOT_REPO_NAME}
 	local patch_out_dir=${OUTPUTDIR}/patches
 
 	rm -rf ${patch_out_dir}/u-boot.*
+
+	# Use generic patches in case if there is no ${CONFIG} dir found
+	if [ ! -d $patch_base_dir ] ; then
+		patch_base_dir=${BASEDIR}/patch/u-boot/generic/${UBOOT_REPO_NAME}
+	fi
 
 	if [ "${UBOOT_PATCH_DISABLE}" != yes ]  && [ -d $patch_base_dir ] ; then
 		local patch_tmp_dir=$(mktemp -u ${patch_out_dir}/u-boot.XXXXXXXXX)

@@ -359,7 +359,12 @@ EOF
 
 # ----------------------------------------------------------------------------
 
-if [ "${ENABLE_QT}" = yes ] && [ -n "${QT_DEVICE_CONFIG}" ] ; then
+if [ "${ENABLE_QT}" = yes ] ; then
+
+	if [ -z "${QT_DEVICE_CONFIG}" ] ; then
+		echo "error: QT device config was not specified - can't continue."
+		exit 1
+	fi
 
 	if [[ ${CLEAN} =~ (^|,)qt(,|$) ]] ; then
 		rm -f ${QT5_DEB_PKG_FILE}
@@ -389,6 +394,7 @@ if [ "${ENABLE_QT}" = yes ] && [ -n "${QT_DEVICE_CONFIG}" ] ; then
 	fi
 
 	qt5_deploy
+
 else
 	echo "Skip."
 fi

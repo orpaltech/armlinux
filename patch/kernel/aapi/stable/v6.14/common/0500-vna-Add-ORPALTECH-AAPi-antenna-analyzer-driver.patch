@@ -1,6 +1,6 @@
-From 9a599193982df741a86b9f42d130503f718d8e17 Mon Sep 17 00:00:00 2001
+From 590832de1573e3ba6462b23da2a84bd4a3cfcdd2 Mon Sep 17 00:00:00 2001
 From: Sergey <ssuloev@orpaltech.com>
-Date: Thu, 13 Mar 2025 22:29:44 +0300
+Date: Sun, 30 Mar 2025 00:52:16 +0300
 Subject: [PATCH] vna: Add ORPALTECH AAPi antenna analyzer driver
 
 ---
@@ -8,12 +8,12 @@ Subject: [PATCH] vna: Add ORPALTECH AAPi antenna analyzer driver
  drivers/Makefile               |   2 +
  drivers/vna/Kconfig            |  21 ++
  drivers/vna/Makefile           |   9 +
- drivers/vna/orpal_aapi_drv.c   | 598 +++++++++++++++++++++++++++++++++
+ drivers/vna/orpal_aapi_drv.c   | 596 +++++++++++++++++++++++++++++++++
  drivers/vna/orpal_aapi_drv.h   | 128 +++++++
- drivers/vna/orpal_aapi_power.c | 415 +++++++++++++++++++++++
+ drivers/vna/orpal_aapi_power.c | 410 +++++++++++++++++++++++
  drivers/vna/orpal_aapi_sysfs.c | 163 +++++++++
  drivers/vna/orpal_aapi_sysfs.h |  18 +
- 9 files changed, 1356 insertions(+)
+ 9 files changed, 1349 insertions(+)
  create mode 100644 drivers/vna/Kconfig
  create mode 100644 drivers/vna/Makefile
  create mode 100644 drivers/vna/orpal_aapi_drv.c
@@ -87,10 +87,10 @@ index 0000000..86bfed2
 +obj-$(CONFIG_VNA_ORPAL_AAPI) += vna-orpal-aapi.o
 diff --git a/drivers/vna/orpal_aapi_drv.c b/drivers/vna/orpal_aapi_drv.c
 new file mode 100644
-index 0000000..556102b
+index 0000000..b44ed8c
 --- /dev/null
 +++ b/drivers/vna/orpal_aapi_drv.c
-@@ -0,0 +1,598 @@
+@@ -0,0 +1,596 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * The driver for ORPAL AA-Pi antenna analyzer
@@ -307,65 +307,59 @@ index 0000000..556102b
 +	struct device *dev = aapi->dev.parent;
 +	int ret;
 +
-+	dev_dbg(dev, "%s: obtain control over radio board\n", __func__);
++	dev_dbg(dev, "%s: init radio board\n", __func__);
 +
 +	radio->power = devm_regulator_get(dev, "radio");
-+	if (IS_ERR(radio->power)) {
-+		ret = PTR_ERR(radio->power);
-+		dev_err(dev, "couldn't get regulator: %d\n", ret);
-+		return ret;
-+	}
++	if (IS_ERR(radio->power))
++		return dev_err_probe(dev, PTR_ERR(radio->power),
++				     "Couldn't get radio supply\n");
++
 +	/* power up radio board */
 +	ret = regulator_enable(radio->power);
 +	if (ret) {
-+		dev_err(dev, "can't enable regulator: %d\n", ret);
++		dev_err(dev, "Failed to power up radio board: %d\n", ret);
 +		return ret;
 +	}
 +
 +	radio->clk0 = devm_clk_get(dev, "clk0");
 +	if (IS_ERR(radio->clk0)) {
-+		ret = PTR_ERR(radio->clk0);
-+		if (ret == -EPROBE_DEFER)
-+			dev_err(dev, "access to CLK0 output deferred\n");
-+		else
-+			dev_err(dev, "unable to acquire CLK0 clock\n");
-+		goto err_release;
++		ret = dev_err_probe(dev, PTR_ERR(radio->clk0),
++				    "Couldn't acquire CLK0 clock\n");
++		goto err_exit;
 +	}
 +
 +	radio->clk1 = devm_clk_get(dev, "clk1");
 +	if (IS_ERR(radio->clk1)) {
-+		ret = PTR_ERR(radio->clk1);
-+		if (ret == -EPROBE_DEFER)
-+			dev_err(dev, "access to CLK1 output deferred\n");
-+		else
-+			dev_err(dev, "unable to acquire CLK1 clock\n");
-+		goto err_release;
++		ret = dev_err_probe(dev, PTR_ERR(radio->clk1),
++				    "Couldn't acquire CLK1 clock\n");
++		goto err_exit;
 +	}
 +
 +	ret = device_property_read_u32(dev, "intermediate-freq",
 +				       &radio->intermediate_freq);
 +	if (ret < 0) {
-+		dev_err(dev, "intermediate freq was not specified\n");
-+		goto err_release;
++		dev_err(dev, "Intermediate freq was not specified\n");
++		goto err_exit;
 +	}
 +
 +	ret = device_property_read_u32(dev, "initial-freq",
 +					&radio->initial_freq);
 +	if (ret < 0) {
-+		dev_warn(dev, "initial freq was not specified\n");
++		dev_warn(dev, "Initial freq was not specified\n");
 +	}
 +
 +	return 0;
 +
-+err_release:
-+	aapi_radio_release(aapi);
++err_exit:
++	regulator_disable(radio->power);
++
 +	return ret;
 +}
 +
 +static void aapi_radio_disable(struct aapi_device *aapi)
 +{
-+	struct device *dev = aapi->dev.parent;
 +	struct aapi_radio_board *radio = &aapi->radio;
++	struct device *dev = aapi->dev.parent;
 +
 +	dev_dbg(dev, "%s: disable radio board\n", __func__);
 +
@@ -375,8 +369,8 @@ index 0000000..556102b
 +
 +static int aapi_radio_enable(struct aapi_device *aapi)
 +{
-+	struct device *dev = aapi->dev.parent;
 +	struct aapi_radio_board *radio = &aapi->radio;
++	struct device *dev = aapi->dev.parent;
 +	int ret;
 +
 +	dev_dbg(dev, "%s: enable radio board\n", __func__);
@@ -384,25 +378,28 @@ index 0000000..556102b
 +	ret = clk_prepare_enable(radio->clk0);
 +	if (ret) {
 +		dev_err(dev, "failed to enable clk0\n");
-+		goto err_disable;
++		return ret;
 +	}
 +
 +	ret = clk_prepare_enable(radio->clk1);
 +	if (ret) {
 +		dev_err(dev, "failed to enable clk1\n");
-+		goto err_disable;
++		goto err_clk1;
 +	}
 +
 +	if (radio->initial_freq) {
 +		ret = aapi_set_measure_freq(aapi, radio->initial_freq);
 +		if (ret)
-+			goto err_disable;
++			goto err_exit;
 +	}
 +
 +	return 0;
 +
-+err_disable:
-+	aapi_radio_disable(aapi);
++err_exit:
++	clk_disable_unprepare(radio->clk1);
++err_clk1:
++	clk_disable_unprepare(radio->clk0);
++
 +	return ret;
 +}
 +
@@ -499,10 +496,11 @@ index 0000000..556102b
 +
 +static void aapi_unreg_device(struct aapi_device *aapi)
 +{
++	struct device *dev = aapi->dev.parent;
++
 +	cdev_del(&aapi->cdev);
 +
-+	dev_dbg(aapi->dev.parent,
-+		"%s: char device deleted: major(%d), minor(%d)",
++	dev_dbg(dev, "%s: char device deleted: major(%d), minor(%d)",
 +		__func__,
 +		MAJOR(aapi->dev.devt), MINOR(aapi->dev.devt));
 +
@@ -537,60 +535,60 @@ index 0000000..556102b
 +static int orpal_aapi_probe(struct platform_device *pdev)
 +{
 +	struct aapi_device *aapi;
++	struct device *dev = &pdev->dev;
 +	int ret;
 +
-+	aapi = aapi_dev_create(pdev);
-+	if (IS_ERR(aapi)) {
-+		ret = PTR_ERR(aapi);
-+		if (ret != -EPROBE_DEFER)
-+			dev_err(&pdev->dev, "device create failed: %d\n", ret);
-+		return ret;
-+	}
++	dev_dbg(dev, "%s: probing...\n", __func__);
 +
-+	aapi->feedback = devm_regulator_get(&pdev->dev, "feedback");
++	aapi = aapi_dev_create(pdev);
++	if (IS_ERR(aapi))
++		return dev_err_probe(dev, PTR_ERR(aapi),
++				     "Device create failed\n");
++
++	aapi->feedback = devm_regulator_get(dev, "feedback");
 +	if (IS_ERR(aapi->feedback)) {
-+		ret = PTR_ERR(aapi->feedback);
-+		dev_err(&pdev->dev,
-+			"couldn't get feedback regulator: %d\n", ret);
++		ret = dev_err_probe(dev, PTR_ERR(aapi->feedback),
++				    "Couldn't get feedback supply\n");
 +		goto err_dev_unreg;
 +	}
++
 +	ret = regulator_enable(aapi->feedback);
 +	if (ret) {
-+		dev_err(&pdev->dev,
-+			"can't turn on feedback regulator: %d\n", ret);
++		dev_err(dev, "Can't power up feedback: %d\n", ret);
 +		goto err_dev_unreg;
 +	}
 +
 +	ret = aapi_radio_init(aapi);
 +	if (ret)
-+		goto err_feedback_reg;
++		goto err_reg_disable;
 +
 +	ret = aapi_power_init(aapi);
 +	if (ret)
-+		goto err_radio;
++		goto err_radio_release;
 +
 +	/*
 +	 * This wake-up/shutdown pattern is used here to have the
 +	 * device woken up even if runtime_pm is disabled
 +	 */
-+	ret = aapi_runtime_resume(&pdev->dev);
++	ret = aapi_runtime_resume(dev);
 +	if (ret < 0) {
-+		dev_err(&pdev->dev, "couldn't resume device\n");
-+		pm_runtime_put(&pdev->dev);
-+		goto err_pwr_ctrl;
++		dev_err(dev, "couldn't resume device\n");
++		pm_runtime_put(dev);
++		goto err_power_free;
 +	}
 +
-+	pm_runtime_set_active(&pdev->dev);
-+	pm_runtime_enable(&pdev->dev);
-+	pm_runtime_get_noresume(&pdev->dev);
++	pm_runtime_set_active(dev);
++	pm_runtime_enable(dev);
++	pm_runtime_get_noresume(dev);
 +
++	dev_dbg(dev, "%s: success\n", __func__);
 +	return 0;
 +
-+err_pwr_ctrl:
++err_power_free:
 +	aapi_power_free(aapi);
-+err_radio:
++err_radio_release:
 +	aapi_radio_release(aapi);
-+err_feedback_reg:
++err_reg_disable:
 +	regulator_disable(aapi->feedback);
 +err_dev_unreg:
 +	aapi_unreg_device(aapi);
@@ -691,7 +689,7 @@ index 0000000..556102b
 +MODULE_LICENSE("GPL v2");
 diff --git a/drivers/vna/orpal_aapi_drv.h b/drivers/vna/orpal_aapi_drv.h
 new file mode 100644
-index 0000000..7bd063b
+index 0000000..a5fde0d
 --- /dev/null
 +++ b/drivers/vna/orpal_aapi_drv.h
 @@ -0,0 +1,128 @@
@@ -739,13 +737,13 @@ index 0000000..7bd063b
 +/* structure to manage status lines */
 +struct aapi_status_line {
 +	struct gpio_desc *gpio;
-+	unsigned int irq;
-+	char name[32];
++	unsigned int	irq;
++	char	 name[32];
 +};
 +
 +struct aapi_shutdown {
 +	struct gpio_desc *ctrl;
-+	u32 timeout;
++	u32	timeout;
 +	struct aapi_status_line	req;
 +};
 +
@@ -825,10 +823,10 @@ index 0000000..7bd063b
 +#endif /* ORPAL_AAPI_DRV_H */
 diff --git a/drivers/vna/orpal_aapi_power.c b/drivers/vna/orpal_aapi_power.c
 new file mode 100644
-index 0000000..cedf198
+index 0000000..85db9b3
 --- /dev/null
 +++ b/drivers/vna/orpal_aapi_power.c
-@@ -0,0 +1,415 @@
+@@ -0,0 +1,410 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * The driver for ORPAL AA-Pi antenna analyzer
@@ -1051,23 +1049,23 @@ index 0000000..cedf198
 +	int ret;
 +
 +	line->gpio = aapi_get_gpiod(aapi, line->name, GPIOD_IN);
-+	if (IS_ERR(line->gpio))
-+		return PTR_ERR(line->gpio);
-+
++	if (IS_ERR(line->gpio)) {
++		ret = dev_err_probe(dev, PTR_ERR(line->gpio),
++                                    "Couldn't get gpio line '%s'\n",
++				    line->name);
++		return ret;
++	}
 +
 +	ret = gpiod_to_irq(line->gpio);
 +	if (ret < 0) {
-+		dev_err(dev, "can't get irq for line '%s'\n", line->name);
++		dev_err(dev, "can't get irq line '%s'\n", line->name);
 +		goto err_cleanup;
 +	}
 +
 +	line->irq = ret;
 +
-+	ret = request_irq(line->irq,
-+			  aapi_status_line_irq_handler,
-+			  irq_flags,
-+			  dev_name(&aapi->dev),
-+			  aapi);
++	ret = request_irq(line->irq, aapi_status_line_irq_handler,
++			  irq_flags, dev_name(&aapi->dev), aapi);
 +	if (ret) {
 +		dev_err(dev, "failed to request irq %d: %d\n", line->irq, ret);
 +		line->irq = 0;
@@ -1126,13 +1124,12 @@ index 0000000..cedf198
 +	dev_dbg(dev, "%s: get ownership over GPIO control lines\n", __func__);
 +
 +	/* shutdown control setup */
-+	aapi->shdn.ctrl = aapi_get_gpiod(aapi,
-+					 "shutdown-ctrl",
-+					 GPIOD_OUT_LOW);
++	aapi->shdn.ctrl = aapi_get_gpiod(aapi, "shutdown-ctrl",
++					GPIOD_OUT_LOW);
 +	if (IS_ERR(aapi->shdn.ctrl)) {
-+		dev_err(dev, "%s: can't get shutdown control line\n",
-+			__func__);
-+		return PTR_ERR(aapi->shdn.ctrl);
++		ret = dev_err_probe(dev, PTR_ERR(aapi->shdn.ctrl),
++				    "Couldn't get shutdown ctrl line\n");
++		return ret;
 +	}
 +
 +	aapi->shdn.timeout = DEFAULT_SHDN_TIMEOUT_MS;
@@ -1148,18 +1145,16 @@ index 0000000..cedf198
 +	strcpy(aapi->chrg.s2.name, "charger-stat2");
 +
 +        /* charger enable line */
-+	aapi->chrg.enable = aapi_get_gpiod(aapi,
-+					   "charger-en",
++	aapi->chrg.enable = aapi_get_gpiod(aapi, "charger-en",
 +					   GPIOD_OUT_HIGH);
 +	if (IS_ERR(aapi->chrg.enable)) {
-+		dev_err(dev, "%s: can't get charger enable line\n",
-+			__func__);
-+		return PTR_ERR(aapi->chrg.enable);
++		ret = dev_err_probe(dev, PTR_ERR(aapi->chrg.enable),
++				    "Couldn't get charger enable line\n");
++		return ret;
 +	}
 +
 +	/* shutdown request line */
-+	ret = aapi_status_line_init(aapi,
-+				    &aapi->shdn.req,
++	ret = aapi_status_line_init(aapi, &aapi->shdn.req,
 +				    IRQF_TRIGGER_FALLING);
 +	if (ret) {
 +		dev_err(dev, "%s: can't get shutdown request line\n",
@@ -1168,24 +1163,21 @@ index 0000000..cedf198
 +	}
 +
 +	/* charger indicators */
-+	ret = aapi_status_line_init(aapi,
-+				    &aapi->chrg.s1,
++	ret = aapi_status_line_init(aapi, &aapi->chrg.s1,
 +				    IRQF_TRIGGER_EDGE_BOTH);
 +	if (ret) {
 +		dev_err(dev, "%s: can't get charger S1 line\n", __func__);
 +		goto err_put;
 +	}
 +
-+	ret = aapi_status_line_init(aapi,
-+				    &aapi->chrg.s2,
++	ret = aapi_status_line_init(aapi, &aapi->chrg.s2,
 +				    IRQF_TRIGGER_EDGE_BOTH);
 +	if (ret) {
 +		dev_err(dev, "%s: can't get charger S2 line\n", __func__);
 +		goto err_put;
 +	}
 +
-+	ret = aapi_status_line_init(aapi,
-+				    &aapi->chrg.pg,
++	ret = aapi_status_line_init(aapi, &aapi->chrg.pg,
 +				    IRQF_TRIGGER_EDGE_BOTH);
 +	if (ret) {
 +		dev_err(dev, "%s: can't get charger PG line\n", __func__);
@@ -1196,6 +1188,7 @@ index 0000000..cedf198
 +
 +err_put:
 +	aapi_power_gpio_put(aapi);
++
 +	return ret;
 +}
 +

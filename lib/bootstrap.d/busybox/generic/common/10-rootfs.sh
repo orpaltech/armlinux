@@ -2,14 +2,15 @@
 # Prepare root file system
 #
 
-BUSYBOX_VERSION=1_37_0
 BUSYBOX_REPO_URL="https://git.busybox.net/busybox"
+BUSYBOX_VERSION=1.38
 BUSYBOX_BRANCH=master
 BUSYBOX_TAG=
+#1_37_0
 BUSYBOX_SRC_DIR=${EXTRADIR}/busybox
 BUSYBOX_BUILD_DIR=${BUSYBOX_SRC_DIR}/${BB_BUILD_OUT}
 BUSYBOX_REBUILD=yes
-BUSYBOX_FORCE_UPDATE=
+BUSYBOX_FORCE_UPDATE=yes
 
 BB_SHDOWN_SCRIPT=to_be_tested
 BB_SHDOWN_SRC_DIR=${BUSYBOX_SRC_DIR}/examples/shutdown-1.0/script
@@ -44,7 +45,8 @@ SOURCE_DIR=$(dirname $(realpath ${BASH_SOURCE[0]}))
 busybox_install()
 {
     # build busybox
-    PKG_FORCE_CLEAN="${BUSYBOX_REBUILD}" PKG_FETCH_DEPTH=1 \
+    PKG_FORCE_CLEAN="${BUSYBOX_REBUILD}" \
+    PKG_FORCE_UPDATE="${BUSYBOX_FORCE_UPDATE}" \
 	update_src_pkg "busybox" \
 		$BUSYBOX_VERSION \
 		$BUSYBOX_SRC_DIR \
@@ -124,7 +126,8 @@ busybox_install()
 glibc_install()
 {
     # build GLIBC
-    update_src_pkg "glibc" \
+    PKG_FORCE_CLEAN="${GLIBC_REBUILD}" \
+	update_src_pkg "glibc" \
                     $GLIBC_VERSION \
                     $GLIBC_SRC_DIR \
                     $GLIBC_REPO_URL \

@@ -71,6 +71,7 @@
 ::sysinit:/sbin/mdev -s
 ::sysinit:/bin/mount -o remount,rw /
 ::sysinit:/bin/mount -a
+::sysinit:/bin/mount -t debugfs none /sys/kernel/debug
 ::sysinit:/sbin/swapon -a
 null::sysinit:/bin/ln -sf /proc/self/fd /dev/fd
 null::sysinit:/bin/ln -sf /proc/self/fd/0 /dev/stdin

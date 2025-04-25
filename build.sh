@@ -254,6 +254,15 @@ compile_kernel
 meson_install
 
 
+DEST_IMG_PREFIX=${DEST_IMG_PREFIX:="${CONFIG}"}
+DEST_IMG_VERSION=${DEST_IMG_VERSION:="${PRODUCT_FULL_VER}"}
+
+# Override image name if U-Boot is used as bootloader
+if [ "${BOOTLOADER}" = uboot ] ; then
+  DEST_UBOOT_SPEC="-uboot_${UBOOT_RELEASE}"
+fi
+DEST_KERNEL_SPEC="${KERNEL_REPO_NAME}_${KERNEL_VERSION}"
+
 if [ -f ${LIBDIR}/create-image-${ROOTFS}.sh ] ; then
 . ${LIBDIR}/create-image-${ROOTFS}.sh
 else
@@ -263,6 +272,7 @@ fi
 . ${LIBDIR}/write-image.sh
 
 if [ "${BUILD_IMAGE}" = yes ] ; then
+
   # create disk image
   create_image
 

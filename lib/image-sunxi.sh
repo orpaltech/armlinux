@@ -65,3 +65,19 @@ write_disk()
 
         echo "${DISK_NAME} is ready."
 }
+
+calc_image_size()
+{
+	# calculate directory size
+	local block_size=1024
+	local rootfs_size=$(sudo du --block-size=1 --max-depth=0 ${ROOTFS_DIR} 2>/dev/null | tail -n 1 | tr -dc '0-9')
+
+	# Find number of blocks needed, add around 20MB extra space
+	local mbyte=1048576
+	local blocks_count=$(((rootfs_size + (mbyte * 20)) / block_size))
+	local img_size=$((blocks_count * block_size))
+
+	echo "Calc image size [rootfs size=${rootfs_size}; image size=${img_size}, block size=${block_size}, blocks=${blocks_count}]"
+
+	echo $img_size
+}

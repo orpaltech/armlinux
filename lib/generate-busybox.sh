@@ -218,16 +218,6 @@ display_alert "Product version:" "${PRODUCT_FULL_VER}" "info"
 # Make absolute path to output rootfs
 BOOT_DIR="${R}${TARGET_BOOT_DIR}"
 
-# find out kernel image name
-if [ "${KERNEL_IMAGE_COMPRESSED}" = yes ] ; then
-  if [ "${KERNEL_ARCH}" = arm64 ] ; then
-    KERNEL_IMAGE_FILE="Image.gz"
-  else
-    KERNEL_IMAGE_FILE="zImage"
-  fi
-else
-  KERNEL_IMAGE_FILE="Image"
-fi
 
 # Fail early: Is kernel ready?
 if [ ! -e "${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_FILE}" ] ; then

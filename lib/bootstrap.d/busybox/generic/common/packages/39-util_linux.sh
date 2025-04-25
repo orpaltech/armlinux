@@ -1,9 +1,5 @@
-#
-# Install linux utilities
-#
-
 UTIL_LINUX_REPO_URL="https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git"
-UTIL_LINUX_VERSION=2.40.4
+UTIL_LINUX_VERSION=2.41
 UTIL_LINUX_BRANCH=master
 UTIL_LINUX_TAG=
 UTIL_LINUX_SRC_DIR=${EXTRADIR}/util-linux

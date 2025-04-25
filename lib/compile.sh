@@ -26,8 +26,6 @@ NUM_CPU_CORES=$((CPUINFO_NUM_CORES / 2))
 if [ "${ROOTFS}" = debian ]; then
   [[ -z "${KERNEL_MAKE_DEB_PKG}" ]] && KERNEL_MAKE_DEB_PKG=yes
   [[ -z "${KERNEL_DEB_COMPRESS}" ]] && KERNEL_DEB_COMPRESS=none
-else
-  KERNEL_MAKE_DEB_PKG=no
 fi
 
 . ${LIBDIR}/sources-update.sh
@@ -150,6 +148,17 @@ compile_kernel()
 #	KERNEL_VERSION=$(make kernelversion)
 	KERNEL_VERSION=$(cat "${KERNEL_SOURCE_DIR}/include/config/kernel.release")
 	KERNEL_DEB_PKG_VER="${PRODUCT_VERSION}-${CONFIG}-${KERNEL_VERSION}-${KERNEL_REPO_NAME}"
+
+	# find out kernel image name
+	if [ "${KERNEL_IMAGE_COMPRESSED}" = yes ] ; then
+		if [ "${KERNEL_ARCH}" = arm64 ] ; then
+			KERNEL_IMAGE_FILE="Image.gz"
+		else
+			KERNEL_IMAGE_FILE="zImage"
+		fi
+	else
+		KERNEL_IMAGE_FILE="Image"
+	fi
 
 	if [ "${KERNEL_MAKE_DEB_PKG}" = yes ] ; then
 		echo "Create Kernel DEB-packages..."

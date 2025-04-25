@@ -16,6 +16,9 @@
 #
 ########################################################################
 
+ROOTFS_DIR="${OUTPUTDIR}/images/busybox/build/chroot"
+
+DEST_IMAGE_NAME="${DEST_IMG_PREFIX}-${DEST_IMG_VERSION}-${BOARD}-${DEST_KERNEL_SPEC}${DEST_UBOOT_SPEC}-busybox"
 
 create_image()
 {
@@ -39,32 +42,18 @@ create_image()
 		UBOOT_SOURCE_DIR=${UBOOT_SOURCE_DIR} \
 		KERNEL_VERSION=${KERNEL_VERSION} \
 		KERNEL_SOURCE_DIR=${KERNEL_SOURCE_DIR} \
-		KERNEL_DEB_PKG_VER=${KERNEL_DEB_PKG_VER} \
+		KERNEL_IMAGE_FILE=${KERNEL_IMAGE_FILE} \
 		FIRMWARE_DIR=${FIRMWARE_BASE_DIR} \
-		ENABLE_WLAN=${ENABLE_WLAN} \
-		ENABLE_SOUND=${ENABLE_SOUND} \
-		ENABLE_BTH=${ENABLE_BTH} \
-		ENABLE_SDR=${ENABLE_SDR} \
 		RESIZE_PART_NUM=${RESIZE_PART_NUM} \
 		DEST_MEDIA=${DEST_MEDIA} \
 		DEST_DEV_TYPE=${DEST_DEV_TYPE} \
 		DEST_BLOCK_DEV=${DEST_BLOCK_DEV} \
+		ENABLE_WLAN=${ENABLE_WLAN} \
+		ENABLE_SOUND=${ENABLE_SOUND} \
+		ENABLE_BTH=${ENABLE_BTH} \
+		ENABLE_SDR=${ENABLE_SDR} \
 	${LIBDIR}/generate-busybox.sh
 
 	[ $? -eq 0 ] || exit $?;
-
-
-	ROOTFS_DIR="${OUTPUTDIR}/images/busybox/build/chroot"
-
-	DEST_IMG_PREFIX=${DEST_IMG_PREFIX:="${CONFIG}"}
-	DEST_IMG_VERSION=${DEST_IMG_VERSION:="${PRODUCT_FULL_VER}"}
-
-        # Override image name if U-Boot is used as bootloader
-	if [ "${BOOTLOADER}" = uboot ] ; then
-		local UBOOT_SPEC="-uboot_${UBOOT_RELEASE}"
-        fi
-	local KERNEL_SPEC="${KERNEL_REPO_NAME}_${KERNEL_VERSION}"
-
-	DEST_IMAGE_NAME="${DEST_IMG_PREFIX}-${DEST_IMG_VERSION}-${BOARD}-${KERNEL_SPEC}${UBOOT_SPEC}-busybox"
 
 }

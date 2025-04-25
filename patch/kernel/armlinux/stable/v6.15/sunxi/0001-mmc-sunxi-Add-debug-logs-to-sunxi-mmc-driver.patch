@@ -1,0 +1,209 @@
+From 755b4d14577291c1cc3019ae38d93bb55a97c9c3 Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Sun, 23 Mar 2025 02:06:57 +0300
+Subject: [PATCH] mmc: sunxi: Add debug logs to sunxi-mmc driver
+
+---
+ drivers/mmc/host/sunxi-mmc.c | 61 +++++++++++++++++++++++++++---------
+ 1 file changed, 46 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/mmc/host/sunxi-mmc.c b/drivers/mmc/host/sunxi-mmc.c
+index 1508eea..0991ea6 100644
+--- a/drivers/mmc/host/sunxi-mmc.c
++++ b/drivers/mmc/host/sunxi-mmc.c
+@@ -9,6 +9,8 @@
+  * (C) Copyright 2017 Sootech SA
+  */
+ 
++#define DEBUG
++
+ #include <linux/clk.h>
+ #include <linux/clk/sunxi-ng.h>
+ #include <linux/delay.h>
+@@ -308,6 +310,8 @@ static int sunxi_mmc_reset_host(struct sunxi_mmc_host *host)
+ 	unsigned long expire = jiffies + msecs_to_jiffies(250);
+ 	u32 rval;
+ 
++	/*dev_dbg(mmc_dev(host->mmc), "%s: enter\n", __func__);*/
++
+ 	mmc_writel(host, REG_GCTRL, SDXC_HARDWARE_RESET);
+ 	do {
+ 		rval = mmc_readl(host, REG_GCTRL);
+@@ -318,6 +322,7 @@ static int sunxi_mmc_reset_host(struct sunxi_mmc_host *host)
+ 		return -EIO;
+ 	}
+ 
++	/*dev_dbg(mmc_dev(host->mmc), "%s: ok\n", __func__);*/
+ 	return 0;
+ }
+ 
+@@ -325,6 +330,8 @@ static int sunxi_mmc_init_host(struct sunxi_mmc_host *host)
+ {
+ 	u32 rval;
+ 
++	/*dev_dbg(mmc_dev(host->mmc), "%s: enter\n", __func__);*/
++
+ 	if (sunxi_mmc_reset_host(host))
+ 		return -EIO;
+ 
+@@ -579,8 +586,6 @@ static irqreturn_t sunxi_mmc_irq(int irq, void *dev_id)
+ 	idma_int  = mmc_readl(host, REG_IDST);
+ 	msk_int   = mmc_readl(host, REG_MISTA);
+ 
+-	dev_dbg(mmc_dev(host->mmc), "irq: rq %p mi %08x idi %08x\n",
+-		host->mrq, msk_int, idma_int);
+ 
+ 	mrq = host->mrq;
+ 	if (mrq) {
+@@ -663,8 +668,8 @@ static int sunxi_mmc_oclk_onoff(struct sunxi_mmc_host *host, u32 oclk_en)
+ 	unsigned long expire = jiffies + msecs_to_jiffies(750);
+ 	u32 rval;
+ 
+-	dev_dbg(mmc_dev(host->mmc), "%sabling the clock\n",
+-		oclk_en ? "en" : "dis");
++	/*dev_dbg(mmc_dev(host->mmc), "%sabling the clock\n",
++		oclk_en ? "en" : "dis");*/
+ 
+ 	rval = mmc_readl(host, REG_CLKCR);
+ 	rval &= ~(SDXC_CARD_CLOCK_ON | SDXC_LOW_POWER_ON | SDXC_MASK_DATA0);
+@@ -806,8 +811,8 @@ static int sunxi_mmc_clk_set_rate(struct sunxi_mmc_host *host,
+ 			clock, rate);
+ 		return rate;
+ 	}
+-	dev_dbg(mmc_dev(mmc), "setting clk to %d, rounded %ld\n",
+-		clock, rate);
++	/*dev_dbg(mmc_dev(mmc), "setting clk to %d, rounded %ld\n",
++		clock, rate);*/
+ 
+ 	/* setting clock rate */
+ 	ret = clk_set_rate(host->clk_mmc, rate);
+@@ -904,6 +909,8 @@ static void sunxi_mmc_card_power(struct sunxi_mmc_host *host,
+ {
+ 	struct mmc_host *mmc = host->mmc;
+ 
++	dev_dbg(mmc_dev(mmc), "%s: enter\n", __func__);
++
+ 	switch (ios->power_mode) {
+ 	case MMC_POWER_UP:
+ 		dev_dbg(mmc_dev(mmc), "Powering card up\n");
+@@ -912,8 +919,11 @@ static void sunxi_mmc_card_power(struct sunxi_mmc_host *host,
+ 			host->ferror = mmc_regulator_set_ocr(mmc,
+ 							     mmc->supply.vmmc,
+ 							     ios->vdd);
+-			if (host->ferror)
++			if (host->ferror) {
++				dev_warn(mmc_dev(mmc),
++                                        "failed to setup vmmc regulator\n");
+ 				return;
++			}
+ 		}
+ 
+ 		if (!IS_ERR(mmc->supply.vqmmc)) {
+@@ -949,6 +959,8 @@ static void sunxi_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
+ {
+ 	struct sunxi_mmc_host *host = mmc_priv(mmc);
+ 
++	dev_dbg(mmc_dev(mmc), "%s: enter\n", __func__);
++
+ 	sunxi_mmc_card_power(host, ios);
+ 	sunxi_mmc_set_bus_width(host, ios->bus_width);
+ 	sunxi_mmc_set_clk(host, ios);
+@@ -977,6 +989,8 @@ static void sunxi_mmc_enable_sdio_irq(struct mmc_host *mmc, int enable)
+ 	unsigned long flags;
+ 	u32 imask;
+ 
++	dev_dbg(mmc_dev(mmc), "%s: enter\n", __func__);
++
+ 	if (enable)
+ 		pm_runtime_get_noresume(host->dev);
+ 
+@@ -1068,10 +1082,6 @@ static void sunxi_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
+ 		imask |= SDXC_COMMAND_DONE;
+ 	}
+ 
+-	dev_dbg(mmc_dev(mmc), "cmd %d(%08x) arg %x ie 0x%08x len %d\n",
+-		cmd_val & 0x3f, cmd_val, cmd->arg, imask,
+-		mrq->data ? mrq->data->blksz * mrq->data->blocks : 0);
+-
+ 	spin_lock_irqsave(&host->lock, iflags);
+ 
+ 	if (host->mrq || host->manual_stop_mrq) {
+@@ -1227,6 +1237,8 @@ static int sunxi_mmc_enable(struct sunxi_mmc_host *host)
+ {
+ 	int ret;
+ 
++	/*dev_dbg(host->dev, "%s: enter\n", __func__);*/
++
+ 	if (!IS_ERR(host->reset)) {
+ 		ret = reset_control_reset(host->reset);
+ 		if (ret) {
+@@ -1268,6 +1280,8 @@ static int sunxi_mmc_enable(struct sunxi_mmc_host *host)
+ 	if (ret)
+ 		goto error_disable_clk_sample;
+ 
++	/*dev_dbg(host->dev, "%s: ok\n", __func__);*/
++
+ 	return 0;
+ 
+ error_disable_clk_sample:
+@@ -1302,17 +1316,25 @@ static int sunxi_mmc_resource_request(struct sunxi_mmc_host *host,
+ {
+ 	int ret;
+ 
++	dev_dbg(&pdev->dev, "%s: enter\n", __func__);
++
+ 	host->cfg = of_device_get_match_data(&pdev->dev);
+-	if (!host->cfg)
++	if (!host->cfg) {
++		dev_err(&pdev->dev, "of_device_get_match_data failed\n");
+ 		return -EINVAL;
++	}
+ 
+ 	ret = mmc_regulator_get_supply(host->mmc);
+-	if (ret)
++	if (ret) {
++		dev_err(&pdev->dev, "mmc_regulator_get_supply failed: %d\n", ret);
+ 		return ret;
++	}
+ 
+ 	host->reg_base = devm_platform_ioremap_resource(pdev, 0);
+-	if (IS_ERR(host->reg_base))
++	if (IS_ERR(host->reg_base)) {
++		dev_err(&pdev->dev, "devm_platform_ioremap_resource failed\n");
+ 		return PTR_ERR(host->reg_base);
++	}
+ 
+ 	host->clk_ahb = devm_clk_get(&pdev->dev, "ahb");
+ 	if (IS_ERR(host->clk_ahb)) {
+@@ -1352,11 +1374,18 @@ static int sunxi_mmc_resource_request(struct sunxi_mmc_host *host,
+ 	host->irq = platform_get_irq(pdev, 0);
+ 	if (host->irq < 0) {
+ 		ret = host->irq;
++		dev_err(&pdev->dev, "platform_get_irq failed: %d\n", ret);
+ 		goto error_disable_mmc;
+ 	}
+ 
+-	return devm_request_threaded_irq(&pdev->dev, host->irq, sunxi_mmc_irq,
++	ret = devm_request_threaded_irq(&pdev->dev, host->irq, sunxi_mmc_irq,
+ 			sunxi_mmc_handle_manual_stop, 0, "sunxi-mmc", host);
++	if (ret) {
++		dev_err(&pdev->dev, "devm_request_threaded_irq failed: %d\n", ret);
++		return ret;
++	}
++	dev_dbg(&pdev->dev, "%s: ok\n", __func__);
++	return 0;
+ 
+ error_disable_mmc:
+ 	sunxi_mmc_disable(host);
+@@ -1369,6 +1398,8 @@ static int sunxi_mmc_probe(struct platform_device *pdev)
+ 	struct mmc_host *mmc;
+ 	int ret;
+ 
++	dev_dbg(&pdev->dev, "%s: enter\n", __func__);
++
+ 	mmc = mmc_alloc_host(sizeof(struct sunxi_mmc_host), &pdev->dev);
+ 	if (!mmc) {
+ 		dev_err(&pdev->dev, "mmc alloc host failed\n");
+-- 
+2.43.0
+

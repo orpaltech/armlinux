@@ -1,7 +1,3 @@
-#
-# Install filesystem utilities
-#
-
 E2FSPROGS_REPO_URL="https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git"
 E2FSPROGS_VERSION=1.47.2
 E2FSPROGS_BRANCH=master

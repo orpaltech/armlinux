@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ########################################################################
-# gen-image.sh
+# generate-debian.sh
 #
 # Description:	Image generation script for ORPALTECH ARMLINUX
 #		build framework.
@@ -13,41 +13,10 @@
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# Copyright (C) 2013-2024 ORPAL Technology, Inc.
+# Copyright (C) 2013-2025 ORPAL Technology, Inc.
 #
 ########################################################################
 
-
-cleanup()
-{
-  set +x
-  set +e
-
-  # Identify and kill all processes still using files
-  echo "killing processes using mount point ..."
-  fuser -k "${R}"
-  sleep 5
-  fuser -9 -k -v "${R}"
-
-  # Clean up temporary .password file
-  if [ -r ".password" ] ; then
-    shred -zu .password
-  fi
-
-  # Clean up all temporary mount points
-  echo "removing temporary mount points ..."
-  umount -l "${R}/proc" 2> /dev/null
-  umount -l "${R}/sys" 2> /dev/null
-  umount -l "${R}/dev/pts" 2> /dev/null
-  umount "$BUILDDIR/mount/boot/firmware" 2> /dev/null
-  umount "$BUILDDIR/mount" 2> /dev/null
-  losetup -d "$ROOT_LOOP" 2> /dev/null
-  losetup -d "$FRMW_LOOP" 2> /dev/null
-  trap - 0 1 2 3 6
-}
-
-
-########################################################################
 
 # Are we running as root?
 if [ "$(id -u)" -ne "0" ] ; then
@@ -62,7 +31,7 @@ fi
 
 LIBDIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 PATCHDIR=$(realpath -s "${LIBDIR}/../patch")
-ARMLINUX_CONF=${LIBDIR}/../${CONFIG}.conf
+ARMLINUX_CONF=${CONFIGDIR}/product/${CONFIG}.conf
 WLAN_CONF=${LIBDIR}/../wlan
 
 # IMPORTANT: Preserve variables that may be cleared by config
@@ -82,7 +51,7 @@ fi
 BOARD=${BOARD:="${_BOARD_}"}
 BOARD_CONF=${LIBDIR}/boards/${BOARD}.conf
 CLEAN=${CLEAN:="${_CLEAN_}"}
-BASEDIR=${OUTPUTDIR:="${LIBDIR}"}
+BASEDIR=${OUTPUTDIR:="${LIBDIR}/../output"}
 EXTRADIR=${BUILD_EXTRA_DIR:="${BASEDIR}/extra"}
 
 # aliases
@@ -127,13 +96,12 @@ set_cross_compile
 echo -n -e "\n#\n# Custom Settings\n#\n"
 set -x
 
-# (!!!) Do not overload CPU, use only half of CPU cores
+# (!!!) Use only half of CPU cores for normal build
 HOST_CPU_CORES=$((CPUINFO_NUM_CORES / 2))
 
 BOOTLOADER="${BOOTLOADER}"
 
-# Debian release
-DEBIAN_RELEASE=${DEBIAN_RELEASE:="bullseye"}
+DEBIAN_RELEASE="${DEBIAN_RELEASE}"
 
 # Build directories
 RELEASEDIR="${BASEDIR}/images/${DEBIAN_RELEASE}"
@@ -184,7 +152,7 @@ USER_NAME=${USER_NAME:="pi"}
 ENABLE_ROOT=${ENABLE_ROOT:="yes"}
 ENABLE_ROOT_SSH=${ENABLE_ROOT_SSH:="yes"}
 ENABLE_WLAN=${ENABLE_WLAN:="no"}
-ENABLE_BLUETOOTH=${ENABLE_BLUETOOTH:="no"}
+ENABLE_BTH=${ENABLE_BTH:="no"}
 ENABLE_DEVEL=${ENABLE_DEVEL:="yes"}
 
 # Advanced settings
@@ -222,21 +190,39 @@ set +x
 
 display_alert "Selected platform:" "${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_ARCH}])" "info"
 
-display_alert "Product version:" "${PRODUCT_FULL_VER}" "info"
+display_alert "Selected product:" "${CONFIG} ver ${PRODUCT_FULL_VER}" "info"
 
 APT_INCLUDES=
 APT_EXCLUDES=
 
+
+BOOTSTRAP_D="${LIBDIR}/bootstrap.d/debian"
+FILES_D="${LIBDIR}/files/debian"
+CUSTOM_D="${LIBDIR}/custom.d/debian"
+
+# Check if ./bootstrap.d directory exists
+if [ ! -d "${BOOTSTRAP_D}" ] ; then
+  echo "error: 'bootstrap.d' required directory not found!"
+  exit 1
+fi
+
+# Check if ./files directory exists
+if [ ! -d "${FILES_D}" ] ; then
+  echo "error: 'files' required directory not found!"
+  exit 1
+fi
+
+########################################################################
 # read include file
-if [ -f ${LIBDIR}/files/common/debootstrap/includes/${DEBIAN_RELEASE} ] ; then
-  readarray -t apt_includes < ${LIBDIR}/files/common/debootstrap/includes/${DEBIAN_RELEASE}
+if [ -f ${FILES_D}/common/debootstrap/includes/${DEBIAN_RELEASE} ] ; then
+  readarray -t apt_includes < ${FILES_D}/common/debootstrap/includes/${DEBIAN_RELEASE}
   printf -v APT_INCLUDES '%s,' "${apt_includes[@]}"
   APT_INCLUDES=${APT_INCLUDES%,}
 fi
 
 # read exclude file (if present)
-if [ -f ${LIBDIR}/files/common/debootstrap/excludes/${DEBIAN_RELEASE} ] ; then
-  readarray -t apt_excludes < ${LIBDIR}/files/common/debootstrap/excludes/${DEBIAN_RELEASE}
+if [ -f ${FILES_D}/common/debootstrap/excludes/${DEBIAN_RELEASE} ] ; then
+  readarray -t apt_excludes < ${FILES_D}/common/debootstrap/excludes/${DEBIAN_RELEASE}
   printf -v APT_EXCLUDES '%s,' "${apt_excludes[@]}"
   APT_EXCLUDES=${APT_EXCLUDES%,}
 fi
@@ -261,22 +247,12 @@ fi
 
 APT_FORCE_YES="--allow-downgrades --allow-remove-essential"
 
+########################################################################
 # Make absolute path to output rootfs
 BOOT_DIR="${R}${TARGET_BOOT_DIR}"
 
-# find out kernel image name
-if [ "${KERNEL_IMAGE_COMPRESSED}" = yes ] ; then
-  if [ "${KERNEL_ARCH}" = arm64 ] ; then
-    KERNEL_SOURCE_IMAGE="Image.gz"
-  else
-    KERNEL_SOURCE_IMAGE="zImage"
-  fi
-else
-  KERNEL_SOURCE_IMAGE="Image"
-fi
-
 # Fail early: Is kernel ready?
-if [ ! -e "${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_SOURCE_IMAGE}" ] ; then
+if [ ! -e "${KERNEL_SOURCE_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_FILE}" ] ; then
   echo "error: cannot proceed: Linux kernel must be precompiled"
   exit 1
 fi
@@ -284,22 +260,6 @@ fi
 # Fail early: Is u-boot ready?
 if [ "${BOOTLOADER}" = uboot ] && [ ! -e "${UBOOT_SOURCE_DIR}/u-boot.bin" ] ; then
   echo "error: cannot proceed: U-Boot must be precompiled"
-  exit 1
-fi
-
-BOOTSTRAP_D="${LIBDIR}/bootstrap.d"
-FILES_D="${LIBDIR}/files"
-CUSTOM_D="${LIBDIR}/custom.d"
-
-# Check if ./bootstrap.d directory exists
-if [ ! -d "${BOOTSTRAP_D}" ] ; then
-  echo "error: 'bootstrap.d' required directory not found!"
-  exit 1
-fi
-
-# Check if ./files directory exists
-if [ ! -d "${FILES_D}" ] ; then
-  echo "error: 'files' required directory not found!"
   exit 1
 fi
 
@@ -315,7 +275,7 @@ if [ -e "$BUILDDIR" ] ; then
   exit 1
 fi
 
-
+########################################################################
 # Setup chroot directory
 mkdir -p "${R}"
 
@@ -326,8 +286,39 @@ if [ "$(df --output=avail ${BUILDDIR} | sed "1d")" -le "524288" ] ; then
 fi
 
 
+########################################################################
+cleanup()
+{
+  set +x
+  set +e
+
+  # Identify and kill all processes still using files
+  echo "killing processes using mount point ..."
+  fuser -k "${R}"
+  sleep 5
+  fuser -9 -k -v "${R}"
+
+  # Clean up temporary .password file
+  if [ -r ".password" ] ; then
+    shred -zu .password
+  fi
+
+  # Clean up all temporary mount points
+  echo "removing temporary mount points ..."
+  umount -l "${R}/proc" 2> /dev/null
+  umount -l "${R}/sys" 2> /dev/null
+  umount -l "${R}/dev/pts" 2> /dev/null
+  umount "$BUILDDIR/mount/boot/firmware" 2> /dev/null
+  umount "$BUILDDIR/mount" 2> /dev/null
+  losetup -d "$ROOT_LOOP" 2> /dev/null
+  losetup -d "$FRMW_LOOP" 2> /dev/null
+  trap - 0 1 2 3 6
+}
+########################################################################
+
 # Call "cleanup" function on various signals and errors
 trap cleanup 0 1 2 3 6
+########################################################################
 
 # Add required packages for the minbase installation
 if [ "${DEBIAN_MINBASE}" = yes ] ; then
@@ -335,7 +326,7 @@ if [ "${DEBIAN_MINBASE}" = yes ] ; then
 fi
 
 # Bluetooth requires some dependencies
-if [ "${ENABLE_BLUETOOTH}" = yes ] ; then
+if [ "${ENABLE_BTH}" = yes ] ; then
   ENABLE_DEVEL=yes
   ENABLE_DBUS=yes
   ENABLE_SOUND=yes
@@ -375,7 +366,7 @@ if [ "${ENABLE_SSHD}" = yes ] ; then
   APT_INCLUDES="openssh-server,${APT_INCLUDES}"
 fi
 
-if [ "${ENABLE_BLUETOOTH}" = yes ] ; then
+if [ "${ENABLE_BTH}" = yes ] ; then
   APT_INCLUDES="bluez,bluez-tools,libreadline-dev,libdw-dev,libbluetooth-dev,libsbc-dev,libbsd-dev,${APT_INCLUDES}"
 fi
 

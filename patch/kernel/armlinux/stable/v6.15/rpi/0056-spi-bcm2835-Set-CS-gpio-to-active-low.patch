@@ -1,0 +1,25 @@
+From 3b5eb4c8de842ae800396096f1f844aa644fd5e6 Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Wed, 23 Apr 2025 20:53:36 +0300
+Subject: [PATCH] spi: bcm2835: Set CS-gpio to active low
+
+---
+ drivers/spi/spi-bcm2835.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/spi/spi-bcm2835.c b/drivers/spi/spi-bcm2835.c
+index 77de5a0..8fcbe01 100644
+--- a/drivers/spi/spi-bcm2835.c
++++ b/drivers/spi/spi-bcm2835.c
+@@ -1333,6 +1333,8 @@ static int bcm2835_spi_setup(struct spi_device *spi)
+ 		goto err_cleanup;
+ 	}
+ 
++	gpiod_toggle_active_low(bs->cs_gpio);
++
+ 	spi_set_csgpiod(spi, 0, bs->cs_gpio);
+ 
+ 	/* and set up the "mode" and level */
+-- 
+2.43.0
+

@@ -1,5 +1,5 @@
 DBUS_REPO_URL="https://gitlab.freedesktop.org/dbus/dbus.git"
-DBUS_VERSION=1.16.0
+DBUS_VERSION=1.16.2
 DBUS_BRANCH=main
 DBUS_TAG="dbus-${DBUS_VERSION}"
 DBUS_SRC_DIR=${EXTRADIR}/dbus
