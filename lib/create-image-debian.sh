@@ -48,6 +48,7 @@ create_image()
 		KERNEL_IMAGE_FILE=${KERNEL_IMAGE_FILE} \
                 KERNEL_DEB_PKG_VER=${KERNEL_DEB_PKG_VER} \
                 FIRMWARE_DIR=${FIRMWARE_BASE_DIR} \
+		DEBIAN_RELEASE=${DEBIAN_RELEASE} \
                 RESIZE_PART_NUM=${RESIZE_PART_NUM} \
                 DEST_MEDIA=${DEST_MEDIA} \
                 DEST_DEV_TYPE=${DEST_DEV_TYPE} \

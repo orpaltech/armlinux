@@ -11,7 +11,7 @@ if [ -z "$REPO" ] ; then
   exit 1
 fi
 
-SRC_DIR=${PROJ_DIR}/sources/linux/${REPO}
+SRC_DIR=${PROJ_DIR}/sources/linux/${REPO}/git
 
 echo $SRC_DIR
 

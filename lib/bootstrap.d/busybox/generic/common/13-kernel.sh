@@ -33,8 +33,6 @@ fi
 # Install kernel modules
 make -C "${KERNEL_DIR}" INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH="${R}" modules_install
 
-# TODO: Install kernel image ??
-
 
 # Install kernel headers (optional)
 if [ "${KERNEL_INSTALL_HEADERS}" = yes ] ; then
@@ -43,12 +41,14 @@ fi
 
 # Prepare boot (firmware) directory
 
-# Copy kernel configuration file to the boot directory
-install_readonly ${KERNEL_DIR}/.config	${R}/boot/config-${KERNEL_VERSION}
+# Copy kernel configuration file
+install_readonly ${KERNEL_DIR}/.config	${BOOT_DIR}/config-${KERNEL_VERSION}
 # Copy device tree binaries
-install_readonly ${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/dts/${DTB_FILE}	${BOOT_DIR}/
+install_readonly ${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/dts/${DTB_FILE}	 ${BOOT_DIR}/
 # Setup initramfs file
-#install_readonly "${R}/boot/initrd.img-${KERNEL_VERSION}" "${BOOT_DIR}/initrd.img"
+if [ -f ${R}/boot/initrd.img-${KERNEL_VERSION} ] ; then
+  install_readonly ${R}/boot/initrd.img-${KERNEL_VERSION}  ${BOOT_DIR}/initrd.img
+fi
 
 
 # The default Linux kernel 'make' target generates an uncompressed 'Image' and a gzip-compresesd 'Image.gz'.
@@ -83,7 +83,7 @@ if [ "${BOOTLOADER}" = uboot ] && [ "${KERNEL_MKIMAGE_WRAP}" = yes ] ; then
         -d ${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_FILE}  ${BOOT_DIR}/${KERNEL_IMAGE_TARGET}
   fi
 else
-  install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_FILE}" "${BOOT_DIR}/${KERNEL_IMAGE_TARGET}"
+  install_readonly ${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_FILE}  ${BOOT_DIR}/${KERNEL_IMAGE_TARGET}
 fi
 
 

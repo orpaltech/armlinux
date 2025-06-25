@@ -7,9 +7,6 @@ UTIL_LINUX_BUILD_DIR=${UTIL_LINUX_SRC_DIR}/${BB_BUILD_OUT}
 UTIL_LINUX_REBUILD=yes
 
 
-SOURCE_NAME=$(basename ${BASH_SOURCE[0]})
-
-
 #
 # ############ helper functions ##############
 #

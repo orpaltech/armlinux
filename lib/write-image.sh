@@ -41,7 +41,7 @@ write_image()
 	DISK_NAME="Loop device"
         P="p"
 
-        echo "Loop device ${BLOCK_DEV} allocated for image file ${img_file}"
+        echo "Loop device ${BLOCK_DEV} allocated for image file ${img_file} of size ${img_size}"
 
     elif [ "${DEST_MEDIA}" = dev ] ; then
 	#

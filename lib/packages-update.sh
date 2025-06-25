@@ -27,7 +27,7 @@ REQUIRED_PACKAGES="autoconf autogen automake "\
 "fakeroot flex "\
 "gawk git gpg gpgv "\
 "kmod "\
-"libmpc-dev libelf-dev libglib2.0-dev libgnutls28-dev libssl-dev libncurses-dev libtool lynx "\
+"libmpc-dev libelf-dev libglib2.0-dev libgnutls28-dev libssl-dev libncurses-dev libtool lynx lzip "\
 "ninja-build "\
 "qemu-system-arm qemu-user-static quilt "\
 "patch python3 python3-pip python3-mako "\

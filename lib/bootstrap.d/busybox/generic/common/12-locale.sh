@@ -2,7 +2,7 @@
 # Setup Locales and keyboard settings
 #
 
-TZDB_VER=2025a
+TZDB_VER=2025b
 TZDB_TAR_FILE="tzdb-${TZDB_VER}.tar.lz"
 TZDB_TAR_URL="https://data.iana.org/time-zones/releases/${TZDB_TAR_FILE}"
 TZDB_BASE_DIR=${EXTRADIR}/tzdb
@@ -22,7 +22,7 @@ tzdb_install()
     mkdir -p $TZDB_BASE_DIR
 
     if [ ! -d $TZDB_SRC_DIR ] || [ "${TZDB_FORCE_UPDATE}" = yes ] ; then
-        echo "Download timezone db ..."
+        echo "${SOURCE_NAME}: Download timezone db ..."
 
         rm -rf $TZDB_SRC_DIR	$TZDB_SRC_HOST_DIR
         mkdir -p $TZDB_SRC_DIR

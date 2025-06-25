@@ -1,14 +1,16 @@
 #!/bin/bash
 
-#SOC_ARCH=arm
-SOC_ARCH=arm64
+SOC_ARCH=arm
+#SOC_ARCH=arm64
 SOC_FAMILY=sunxi
 PRODUCT_FULL_VER=1.0-0
 CONFIG=armlinux
 
 HOST_CPU_CORES=2
 
-TOOLCHAINDIR=/home/sergey/Projects/orpaltech/armlinux/toolchains
+ARMLINUXDIR=/srv/projects/orpaltech/armlinux
+
+TOOLCHAINDIR=${ARMLINUXDIR}/toolchains
 
 if [ "${SOC_ARCH}" = arm ] ; then
 
@@ -19,7 +21,7 @@ if [ "${SOC_ARCH}" = arm ] ; then
 
 	BOARD=bananapi-m2m
 
-	BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/14/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+	BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/13/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
 
 	OPENSSL_PLATFORM="linux-armv4 -march=armv7-a"
 elif [ "${SOC_ARCH}" = arm64 ] ; then
@@ -31,18 +33,18 @@ elif [ "${SOC_ARCH}" = arm64 ] ; then
 
 	BOARD=nanopi-a64
 
-	BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/14/aarch64-linux-gnu/bin/aarch64-linux-gnu-
+	BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/13/aarch64-linux-gnu/bin/aarch64-linux-gnu-
 
 	OPENSSL_PLATFORM="linux-aarch64"
 fi
 
 # ----Test block -------
-BASEDIR=/home/sergey/Projects/orpaltech/armlinux/output
-LIBDIR=/home/sergey/Projects/orpaltech/armlinux/lib
+BASEDIR=${ARMLINUXDIR}/output
+LIBDIR=${ARMLINUXDIR}/lib
 
-LOGDIR=/home/sergey/Projects/orpaltech/armlinux/logs
+LOGDIR=${ARMLINUXDIR}/logs
 
-GIT_MIRROR_ROOT=git@hanni-ubuntu-desktop:/srv/projects3/git
+#GIT_MIRROR_ROOT=git@hanni-ubuntu-desktop:/srv/projects3/git
 EXTRADIR=/home/sergey/Projects/orpaltech
 SYSROOT_DIR=/home/sergey/Projects/orpaltech/boards/${BOARD}/sysroot
 #CROSS_COMPILE=/home/sergey/Projects/orpaltech/armlinux/toolchains/bootlin/10/aarch64/glibc-2.31/bin/aarch64-buildroot-linux-gnu-
@@ -63,7 +65,7 @@ BB_AR=${BB_CROSS_COMPILE}ar
 BB_PLATFORM=${LINUX_PLATFORM}
 BB_BUILD_OUT=build_${LINUX_PLATFORM}
 
-R=/home/sergey/Projects/orpaltech/armlinux/output/images/busybox/build/chroot
+R=${BASEDIR}/images/busybox/build/chroot
 ETC_DIR=${R}/etc
 
 #CLEAN=bluetooth
@@ -74,14 +76,14 @@ ENABLE_WLAN=yes
 
 #----------------------
 
-. /home/sergey/Projects/orpaltech/armlinux/lib/common.sh
-. /home/sergey/Projects/orpaltech/armlinux/lib/functions.sh
-. /home/sergey/Projects/orpaltech/armlinux/lib/toolchains.sh
+. ${LIBDIR}/common.sh
+. ${LIBDIR}/functions.sh
+. ${LIBDIR}/toolchains.sh
 
 
 set_cross_compile
 
-. /home/sergey/Projects/orpaltech/armlinux/lib/meson-build.sh
+. ${LIBDIR}/meson-build.sh
 
 
 
@@ -131,7 +133,7 @@ EOF
 #. ./packages/11-zlib.sh
 #. ./packages/12-ncurses.sh
 #. ./packages/25-libusb.sh
-. ./packages/29-dbus.sh
+#. ./packages/29-dbus.sh
 #. ./packages/31-sysklogd.sh
 #. ./11-pkgs.sh
 #. ./12-locale.sh
@@ -139,6 +141,13 @@ EOF
 #. ./20-networking.sh
 #. ./30-security.sh
 
+#. ./packages/12-zstd.sh
+#. ./packages/13-lz4.sh
+. ./packages/49-rsync.sh
+
 #sysklogd_install
 #libusb_install
-dbus_install
+#dbus_install
+#zstd_install
+rsync_install
+#lz4_install

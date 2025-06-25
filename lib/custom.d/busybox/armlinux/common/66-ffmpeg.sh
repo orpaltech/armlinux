@@ -80,7 +80,7 @@ mp3lame_install()
 
 ffmpeg_install()
 {
-    PKG_FORCE_CLEAN=${SND_FORCE_REBUILD} \
+    PKG_FORCE_CLEAN=${SND_FORCE_REBUILD} PKG_FORCE_UPDATE=${SND_FORCE_UPDATE} \
 	update_src_pkg "ffmpeg" \
                     $FFMPEG_VERSION \
                     $FFMPEG_SRC_DIR \
@@ -175,9 +175,13 @@ ffmpeg_install()
 
 if [ "${ENABLE_SOUND}" = yes ] ; then
 
-    [[ ${CLEAN} =~ (^|,)sound(,|$) ]] && SND_FORCE_REBUILD=yes
+    if [[ ${CLEAN} =~ (^|,)sound(,|$) ]] ; then
+	SND_FORCE_UPDATE=yes
+	SND_FORCE_REBUILD=yes
+    fi
     set -x
     SND_FORCE_REBUILD=${SND_FORCE_REBUILD:="no"}
+    SND_FORCE_UPDATE=${SND_FORCE_UPDATE:="no"}
     set +x
 
     if [ "${FFMPEG_ENABLE_MP3LAME}" = yes ]; then

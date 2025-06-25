@@ -91,8 +91,26 @@ update_bootloader()
 
 update_kernel()
 {
-	KERNEL_SOURCE_DIR="${KERNEL_BASE_DIR}"
-	mkdir -p $KERNEL_BASE_DIR
+    KERNEL_BASE_DIR="${KERNEL_ROOT_DIR}/${KERNEL_REPO_NAME}"
+    mkdir -p ${KERNEL_BASE_DIR}
+
+    if [[ "${KERNEL_USE_ALT}" =~ ^(y|yes)$ ]]; then
+	display_alert "Extracting kernel from" "${KERNEL_REPO_NAME} | ${KERNEL_ALT_URL}" "info"
+
+	KERNEL_SOURCE_DIR=${KERNEL_BASE_DIR}/alt
+
+	mkdir -p ${KERNEL_SOURCE_DIR}
+	rm -rf ${KERNEL_SOURCE_DIR}/*
+
+	local tar_name=$(basename "${KERNEL_ALT_URL}")
+        local tar_path="${KERNEL_BASE_DIR}/${tar_name}"
+        [ ! -f ${tar_path} ] && wget -O ${tar_path} ${KERNEL_ALT_URL}
+        tar -xvf ${tar_path} --strip-components=1 -C ${KERNEL_SOURCE_DIR}
+#        rm -f ${tar_path}
+
+    else
+
+	KERNEL_SOURCE_DIR=${KERNEL_BASE_DIR}/git
 
 	local kernel_repo_url="${KERNEL_REPO_URL}"
 
@@ -110,7 +128,7 @@ update_kernel()
                 if [ "${old_url}" != "${kernel_repo_url}" ] ; then
 			echo "Kernel repository has changed, clean up working dir ?"
 			pause
-                        rm -rf $KERNEL_SOURCE_DIR
+                        rm -rf ${KERNEL_SOURCE_DIR}
                 fi
         fi
 
@@ -151,7 +169,9 @@ update_kernel()
 		[ $? -eq 0 ] || exit $?;
 	fi
 
-	echo "Done."
+    fi
+
+    echo "Done."
 }
 
 fw_update()

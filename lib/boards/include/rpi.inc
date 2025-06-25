@@ -31,8 +31,7 @@ QEMU_BINARY="/usr/bin/qemu-arm-static"
 # U-boot script variables, only used if [BOOTLOADER = uboot]
 BOOTSCR_LOAD_ADDR=0x02200000
 #BOOTSCR_RAMDISK_ADDR=0x00a00000
-# Say "yes" if you want u-boot to use FDT prepared by the 1st stage bootloader. 
-# Leave blank to use default behavior.
+# Say "yes" if you want u-boot to use FDT prepared by the 1st stage bootloader. Leave blank to use default behavior.
 #BOOTSCR_FDT_FIRST_STAGE= 
 # load device tree at the specified address, or leave blank if FDT prepared by 1st stage bootloader is used
 BOOTSCR_FDT_ADDR=0x02600000

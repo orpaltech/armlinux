@@ -16,6 +16,7 @@ mapfile -t filenames < $files1
 
 rm -rf $DST_DIR/.git/
 git -C $DST_DIR init
+git -C $DST_DIR branch -m master
 
 for filen in ${filenames[@]}
 do

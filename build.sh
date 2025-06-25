@@ -115,9 +115,15 @@ fi
 
 if [ "${ROOTFS}" = debian ] ; then
   FILESDIR=$LIBDIR/files/debian
-  DEBIAN_OPTIONS=$(sed '1!d' ${FILESDIR}/common/debootstrap/debian_releases)
-  DEBIAN_STATES=$(sed '2!d' ${FILESDIR}/common/debootstrap/debian_releases)
-  DEBIAN_SUPPORTS=$(sed '3!d' ${FILESDIR}/common/debootstrap/debian_releases)
+  if [ -f ${FILESDIR}/${CONFIG}/common/debootstrap/debian_releases ] ; then
+	debian_releases_file="${FILESDIR}/${CONFIG}/common/debootstrap/debian_releases"
+  else
+	debian_releases_file="${FILESDIR}/generic/common/debootstrap/debian_releases"
+  fi
+
+  DEBIAN_OPTIONS=$(sed '1!d' ${debian_releases_file})
+  DEBIAN_STATES=$(sed '2!d' ${debian_releases_file})
+  DEBIAN_SUPPORTS=$(sed '3!d' ${debian_releases_file})
 
   # select debian release
   if [ -z "${DEBIAN_RELEASE}" ] ; then
@@ -138,6 +144,7 @@ GIT_MIRROR_ROOT=${GIT_MIRROR_ROOT:=""}
 # clean options
 [[ "${BOOTLOADER}" = uboot ]] && CLEAN_OPTIONS="uboot ${CLEAN_OPTIONS}"
 [[ "${ENABLE_MESA}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} mesa"
+[[ "${ENABLE_QT}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} qt"
 [[ "${ENABLE_BTH}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} bluetooth"
 [[ "${ENABLE_SOUND}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} sound"
 [[ "${ENABLE_SDR}" = yes ]] && CLEAN_OPTIONS="${CLEAN_OPTIONS} sdr"
@@ -206,7 +213,7 @@ KERNEL_RELEASE="v${KERNEL_VER_MAJOR}.${KERNEL_VER_MINOR}"
 if [ -z "${KERNEL_REPO_TAG}" ] ; then
   KERNEL_REPO_TAG="${KERNEL_RELEASE}${KERNEL_VER_BUILD}"
 elif [ "${KERNEL_REPO_TAG}" = no ] ; then
-  KERNEL_REPO_TAG=""
+  KERNEL_REPO_TAG=
 fi
 [ -z "${KERNEL_REPO_BRANCH}" ] && KERNEL_REPO_BRANCH="master"
 
@@ -216,7 +223,7 @@ FIRMWARE_BASE_DIR=${SRCDIR}/firmware
 
 # declare directories for u-boot & kernel
 UBOOT_BASE_DIR=${SRCDIR}/u-boot/${UBOOT_REPO_NAME}
-KERNEL_BASE_DIR=${SRCDIR}/linux/${KERNEL_REPO_NAME}
+KERNEL_ROOT_DIR=${SRCDIR}/linux
 
 if [ -z "${KERNEL_BUILD_BOARD_CONFIG}" ] ; then
   KERNEL_BUILD_BOARD_CONFIG="linux-${SOC_FAMILY}-${SOC_ARCH}-${BOARD}.config"

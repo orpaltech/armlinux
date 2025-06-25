@@ -11,7 +11,7 @@ LIBXCRYPT_BUILD_DIR=${LIBXCRYPT_SRC_DIR}/${BB_BUILD_OUT}
 LIBXCRYPT_REBUILD=yes
 
 OPENSSH_REPO_URL="https://github.com/openssh/openssh-portable.git"
-OPENSSH_VERSION=9_9_P1
+OPENSSH_VERSION=10_0_P2
 OPENSSH_BRANCH=master
 OPENSSH_TAG="V_${OPENSSH_VERSION}"
 OPENSSH_SRC_DIR=${EXTRADIR}/openssh-portable
@@ -19,7 +19,7 @@ OPENSSH_BUILD_DIR=${OPENSSH_SRC_DIR}/${BB_BUILD_OUT}
 OPENSSH_REBUILD=yes
 
 DROPBEAR_REPO_URL="https://github.com/mkj/dropbear.git"
-DROPBEAR_VERSION="2024.86"
+DROPBEAR_VERSION="2025.88"
 DROPBEAR_BRANCH=master
 DROPBEAR_TAG="DROPBEAR_${DROPBEAR_VERSION}"
 DROPBEAR_SRC_DIR=${EXTRADIR}/dropbear
@@ -38,9 +38,8 @@ SOURCE_NAME=$(basename ${BASH_SOURCE[0]})
 libxcrypt_install()
 {
     # build libxcrypt
-    PKG_FORCE_CLEAN="${LIBXCRYPT_REBUILD}"
-
-    update_src_pkg "libxcrypt" \
+    PKG_FORCE_CLEAN="${LIBXCRYPT_REBUILD}" \
+	update_src_pkg "libxcrypt" \
                     $LIBXCRYPT_VERSION \
                     $LIBXCRYPT_SRC_DIR \
                     $LIBXCRYPT_REPO_URL \
@@ -90,7 +89,8 @@ install_ssh_key()
         # Generate local key, if needed
         if [ ! -f ${local_ssh_pkey} ] ; then
                 su -m ${CURRENT_USER} -c "ssh-keygen -f ${local_ssh_pkey} -m PEM -t ${ssh_algo} ${key_len} -N '' &> /dev/null"
-                chmod 644 ${local_ssh_pkey}
+		chmod 600 ${local_ssh_pkey}
+		chmod 644 ${local_ssh_pkey}.pub
         fi
         dropbearconvert openssh dropbear ${local_ssh_pkey}  ${local_ssh_pkey}.db
 
@@ -194,9 +194,8 @@ dropbear_install()
 openssh_install()
 {
     # build openssh
-    PKG_FORCE_CLEAN="${OPENSSH_REBUILD}"
-
-    update_src_pkg "openssh-portable" \
+    PKG_FORCE_CLEAN="${OPENSSH_REBUILD}" \
+	update_src_pkg "openssh-portable" \
                     $OPENSSH_VERSION \
                     $OPENSSH_SRC_DIR \
                     $OPENSSH_REPO_URL \

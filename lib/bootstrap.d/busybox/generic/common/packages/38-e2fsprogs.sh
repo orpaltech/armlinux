@@ -7,9 +7,6 @@ E2FSPROGS_BUILD_DIR=${E2FSPROGS_SRC_DIR}/${BB_BUILD_OUT}
 E2FSPROGS_REBUILD=yes
 
 
-SOURCE_NAME=$(basename ${BASH_SOURCE[0]})
-
-
 #
 # ############ helper functions ##############
 #

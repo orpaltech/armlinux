@@ -8,7 +8,10 @@ fi
 
 git_once()
 {
+	set -o pipefail
 	$REALGIT $* 2>&1 | tee -a "${LOGDIR}/git-`hostname`-log.txt"
+	set +o pipefail
+	return $?
 }
 
 git_retry()
@@ -25,6 +28,7 @@ git_retry()
 		let COUNT=$COUNT+1
 		sleep $DELAY
 	done
+	[ $? -eq 0 ] || exit $?;
 }
 
 git_repo_exists()

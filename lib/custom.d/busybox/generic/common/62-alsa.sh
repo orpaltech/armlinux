@@ -1,10 +1,8 @@
 #
 # Install audio support packages
 #
-
-
 ALSALIB_REPO_URL="https://github.com/alsa-project/alsa-lib.git"
-ALSALIB_VERSION=1.2.13
+ALSALIB_VERSION=1.2.14
 ALSALIB_BRANCH=master
 ALSALIB_TAG="v${ALSALIB_VERSION}"
 ALSALIB_SRC_DIR=${EXTRADIR}/alsa-lib
@@ -12,7 +10,7 @@ ALSALIB_BUILD_DIR=${ALSALIB_SRC_DIR}/${BB_BUILD_OUT}
 
 
 ALSA_UTILS_REPO_URL="https://github.com/alsa-project/alsa-utils.git"
-ALSA_UTILS_VERSION=1.2.13
+ALSA_UTILS_VERSION=1.2.14
 ALSA_UTILS_BRANCH=master
 ALSA_UTILS_TAG="v${ALSA_UTILS_VERSION}"
 ALSA_UTILS_SRC_DIR=${EXTRADIR}/alsa-utils

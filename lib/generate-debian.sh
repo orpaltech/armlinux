@@ -192,9 +192,6 @@ display_alert "Selected platform:" "${BOARD_NAME} (SoC: ${SOC_NAME} [${KERNEL_AR
 
 display_alert "Selected product:" "${CONFIG} ver ${PRODUCT_FULL_VER}" "info"
 
-APT_INCLUDES=
-APT_EXCLUDES=
-
 
 BOOTSTRAP_D="${LIBDIR}/bootstrap.d/debian"
 FILES_D="${LIBDIR}/files/debian"
@@ -211,41 +208,6 @@ if [ ! -d "${FILES_D}" ] ; then
   echo "error: 'files' required directory not found!"
   exit 1
 fi
-
-########################################################################
-# read include file
-if [ -f ${FILES_D}/common/debootstrap/includes/${DEBIAN_RELEASE} ] ; then
-  readarray -t apt_includes < ${FILES_D}/common/debootstrap/includes/${DEBIAN_RELEASE}
-  printf -v APT_INCLUDES '%s,' "${apt_includes[@]}"
-  APT_INCLUDES=${APT_INCLUDES%,}
-fi
-
-# read exclude file (if present)
-if [ -f ${FILES_D}/common/debootstrap/excludes/${DEBIAN_RELEASE} ] ; then
-  readarray -t apt_excludes < ${FILES_D}/common/debootstrap/excludes/${DEBIAN_RELEASE}
-  printf -v APT_EXCLUDES '%s,' "${apt_excludes[@]}"
-  APT_EXCLUDES=${APT_EXCLUDES%,}
-fi
-
-# See if additional packages are required
-if [ ! -z "${APT_CONFIG_INCLUDES}" ] ; then
-  APT_INCLUDES="${APT_CONFIG_INCLUDES},${APT_INCLUDES}"
-fi
-APT_CONFIG_RELEASE_INCLUDES=APT_CONFIG_INCLUDES_${DEBIAN_RELEASE}
-if [ ! -z "${!APT_CONFIG_RELEASE_INCLUDES}" ] ; then
-  APT_INCLUDES="${!APT_CONFIG_RELEASE_INCLUDES},${APT_INCLUDES}"
-fi
-
-# See if additional packages are to exclude
-if [ ! -z "${APT_CONFIG_EXCLUDES}" ] ; then
-  APT_EXCLUDES="${APT_CONFIG_EXCLUDES},${APT_EXCLUDES}"
-fi
-APT_CONFIG_RELEASE_EXCLUDES=APT_CONFIG_EXCLUDES_${DEBIAN_RELEASE}
-if [ ! -z "${!APT_CONFIG_RELEASE_EXCLUDES}" ] ; then
-  APT_EXCLUDES="${!APT_CONFIG_RELEASE_EXCLUDES},${APT_EXCLUDES}"
-fi
-
-APT_FORCE_YES="--allow-downgrades --allow-remove-essential"
 
 ########################################################################
 # Make absolute path to output rootfs
@@ -270,7 +232,7 @@ if [ -n "${CHROOT_SCRIPTS}" ] && [ ! -d "${CHROOT_SCRIPTS}" ] ; then
 fi
 
 # Don't clobber an old build
-if [ -e "$BUILDDIR" ] ; then
+if [ -e "${BUILDDIR}" ] ; then
   echo "error: directory ${BUILDDIR} already exists, not proceeding"
   exit 1
 fi
@@ -285,6 +247,31 @@ if [ "$(df --output=avail ${BUILDDIR} | sed "1d")" -le "524288" ] ; then
   exit 1
 fi
 
+########################################################################
+copy_custom_files()
+{
+  local sub_path=$1
+  local target_path=$2
+  local ext=$3
+
+  if [ -d "${sub_path}" ] ; then
+    local num_files=$(count_files "${sub_path}/common/*${ext}")
+    if [ ${num_files} -gt 0 ] ; then
+      cp -R ${sub_path}/common/*  ${target_path}/
+    fi
+
+    num_files=$(count_files "${sub_path}/${SOC_FAMILY}/*${ext}")
+    if [ ${num_files} -gt 0 ] ; then
+      cp -R ${sub_path}/${SOC_FAMILY}/*  ${target_path}/
+    fi
+
+    num_files=$(count_files "${sub_path}/${SOC_FAMILY}/${BOARD}/*${ext}")
+    if [ ${num_files} -gt 0 ] ; then
+      cp -R ${sub_path}/${SOC_FAMILY}/${BOARD}/*  ${target_path}/
+      rm -rf ${target_path}/${BOARD}
+    fi
+  fi
+}
 
 ########################################################################
 cleanup()
@@ -314,12 +301,74 @@ cleanup()
   losetup -d "$FRMW_LOOP" 2> /dev/null
   trap - 0 1 2 3 6
 }
-########################################################################
 
-# Call "cleanup" function on various signals and errors
-trap cleanup 0 1 2 3 6
-########################################################################
 
+########################################################################
+set -e
+
+SCRIPTS_DIR=${BASEDIR}/scripts
+BOOTSTRAP_DIR=$(mktemp -u ${SCRIPTS_DIR}/bootstrap.d.XXXXXXXXX)
+CUSTOM_DIR=$(mktemp -u ${SCRIPTS_DIR}/custom.d.XXXXXXXXX)
+FILES_DIR=$(mktemp -u ${SCRIPTS_DIR}/files.XXXXXXXXX)
+DEBS_DIR=$(mktemp -u ${SCRIPTS_DIR}/debs.XXXXXXXXX)
+
+# Prepare scripts for execution
+mkdir -p ${SCRIPTS_DIR}
+
+# Cleanup possible left-overs
+rm -rf ${SCRIPTS_DIR}/*
+
+mkdir ${FILES_DIR}
+mkdir ${BOOTSTRAP_DIR}
+mkdir ${CUSTOM_DIR}
+mkdir ${DEBS_DIR}
+
+# Prepare files
+copy_custom_files "${FILES_D}/generic"   "${FILES_DIR}"
+copy_custom_files "${FILES_D}/${CONFIG}" "${FILES_DIR}"
+
+set +e
+
+########################################################################
+# read include files
+APT_INCLUDES=
+APT_EXCLUDES=
+
+if [ -f ${FILES_DIR}/debootstrap/includes/debian ] ; then
+  readarray -t apt_includes < ${FILES_DIR}/debootstrap/includes/debian
+  printf -v APT_INCLUDES '%s,' "${apt_includes[@]}"
+  APT_INCLUDES=${APT_INCLUDES%,}
+fi
+
+# read exclude file (if present)
+if [ -f ${FILES_DIR}/debootstrap/excludes/debian ] ; then
+  readarray -t apt_excludes < ${FILES_DIR}/debootstrap/excludes/debian
+  printf -v APT_EXCLUDES '%s,' "${apt_excludes[@]}"
+  APT_EXCLUDES=${APT_EXCLUDES%,}
+fi
+
+# Inclduee additional packages, as specified in config file
+if [ -n "${APT_CONFIG_INCLUDES}" ] ; then
+  APT_INCLUDES="${APT_CONFIG_INCLUDES},${APT_INCLUDES}"
+fi
+APT_CONFIG_RELEASE_INCLUDES=APT_CONFIG_INCLUDES_${DEBIAN_RELEASE}
+if [ -n "${!APT_CONFIG_RELEASE_INCLUDES}" ] ; then
+  APT_INCLUDES="${!APT_CONFIG_RELEASE_INCLUDES},${APT_INCLUDES}"
+fi
+
+# See if additional packages are to exclude
+if [ -n "${APT_CONFIG_EXCLUDES}" ] ; then
+  APT_EXCLUDES="${APT_CONFIG_EXCLUDES},${APT_EXCLUDES}"
+fi
+APT_CONFIG_RELEASE_EXCLUDES=APT_CONFIG_EXCLUDES_${DEBIAN_RELEASE}
+if [ -n "${!APT_CONFIG_RELEASE_EXCLUDES}" ] ; then
+  APT_EXCLUDES="${!APT_CONFIG_RELEASE_EXCLUDES},${APT_EXCLUDES}"
+fi
+
+APT_FORCE_YES="--allow-downgrades --allow-remove-essential"
+
+
+########################################################################
 # Add required packages for the minbase installation
 if [ "${DEBIAN_MINBASE}" = yes ] ; then
   APT_INCLUDES="nano,netbase,net-tools,ifupdown,${APT_INCLUDES}"
@@ -375,58 +424,17 @@ if [ "${ENABLE_MESA}" = yes ] ; then
 fi
 
 
-copy_custom_files()
-{
-  local sub_path=$1
-  local target_path=$2
-  local ext=$3
-
-  if [ -d "${sub_path}" ] ; then
-    local num_files=$(count_files "${sub_path}/common/*${ext}")
-    if [ ${num_files} -gt 0 ] ; then
-      cp -R ${sub_path}/common/*  ${target_path}/
-    fi
-
-    num_files=$(count_files "${sub_path}/${SOC_FAMILY}/*${ext}")
-    if [ ${num_files} -gt 0 ] ; then
-      cp -R ${sub_path}/${SOC_FAMILY}/*  ${target_path}/
-    fi
-
-    num_files=$(count_files "${sub_path}/${SOC_FAMILY}/${BOARD}/*${ext}")
-    if [ ${num_files} -gt 0 ] ; then
-      cp -R ${sub_path}/${SOC_FAMILY}/${BOARD}/*  ${target_path}/
-      rm -rf ${target_path}/${BOARD}
-    fi
-  fi
-}
+########################################################################
+# Call "cleanup" function on various signals and errors
+trap cleanup 0 1 2 3 6
 
 set -e
 
-SCRIPTS_DIR=${BASEDIR}/scripts
-BOOTSTRAP_DIR=$(mktemp -u ${SCRIPTS_DIR}/bootstrap.d.XXXXXXXXX)
-CUSTOM_DIR=$(mktemp -u ${SCRIPTS_DIR}/custom.d.XXXXXXXXX)
-FILES_DIR=$(mktemp -u ${SCRIPTS_DIR}/files.XXXXXXXXX)
-DEBS_DIR=$(mktemp -u ${SCRIPTS_DIR}/debs.XXXXXXXXX)
-
-# Prepare scripts for execution
-mkdir -p ${SCRIPTS_DIR}
-
-# Cleanup possible left-overs
-rm -rf ${SCRIPTS_DIR}/*
-
-mkdir ${FILES_DIR}
-mkdir ${BOOTSTRAP_DIR}
-mkdir ${CUSTOM_DIR}
-mkdir ${DEBS_DIR}
-
-# Prepare required files
-copy_custom_files "${FILES_D}" "${FILES_DIR}"
-
 # Prepare bootstrap scripts
-copy_custom_files "${BOOTSTRAP_D}" "${BOOTSTRAP_DIR}" ".sh"
+copy_custom_files "${BOOTSTRAP_D}/generic"   "${BOOTSTRAP_DIR}" ".sh"
+copy_custom_files "${BOOTSTRAP_D}/${CONFIG}" "${BOOTSTRAP_DIR}" ".sh"
 
-
-# Execute bootstrapping scripts
+# Execute bootstrap scripts
 num_files=$(count_files "${BOOTSTRAP_DIR}/*.sh")
 if [ ${num_files} -gt 0 ] ; then
   # Execute bootstrap scripts
@@ -440,11 +448,10 @@ fi
 
 mkdir -p "${R}/chroot_scripts"
 
-
 if [ -d "${CUSTOM_D}" ] ; then
   # Prepare custom scripts
-  copy_custom_files "${CUSTOM_D}/generic" "${CUSTOM_DIR}" ".sh"
-  copy_custom_files "${CUSTOM_D}/${CONFIG}" "${CUSTOM_DIR}" ".sh"
+  copy_custom_files "${CUSTOM_D}/generic"	"${CUSTOM_DIR}" ".sh"
+  copy_custom_files "${CUSTOM_D}/${CONFIG}"	"${CUSTOM_DIR}" ".sh"
 
   num_chroot_files=$(count_files "${CUSTOM_DIR}/chroot-*.sh")
   if [ ${num_chroot_files} -gt 0 ] ; then

@@ -82,7 +82,5 @@ calc_image_size()
 	local blocks_count=$(((rootfs_size + (mbyte * 200)) / block_size))
 	local img_size=$((blocks_count * block_size))
 
-	echo "Calc image size [rootfs size=${rootfs_size}; image size=${img_size}, block size=${block_size}, blocks=${blocks_count}]"
-
 	echo $img_size
 }

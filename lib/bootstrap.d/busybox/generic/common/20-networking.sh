@@ -21,7 +21,7 @@ mkdir -p ${ETC_DIR}/network \
 	${ETC_DIR}/network/if-pre-up.d \
 	${ETC_DIR}/network/if-up.d
 
-mkdir -p ${ETC_DIR}/wpa_supplicant
+mkdir ${ETC_DIR}/wpa_supplicant
 
 mkdir -p ${USR_DIR}/share/udhcpc
 

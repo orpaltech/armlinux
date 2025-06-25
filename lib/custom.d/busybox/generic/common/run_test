@@ -4,81 +4,80 @@ SOC_ARCH=arm
 #SOC_ARCH=arm64
 SOC_FAMILY=sunxi
 PRODUCT_FULL_VER=1.0-0
-CONFIG=armlinux
+CONFIG=aapi
 
+HOST_CPU_CORES=2
 
-BASEDIR=/home/sergey/Projects/orpaltech/armlinux
-LIBDIR=${BASEDIR}/lib
-TOOLCHAINDIR=${BASEDIR}/toolchains
 EXTRADIR=/home/sergey/Projects/orpaltech
-SSH_KEY_PATH=/home/sergey/.ssh/id_rsa
+WORKDIR=/srv/projects/orpaltech/armlinux
+CONFIGDIR=${WORKDIR}/config
 
-if [ "${SOC_ARCH}" = arm ]; then
+TOOLCHAINDIR=${WORKDIR}/toolchains
 
-	# Meson build tool parameters
-	MESON_CPU_FAMILY="arm"
-	MESON_CPU="armv7hl"
+if [ "${SOC_ARCH}" = arm ] ; then
 
 	LINUX_PLATFORM=arm-linux-gnueabihf
 
-	BOARD=bananapi-m1plus
+	MESON_CPU_FAMILY=arm
+	MESON_CPU=armv7hl
 
-elif [ "${SOC_ARCH}" = arm64 ]; then
+	BOARD=bananapi-m2m
 
-	# Meson build tool parameters
-	MESON_CPU_FAMILY=aarch64
-	MESON_CPU=armv8-a
+	BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/13/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+
+	OPENSSL_PLATFORM="linux-armv4 -march=armv7-a"
+
+	QT_OPENGL_OPTION="-opengl es2"
+	QT_DEVICE_CONFIG="linux-arm-generic-g++"
+#linux-sun8i-a33-drm-g++"
+elif [ "${SOC_ARCH}" = arm64 ] ; then
 
 	LINUX_PLATFORM=aarch64-linux-gnu
 
+	MESON_CPU_FAMILY=aarch64
+	MESON_CPU=armv8-a
+
 	BOARD=nanopi-a64
 
+	BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/13/aarch64-linux-gnu/bin/aarch64-linux-gnu-
+
+	OPENSSL_PLATFORM="linux-aarch64"
 fi
 
-SYSROOT_DIR=/home/sergey/Projects/orpaltech/boards/${BOARD}/sysroot
-BB_PKG_CONFIG=${BASEDIR}/output/images/busybox/build/cross-pkg-config.sh
-
-# Create wrapper script for pkg-config
-#cat <<-EOF > $BB_PKG_CONFIG
-#!/bin/sh
-#R=${SYSROOT_DIR}
-#export PKG_CONFIG_SYSROOT_DIR="\${R}"
-#export PKG_CONFIG_LIBDIR="\${R}/lib/pkgconfig:\${R}/usr/lib/pkgconfig:\${R}/usr/share/pkgconfig"
-#export PKG_CONFIG_PATH=
-#exec /usr/bin/pkg-config "\$@"
-#EOF
-#chmod +x $BB_PKG_CONFIG
-
 # ----Test block -------
-#CROSS_COMPILE=/home/sergey/Projects/orpaltech/armlinux/toolchains/bootlin/10/aarch64/glibc-2.31/bin/aarch64-buildroot-linux-gnu-
-#TOOLCHAIN_LIBDIR=/home/sergey/Projects/orpaltech/armlinux/toolchains/bootlin/10/aarch64/glibc-2.31/aarch64-buildroot-linux-gnu/sysroot/usr/lib
+BASEDIR=${WORKDIR}/output
+LIBDIR=${WORKDIR}/lib
 
-#GIT_MIRROR_ROOT="git@hanni-ubuntu-desktop:/srv/projects3/git"
+LOGDIR=${WORKDIR}/logs
+
+#GIT_MIRROR_ROOT=git@hanni-ubuntu-desktop:/srv/projects3/git
+SYSROOT_DIR=${EXTRADIR}/boards/${BOARD}/sysroot
+
+BB_PKG_CONFIG=${BASEDIR}/images/busybox/build/cross-pkg-config.sh
+BB_CMAKE_TOOLCHAIN_QT_FILE=${BASEDIR}/images/busybox/build/cross-qt-toolchain.cmake
+
+SSH_KEY_PATH=/home/sergey/.ssh/id_rsa
 
 BB_LIBC=gnu
 
-BB_PLATFORM=${LINUX_PLATFORM}
-BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/14/${BB_PLATFORM}/bin/${BB_PLATFORM}-
 BB_GCC=${BB_CROSS_COMPILE}gcc
 BB_CXX=${BB_CROSS_COMPILE}g++
-BB_LD=${BB_CROSS_COMPILE}ld
 BB_NM=${BB_CROSS_COMPILE}nm
-BB_OBJCOPY=${BB_CROSS_COMPILE}objcopy
 BB_OBJDUMP=${BB_CROSS_COMPILE}objdump
 BB_STRIP=${BB_CROSS_COMPILE}strip
 BB_RANLIB=${BB_CROSS_COMPILE}ranlib
 BB_AR=${BB_CROSS_COMPILE}ar
-BB_BUILD_OUT=build-${BB_PLATFORM}
+BB_PLATFORM=${LINUX_PLATFORM}
+BB_BUILD_OUT=build_${LINUX_PLATFORM}
 
-R=${BASEDIR}/output/images/busybox/build/chroot
+R=${BASEDIR}/images/busybox/build/chroot
 ETC_DIR=${R}/etc
 
-CLEAN=bluetooth
-ENABLE_BTH=yes
-ENABLE_SDR=yes
-ENABLE_SOUND=yes
-ENABLE_MESA=yes
-ENABLE_NTP=yes
+#CLEAN=bluetooth
+#ENABLE_BTH=yes
+ENABLE_SSHD=yes
+
+ENABLE_WLAN=yes
 
 #----------------------
 
@@ -90,7 +89,6 @@ ENABLE_NTP=yes
 set_cross_compile
 
 . ${LIBDIR}/meson-build.sh
-
 
 
 
@@ -109,7 +107,7 @@ cpp = '${BB_CXX}'
 strip = '${BB_STRIP}'
 ar = '${BB_AR}'
 objcopy = '${BB_OBJCOPY}'
-pkg-config = '/usr/bin/pkg-config'
+pkg-config = '${BB_PKG_CONFIG}'
 # exe_wrapper = 'QEMU_LD_PREFIX=${R} ${QEMU_BINARY}'
 
 [built-in options]
@@ -120,7 +118,7 @@ cpp_link_args = linker_flags
 
 [properties]
 sys_root = '${R}'
-pkg_config_libdir = '${R}/lib/pkgconfig:${R}/usr/lib/pkgconfig:${R}/usr/share/pkgconfig'
+#pkg_config_libdir = '${R}/lib/pkgconfig:${R}/usr/lib/pkgconfig:${R}/usr/share/pkgconfig'
 
 [host_machine]
 system = 'linux'
@@ -132,24 +130,5 @@ EOF
 
 
 
-
-
-#. ./11-sysroot.sh
-#. ./17-ncurses.sh
-#. ./19-linux-utils.sh
-. ./22-ntp.sh
-#. ./22-pkg-config.sh
-
-#SND_FORCE_REBUILD=yes
-#. ./65-sound.sh
-
-#. ./66-ffmpeg.sh
-
-#BTH_FORCE_REBUILD=yes
-#. ./71-bluetooh.sh
-
-#SDR_FORCE_REBUILD=yes
-#. ./71-sdr.sh
-
-#. ./44-libdrm.sh
-#. ../sunxi/45-mesa-lima.sh
+#. ./81-fftw.sh
+. ./89-qt.sh

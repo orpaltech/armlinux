@@ -35,8 +35,10 @@ KERNEL_MKIMAGE_LOADADDR=0x47000000
 # FELBOOT_RAMDISK_ADDR=0x43300000
 # FELBOOT_FDT_ADDR=0x43000000
 
-# The option should be overriden if you want GPU support in QT5
+# The option shall be overriden if you want OpenGL support
 QT_OPENGL_OPTION="-no-opengl"
+# The device config may be overriden if needed
+QT_DEVICE_CONFIG=linux-arm-generic-g++
 
 # No wireless support by default. Update this value in a board config file
 SUPPORT_WLAN=no

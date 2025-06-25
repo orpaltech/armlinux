@@ -253,6 +253,21 @@ exec /usr/bin/pkg-config "\$@"
 EOF
 chmod +x ${BB_PKG_CONFIG}
 
+#
+# ########## cmake toolchain file  ###########
+#
+BB_CMAKE_TOOLCHAIN_FILE=${BASEDIR}/images/busybox/build/cross-toolchain.cmake
+BB_CMAKE_TOOLCHAIN_QT_FILE=${BASEDIR}/images/busybox/build/cross-qt-toolchain.cmake
+
+cp ${CONFIGDIR}/cmake/generic/generic.toolchain.cmake		${BB_CMAKE_TOOLCHAIN_FILE}
+cp ${CONFIGDIR}/cmake/generic/generic.qt.toolchain.cmake	${BB_CMAKE_TOOLCHAIN_QT_FILE}
+
+sed -i "s|^\(set(TARGET_SYSROOT[[:space:]]\).*|\1${R})|"	${BB_CMAKE_TOOLCHAIN_FILE}
+sed -i "s|^\(set(CROSS_COMPILE[[:space:]]\).*|\1${BB_CROSS_COMPILE})|"	${BB_CMAKE_TOOLCHAIN_FILE}
+
+sed -i "s|^\(set(TARGET_SYSROOT[[:space:]]\).*|\1${R})|"	${BB_CMAKE_TOOLCHAIN_QT_FILE}
+sed -i "s|^\(set(CROSS_COMPILE[[:space:]]\).*|\1${BB_CROSS_COMPILE})|"	${BB_CMAKE_TOOLCHAIN_QT_FILE}
+
 
 #
 # ############ configure rootfs ##############
@@ -271,7 +286,7 @@ else
 fi
 
 
-ROOTFS_TAR="rootfs-busybox-${SOC_ARCH}_${PRODUCT_FULL_VER}-${SOC_FAMILY}-${CONFIG}"
+ROOTFS_TAR="rootfs-${CONFIG}-busybox-${SOC_ARCH}_${PRODUCT_FULL_VER}-${SOC_FAMILY}"
 
 BB_TAR_DIR=${BASEDIR}/debs
 mkdir -p ${BB_TAR_DIR}
@@ -279,6 +294,7 @@ mkdir -p ${BB_TAR_DIR}
 if [[ ${CLEAN} =~ (^|,)rootfs(,|$) ]] ; then
     rm -f ${BB_TAR_DIR}/${ROOTFS_TAR}.txt
 fi
+
 
 ROOTFS_PKGS=()
 ROOTFS_VPKGS=()
@@ -320,7 +336,7 @@ fi
 
 
 if [ ! -f ${BB_TAR_DIR}/${ROOTFS_TAR}.tar.gz ] ; then
-    echo "Rootfs '${ROOTFS_TAR}' was not found, build it again from scratch"
+    echo "${SOURCE_NAME}: Rootfs '${ROOTFS_TAR}' was not found, build it again from scratch"
 
 
     busybox_install
@@ -361,7 +377,7 @@ if [ ! -f ${BB_TAR_DIR}/${ROOTFS_TAR}.tar.gz ] ; then
 	mkdir -p ${dst_dir}
 
 	install_exec ${BB_SHDOWN_SRC_DIR}/hardshutdown	${dst_dir}/
-	install_exec ${BB_SHDOWN_SRC_DIR}/shutdown		${dst_dir}/
+	install_exec ${BB_SHDOWN_SRC_DIR}/shutdown	${dst_dir}/
 	install_exec ${BB_SHDOWN_SRC_DIR}/do_shutdown	${dst_dir}/
 	install_exec ${BB_SHDOWN_SRC_DIR}/stop_storage	${dst_dir}/
 	install_exec ${BB_SHDOWN_SRC_DIR}/stop_tasks	${dst_dir}/
@@ -405,10 +421,10 @@ if [ ! -f ${BB_TAR_DIR}/${ROOTFS_TAR}.tar.gz ] ; then
 	$pkg_install "${pkg_name}"
     done
 
-    echo "${SOURCE_NAME}: mandatory packages installed."
+    echo "${SOURCE_NAME}: All mandatory packages installed."
 
 
-    echo "${SOURCE_NAME}: compressing rootfs '${ROOTFS_TAR}' to speed-up next build..."
+    echo "${SOURCE_NAME}: Compressing rootfs '${ROOTFS_TAR}' to speed-up next build..."
     tar -czf ${BB_TAR_DIR}/${ROOTFS_TAR}.tar.gz -C "${BUILDDIR}/" "chroot"
 
     mv ${BB_TAR_DIR}/${ROOTFS_TAR}.txt~	${BB_TAR_DIR}/${ROOTFS_TAR}.txt

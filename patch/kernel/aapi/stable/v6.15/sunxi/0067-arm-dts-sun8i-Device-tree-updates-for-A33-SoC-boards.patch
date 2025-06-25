@@ -1,0 +1,283 @@
+From dcf80eda57a424491df5d12f33f1dabaf0516e03 Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Sun, 23 Mar 2025 22:37:01 +0300
+Subject: [PATCH] arm/dts/sun8i: Device tree updates for A33 SoC boards
+
+---
+ .../arm/boot/dts/allwinner/sun8i-a23-a33.dtsi | 19 +++++
+ arch/arm/boot/dts/allwinner/sun8i-a33.dtsi    | 69 ++++++++++++++++++-
+ .../dts/allwinner/sun8i-r16-bananapi-m2m.dts  | 42 ++++++++---
+ 3 files changed, 116 insertions(+), 14 deletions(-)
+
+diff --git a/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi b/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi
+index 2af8382..6693355 100644
+--- a/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi
++++ b/arch/arm/boot/dts/allwinner/sun8i-a23-a33.dtsi
+@@ -275,6 +275,20 @@
+ 			#size-cells = <0>;
+ 		};
+ 
++		spi0: spi@1c68000 {
++			compatible = "allwinner,sun8i-a23-spi";
++			reg = <0x01c68000 0x1000>;
++			interrupts = <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_SPI0>, <&ccu CLK_SPI0>;
++			clock-names = "ahb", "mod";
++			dmas = <&dma 23>, <&dma 23>;
++			dma-names = "rx", "tx";
++			resets = <&ccu RST_BUS_SPI0>;
++			status = "disabled";
++			#address-cells = <1>;
++			#size-cells = <0>;
++		};
++
+ 		usb_otg: usb@1c19000 {
+ 			/* compatible gets set in SoC specific dtsi file */
+ 			reg = <0x01c19000 0x0400>;
+@@ -434,6 +448,11 @@
+ 				function = "pwm0";
+ 			};
+ 
++			spi0_pins: spi0-pins {
++				pins = "PC3", "PC0", "PC1", "PC2";
++				function = "spi0";
++			};
++
+ 			uart0_pf_pins: uart0-pf-pins {
+ 				pins = "PF2", "PF4";
+ 				function = "uart0";
+diff --git a/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi b/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
+index 36b2d78..1394fe2 100644
+--- a/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
++++ b/arch/arm/boot/dts/allwinner/sun8i-a33.dtsi
+@@ -125,6 +125,9 @@
+ 
+ 	cpus {
+ 		cpu@0 {
++			compatible = "arm,cortex-a7";
++			device_type = "cpu";
++			reg = <0>;
+ 			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
+ 			operating-points-v2 = <&cpu0_opp_table>;
+@@ -132,6 +135,9 @@
+ 		};
+ 
+ 		cpu1: cpu@1 {
++			compatible = "arm,cortex-a7";
++			device_type = "cpu";
++			reg = <1>;
+ 			clocks = <&ccu CLK_CPUX>;
+ 			clock-names = "cpu";
+ 			operating-points-v2 = <&cpu0_opp_table>;
+@@ -268,9 +274,19 @@
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+ 
+-			port {
+-				dsi_in_tcon0: endpoint {
+-					remote-endpoint = <&tcon0_out_dsi>;
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				dsi_in: port@0 {
++					reg = <0>;
++					dsi_in_tcon0: endpoint {
++						remote-endpoint = <&tcon0_out_dsi>;
++					};
++				};
++
++				dsi_out: port@1 {
++					reg = <1>;
+ 				};
+ 			};
+ 		};
+@@ -286,6 +302,32 @@
+ 			status = "disabled";
+ 			#phy-cells = <0>;
+ 		};
++
++		i2s0: i2s@1c22000 {
++			#sound-dai-cells = <0>;
++			compatible = "allwinner,sun6i-a31-i2s";
++			reg = <0x01c22000 0x400>;
++			interrupts = <GIC_SPI 13 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_I2S0>, <&ccu CLK_I2S0>;
++			clock-names = "apb", "mod";
++			resets = <&ccu RST_BUS_I2S0>;
++			dmas = <&dma 3>, <&dma 3>;
++			dma-names = "rx", "tx";
++			status = "disabled";
++		};
++
++		i2s1: i2s@1c22400 {
++			#sound-dai-cells = <0>;
++			compatible = "allwinner,sun6i-a31-i2s";
++			reg = <0x01c22400 0x400>;
++			interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&ccu CLK_BUS_I2S1>, <&ccu CLK_I2S1>;
++			clock-names = "apb", "mod";
++			resets = <&ccu RST_BUS_I2S1>;
++			dmas = <&dma 4>, <&dma 4>;
++			dma-names = "rx", "tx";
++			status = "disabled";
++		};
+ 	};
+ 
+ 	thermal-zones {
+@@ -400,11 +442,32 @@
+ 	interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>,
+ 		     <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
+ 
++	i2s1_bclk_pin: i2s1-bclk-pin {
++		pins = "PG11";
++		function = "i2s1";
++	};
++	i2s1_lrck_pin: i2s1-lrck-pin {
++		pins = "PG10";
++		function = "i2s1";
++	};
++	i2s1_do0_pin: i2s1-do0-pin {
++		pins = "PG12";
++		function = "i2s1";
++	};
++	i2s1_di_pin: i2s1-di-pin {
++		pins = "PG13";
++		function = "i2s1";
++	};
++
+ 	uart0_pb_pins: uart0-pb-pins {
+ 		pins = "PB0", "PB1";
+ 		function = "uart0";
+ 	};
+ 
++	uart3_pins: uart3-pins {
++		pins = "PH6", "PH7";
++		function = "uart3";
++	};
+ };
+ 
+ &tcon0 {
+diff --git a/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts b/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
+index f4bf46b..b9d4953 100644
+--- a/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
++++ b/arch/arm/boot/dts/allwinner/sun8i-r16-bananapi-m2m.dts
+@@ -53,7 +53,7 @@
+ 		i2c0 = &i2c0;
+ 		i2c1 = &i2c1;
+ 		i2c2 = &i2c2;
+-		serial0 = &uart0;
++		serial0 = &uart3;
+ 		serial1 = &uart1;
+ 	};
+ 
+@@ -67,11 +67,13 @@
+ 		led-0 {
+ 			label = "bpi-m2m:blue:usr";
+ 			gpios = <&pio 2 7 GPIO_ACTIVE_LOW>;
++			linux,default-trigger = "heartbeat";
+ 		};
+ 
+ 		led-1 {
+ 			label = "bpi-m2m:green:usr";
+ 			gpios = <&r_pio 0 2 GPIO_ACTIVE_LOW>;
++			linux,default-trigger = "mmc0";
+ 		};
+ 
+ 		led-2 {
+@@ -97,7 +99,7 @@
+ };
+ 
+ &codec {
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &cpu0 {
+@@ -119,13 +121,17 @@
+ };
+ 
+ &dai {
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &ehci0 {
+ 	status = "okay";
+ };
+ 
++&i2c1 {
++	status = "okay";
++};
++
+ &mmc0 {
+ 	vmmc-supply = <&reg_dcdc1>;
+ 	bus-width = <4>;
+@@ -141,6 +147,14 @@
+ 	bus-width = <4>;
+ 	non-removable;
+ 	status = "okay";
++
++	brcmf: wifi@1 {
++		reg = <1>;
++		compatible = "brcm,bcm4329-fmac";
++		interrupt-parent = <&r_pio>;
++		interrupts = <0 7 IRQ_TYPE_LEVEL_LOW>;  /* PL07/EINT7 */
++		interrupt-names = "host-wake";
++	};
+ };
+ 
+ &mmc2 {
+@@ -170,6 +184,12 @@
+ 	};
+ };
+ 
++&spi0 {
++	compatible = "allwinner,sun8i-h3-spi";
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi0_pins>;
++};
++
+ #include "axp223.dtsi"
+ 
+ &ac_power_supply {
+@@ -266,20 +286,14 @@
+ };
+ 
+ &sound {
+-	status = "okay";
+-};
+-
+-&uart0 {
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&uart0_pb_pins>;
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &uart1 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&uart1_pg_pins>, <&uart1_cts_rts_pg_pins>;
+ 	uart-has-rtscts;
+-	status = "okay";
++	status = "disabled";
+ 
+ 	bluetooth {
+ 		compatible = "brcm,bcm43438-bt";
+@@ -293,6 +307,12 @@
+ 	};
+ };
+ 
++&uart3 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart3_pins>;
++	status = "okay";
++};
++
+ &usb_otg {
+ 	dr_mode = "otg";
+ 	status = "okay";
+-- 
+2.43.0
+

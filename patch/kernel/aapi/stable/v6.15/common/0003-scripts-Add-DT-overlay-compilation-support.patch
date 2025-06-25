@@ -1,0 +1,96 @@
+From 61efd5ee54819d70931439c80733269c3fc5c3e0 Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Sun, 2 Mar 2025 20:46:15 +0300
+Subject: [PATCH] scripts: Add DT-overlay compilation support
+
+---
+ .gitignore               |  1 +
+ scripts/Makefile.dtbinst | 11 ++++++++++-
+ scripts/Makefile.dtbs    | 14 ++++++++++++++
+ 3 files changed, 25 insertions(+), 1 deletion(-)
+
+diff --git a/.gitignore b/.gitignore
+index 5937c74..3a2bea9 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -44,6 +44,7 @@
+ *.rpm
+ *.rsi
+ *.s
++*.scr
+ *.so
+ *.so.dbg
+ *.su
+diff --git a/scripts/Makefile.dtbinst b/scripts/Makefile.dtbinst
+index 9d92041..5119b7c 100644
+--- a/scripts/Makefile.dtbinst
++++ b/scripts/Makefile.dtbinst
+@@ -22,8 +22,17 @@ quiet_cmd_dtb_install = INSTALL $@
+ $(dst)/%: $(obj)/%
+ 	$(call cmd,dtb_install)
+ 
++$(dst)/%.scr: $(obj)/%.scr
++	$(call cmd,dtb_install)
++
++$(dst)/README.%-overlays: $(obj)/README.%-overlays
++	$(call cmd,dtb_install)
++
+ dtbs := $(patsubst $(obj)/%,%,$(call read-file, $(obj)/dtbs-list))
+ 
++scr-files := $(addprefix $(dst)/, $(scr-y))
++dtbotxt-files := $(addprefix $(dst)/, $(dtbotxt-y))
++
+ ifdef CONFIG_ARCH_WANT_FLAT_DTB_INSTALL
+ 
+ define gen_install_rules
+@@ -37,7 +46,7 @@ dtbs := $(notdir $(dtbs))
+ 
+ endif # CONFIG_ARCH_WANT_FLAT_DTB_INSTALL
+ 
+-__dtbs_install: $(addprefix $(dst)/, $(dtbs))
++__dtbs_install: $(addprefix $(dst)/, $(dtbs)) $(scr-files) $(dtbotxt-files)
+ 	@:
+ 
+ .PHONY: $(PHONY)
+diff --git a/scripts/Makefile.dtbs b/scripts/Makefile.dtbs
+index 8d56c08..4c993b3 100644
+--- a/scripts/Makefile.dtbs
++++ b/scripts/Makefile.dtbs
+@@ -17,6 +17,12 @@ real-dtb-y      := $(addprefix $(obj)/, $(real-dtb-y))
+ always-y        += $(dtb-y)
+ targets         += $(real-dtb-y)
+ 
++# Add overlay fixup script targets
++scr-y           := $(addprefix $(obj)/, $(scr-y))
++dtbotxt-y       := $(addprefix $(obj)/, $(dtbotxt-y))
++
++always-y        += $(scr-y) $(dtbotxt-y)
++
+ # dtbs-list
+ # ---------------------------------------------------------------------------
+ 
+@@ -109,6 +115,8 @@ DTC_FLAGS += -Wnode_name_chars_strict \
+ endif
+ 
+ DTC_FLAGS += $(DTC_FLAGS_$(target-stem))
++DTC_FLAGS += $(DTC_FLAGS_$(target-stem)) \
++	-@
+ 
+ # Set -@ if the target is a base DTB that overlay is applied onto
+ DTC_FLAGS += $(if $(filter $(patsubst $(obj)/%,%,$@), $(base-dtb-y)), -@)
+@@ -133,6 +141,12 @@ $(obj)/%.dtb: $(obj)/%.dts $(DTC) $(DT_TMP_SCHEMA) FORCE
+ $(obj)/%.dtbo: $(src)/%.dtso $(DTC) FORCE
+ 	$(call if_changed_dep,dtc)
+ 
++quiet_cmd_scr = MKIMAGE $@
++	cmd_scr = mkimage -C none -A $(ARCH) -T script -d $< $@
++
++$(obj)/%.scr: $(src)/%.scr-cmd FORCE
++	$(call if_changed,scr)
++
+ # targets
+ # ---------------------------------------------------------------------------
+ 
+-- 
+2.43.0
+

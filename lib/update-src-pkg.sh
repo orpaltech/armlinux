@@ -58,7 +58,7 @@ update_src_pkg()
 
 	if [ -d ${pkg_src_dir} ] && [ -d ${pkg_src_dir}/.git ] ; then
 		# update sources
-		$GIT -C ${pkg_src_dir} fetch origin ${pkg_fetch_depth} --tags
+		$GIT -C ${pkg_src_dir} fetch origin ${pkg_fetch_depth} --tags --recurse-submodules
 
 		$GIT -C ${pkg_src_dir} reset --hard
 		if [ "${PKG_FORCE_CLEAN}" = yes ] ; then
@@ -72,13 +72,15 @@ update_src_pkg()
 		[ -d ${pkg_src_dir} ] && rm -rf ${pkg_src_dir}
 
 		# clone sources
-		$GIT clone ${pkg_repo_url} -b ${pkg_branch} ${pkg_fetch_depth} --tags ${pkg_src_dir}
+		$GIT clone ${pkg_repo_url} -b ${pkg_branch} ${pkg_fetch_depth} --recurse-submodules --tags ${pkg_src_dir}
 	fi
 
 	if [ -n "${pkg_tag}" ] ; then
 		echo "Checking out tag: tags/${pkg_tag}"
 		$GIT -C ${pkg_src_dir} checkout tags/${pkg_tag}
 	fi
+
+	$GIT -C ${pkg_src_dir} submodule update --init --recursive
     fi
 
     display_alert "Sources ready" "${pkg_name} ${pkg_ver}" "info"
