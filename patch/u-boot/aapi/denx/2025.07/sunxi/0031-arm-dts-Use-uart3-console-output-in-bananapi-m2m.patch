@@ -1,0 +1,97 @@
+From 77d44faff6f422f87c6ed1cc65481afc06e0b6fc Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <sergey.suloev@gmail.com>
+Date: Thu, 21 Aug 2025 22:21:18 +0300
+Subject: [PATCH] arm: dts: Use uart3 console output in bananapi-m2m
+
+---
+ arch/arm/dts/sun8i-a33.dtsi             | 4 ++++
+ arch/arm/dts/sun8i-r16-bananapi-m2m.dts | 9 ++++++++-
+ arch/arm/mach-sunxi/board.c             | 4 ++++
+ configs/Bananapi_m2m_defconfig          | 1 +
+ include/sunxi_gpio.h                    | 1 +
+ 5 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/dts/sun8i-a33.dtsi b/arch/arm/dts/sun8i-a33.dtsi
+index 36b2d78..784786b 100644
+--- a/arch/arm/dts/sun8i-a33.dtsi
++++ b/arch/arm/dts/sun8i-a33.dtsi
+@@ -405,6 +405,10 @@
+ 		function = "uart0";
+ 	};
+ 
++	uart3_pins: uart3-pins {
++		pins = "PH6", "PH7";
++		function = "uart3";
++	};
+ };
+ 
+ &tcon0 {
+diff --git a/arch/arm/dts/sun8i-r16-bananapi-m2m.dts b/arch/arm/dts/sun8i-r16-bananapi-m2m.dts
+index 5001f10..179683f 100644
+--- a/arch/arm/dts/sun8i-r16-bananapi-m2m.dts
++++ b/arch/arm/dts/sun8i-r16-bananapi-m2m.dts
+@@ -55,10 +55,11 @@
+ 		i2c2 = &i2c2;
+ 		serial0 = &uart0;
+ 		serial1 = &uart1;
++		serial3 = &uart3;
+ 	};
+ 
+ 	chosen {
+-		stdout-path = "serial0:115200n8";
++		stdout-path = "serial3:115200n8";
+ 	};
+ 
+ 	leds {
+@@ -293,6 +294,12 @@
+ 	};
+ };
+ 
++&uart3 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart3_pins>;
++	status = "okay";
++};
++
+ &usb_otg {
+ 	dr_mode = "otg";
+ 	status = "okay";
+diff --git a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
+index b1bf51f..4e63260 100644
+--- a/arch/arm/mach-sunxi/board.c
++++ b/arch/arm/mach-sunxi/board.c
+@@ -121,6 +121,10 @@ static int gpio_init(void)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPB(0), SUN8I_A33_GPB_UART0);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPB(1), SUN8I_A33_GPB_UART0);
+ 	sunxi_gpio_set_pull(SUNXI_GPB(1), SUNXI_GPIO_PULL_UP);
++#elif CONFIG_CONS_INDEX == 4 && defined(CONFIG_MACH_SUN8I_A33)
++	sunxi_gpio_set_cfgpin(SUNXI_GPH(7), SUN8I_A33_GPH_UART3);
++	sunxi_gpio_set_cfgpin(SUNXI_GPH(6), SUN8I_A33_GPH_UART3);
++	sunxi_gpio_set_pull(SUNXI_GPH(7), SUNXI_GPIO_PULL_UP);
+ #elif CONFIG_CONS_INDEX == 1 && defined(CONFIG_MACH_SUNXI_H3_H5)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPA(4), SUN8I_H3_GPA_UART0);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPA(5), SUN8I_H3_GPA_UART0);
+diff --git a/configs/Bananapi_m2m_defconfig b/configs/Bananapi_m2m_defconfig
+index 1e793f1..8ac6542 100644
+--- a/configs/Bananapi_m2m_defconfig
++++ b/configs/Bananapi_m2m_defconfig
+@@ -13,3 +13,4 @@ CONFIG_USB_EHCI_HCD=y
+ CONFIG_USB_OHCI_HCD=y
+ CONFIG_USB_MUSB_GADGET=y
+ CONFIG_USB_FUNCTION_MASS_STORAGE=y
++CONFIG_CONS_INDEX=4
+diff --git a/include/sunxi_gpio.h b/include/sunxi_gpio.h
+index 12b54c8..e6a33a0 100644
+--- a/include/sunxi_gpio.h
++++ b/include/sunxi_gpio.h
+@@ -114,6 +114,7 @@ enum sunxi_gpio_number {
+ #define SUN5I_GPB_UART0		2
+ #define SUN8I_GPB_UART2		2
+ #define SUN8I_A33_GPB_UART0	3
++#define SUN8I_A33_GPH_UART3	3
+ #define SUN8I_A83T_GPB_UART0	2
+ #define SUN8I_V3S_GPB_UART0	3
+ #define SUN50I_GPB_UART0	4
+-- 
+2.43.0
+

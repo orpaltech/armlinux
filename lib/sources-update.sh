@@ -100,11 +100,14 @@ update_kernel()
 	KERNEL_SOURCE_DIR=${KERNEL_BASE_DIR}/alt
 
 	mkdir -p ${KERNEL_SOURCE_DIR}
-	rm -rf ${KERNEL_SOURCE_DIR}/*
+	sudo rm -rf ${KERNEL_SOURCE_DIR}/*
 
 	local tar_name=$(basename "${KERNEL_ALT_URL}")
         local tar_path="${KERNEL_BASE_DIR}/${tar_name}"
-        [ ! -f ${tar_path} ] && wget -O ${tar_path} ${KERNEL_ALT_URL}
+        if [ ! -f ${tar_path} ] ; then
+		wget -O ${tar_path} ${KERNEL_ALT_URL}
+		[ $? -eq 0 ] || exit $?
+	fi
         tar -xvf ${tar_path} --strip-components=1 -C ${KERNEL_SOURCE_DIR}
 #        rm -f ${tar_path}
 

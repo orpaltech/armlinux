@@ -1,0 +1,50 @@
+From 2d6c8004195fd19a6832446f035d7402de572864 Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Tue, 15 Apr 2025 22:42:06 +0300
+Subject: [PATCH] of/property/fw_devlink: Support allwinner,sram links
+
+---
+ drivers/of/property.c | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/drivers/of/property.c b/drivers/of/property.c
+index c1feb63..8036cf5 100644
+--- a/drivers/of/property.c
++++ b/drivers/of/property.c
+@@ -1488,6 +1488,25 @@ static struct device_node *parse_remote_endpoint(struct device_node *np,
+ 	return of_graph_get_remote_port_parent(np);
+ }
+ 
++static struct device_node *parse_allwinner_sram(struct device_node *np,
++						const char *prop_name,
++						int index)
++{
++	struct device_node *sram_node;
++
++	if (!IS_ENABLED(CONFIG_SUNXI_SRAM))
++		return NULL;
++
++	if (index > 0 || strcmp(prop_name, "allwinner,sram"))
++		return NULL;
++
++	sram_node = of_parse_phandle(np, prop_name, 0);
++	sram_node = of_get_parent(sram_node);
++	sram_node = of_get_parent(sram_node);
++
++	return sram_node;
++}
++
+ static const struct supplier_bindings of_supplier_bindings[] = {
+ 	{ .parse_prop = parse_clocks, },
+ 	{ .parse_prop = parse_interconnects, },
+@@ -1535,6 +1554,7 @@ static const struct supplier_bindings of_supplier_bindings[] = {
+ 		.parse_prop = parse_post_init_providers,
+ 		.fwlink_flags = FWLINK_FLAG_IGNORE,
+ 	},
++	{ .parse_prop = parse_allwinner_sram, },
+ 	{}
+ };
+ 
+-- 
+2.43.0
+

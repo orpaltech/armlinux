@@ -1,0 +1,587 @@
+From 7c55831ee58a6d50f92aac355ae4826473f0ec95 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <sergey.suloev@gmail.com>
+Date: Thu, 17 Jul 2025 21:38:16 +0300
+Subject: [PATCH] sun8i-a33: Add DT-overlays for A33-based boards
+
+---
+ arch/arm/boot/dts/allwinner/Makefile          |  2 +
+ arch/arm/boot/dts/allwinner/overlays/Makefile | 20 ++++++
+ .../overlays/README.sun8i-a33-overlays        |  1 +
+ .../overlays/sun8i-a33-aapi-charger.dtsi      | 15 ++++
+ .../overlays/sun8i-a33-aapi-charger.dtso      | 14 ++++
+ .../overlays/sun8i-a33-aapi-clk.dtsi          | 59 +++++++++++++++
+ .../overlays/sun8i-a33-aapi-clk.dtso          | 10 +++
+ .../overlays/sun8i-a33-aapi-fgauge.dtsi       | 22 ++++++
+ .../overlays/sun8i-a33-aapi-fgauge.dtso       | 14 ++++
+ .../overlays/sun8i-a33-aapi-lcd.dtsi          | 71 +++++++++++++++++++
+ .../overlays/sun8i-a33-aapi-lcd.dtso          | 14 ++++
+ .../overlays/sun8i-a33-aapi-power.dtsi        | 45 ++++++++++++
+ .../overlays/sun8i-a33-aapi-power.dtso        | 11 +++
+ .../overlays/sun8i-a33-aapi-sound.dtsi        | 33 +++++++++
+ .../overlays/sun8i-a33-aapi-sound.dtso        | 10 +++
+ .../overlays/sun8i-a33-aapi-vna.dtsi          | 28 ++++++++
+ .../overlays/sun8i-a33-aapi-vna.dtso          | 13 ++++
+ .../allwinner/overlays/sun8i-a33-aapi.dtso    | 20 ++++++
+ .../overlays/sun8i-a33-fixup.scr-cmd          | 21 ++++++
+ 19 files changed, 423 insertions(+)
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/Makefile
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/README.sun8i-a33-overlays
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-charger.dtsi
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-charger.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-clk.dtsi
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-clk.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-fgauge.dtsi
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-fgauge.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtsi
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-power.dtsi
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-power.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-sound.dtsi
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-sound.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-vna.dtsi
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-vna.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-fixup.scr-cmd
+
+diff --git a/arch/arm/boot/dts/allwinner/Makefile b/arch/arm/boot/dts/allwinner/Makefile
+index d799ad1..244f639 100644
+--- a/arch/arm/boot/dts/allwinner/Makefile
++++ b/arch/arm/boot/dts/allwinner/Makefile
+@@ -271,3 +271,5 @@ dtb-$(CONFIG_MACH_SUNIV) += \
+ 	suniv-f1c100s-licheepi-nano.dtb \
+ 	suniv-f1c200s-lctech-pi.dtb \
+ 	suniv-f1c200s-popstick-v1.1.dtb
++
++subdir-y := overlays
+diff --git a/arch/arm/boot/dts/allwinner/overlays/Makefile b/arch/arm/boot/dts/allwinner/overlays/Makefile
+new file mode 100644
+index 0000000..38b9824
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/Makefile
+@@ -0,0 +1,20 @@
++# SPDX-License-Identifier: GPL-2.0
++ifeq ($(CONFIG_OF_OVERLAY),y)
++
++dtb-$(CONFIG_MACH_SUN8I) += \
++	sun8i-a33-aapi-charger.dtbo \
++	sun8i-a33-aapi-clk.dtbo \
++	sun8i-a33-aapi-fgauge.dtbo \
++	sun8i-a33-aapi-lcd.dtbo \
++	sun8i-a33-aapi-power.dtbo \
++	sun8i-a33-aapi-sound.dtbo \
++	sun8i-a33-aapi-vna.dtbo \
++	sun8i-a33-aapi.dtbo
++
++scr-$(CONFIG_MACH_SUN8I) += \
++        sun8i-a33-fixup.scr
++
++dtbotxt-$(CONFIG_MACH_SUN8I) += \
++        README.sun8i-a33-overlays
++
++endif
+diff --git a/arch/arm/boot/dts/allwinner/overlays/README.sun8i-a33-overlays b/arch/arm/boot/dts/allwinner/overlays/README.sun8i-a33-overlays
+new file mode 100644
+index 0000000..831cb45
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/README.sun8i-a33-overlays
+@@ -0,0 +1 @@
++# overlays for sun8i-a33 (Allwinner A33/R16)
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-charger.dtsi b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-charger.dtsi
+new file mode 100644
+index 0000000..cda7aae
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-charger.dtsi
+@@ -0,0 +1,15 @@
++// Common include for AAPI analyzer node
++
++&{/} {
++	aapi_charger: aapi-charger {
++		compatible = "microchip,mcp73833";
++
++		pg-gpios = <&pio 1 2 0>;	/*PB2*/
++		stat1-gpios = <&pio 6 12 0>;	/*PG12*/
++		stat2-gpios = <&r_pio 0 11 0>;	/*PL11*/
++
++		enable-gpios = <&pio 3 18 GPIO_ACTIVE_LOW>;	/*PD18*/
++
++		monitored-battery = <&aapi_battery>;
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-charger.dtso b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-charger.dtso
+new file mode 100644
+index 0000000..cc02a28
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-charger.dtso
+@@ -0,0 +1,14 @@
++// Overlay for the AAPI charger
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++#include "sun8i-a33-aapi-charger.dtsi"
++
++
++/ {
++	compatible = "allwinner,sun8i-a33";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-clk.dtsi b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-clk.dtsi
+new file mode 100644
+index 0000000..104a537
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-clk.dtsi
+@@ -0,0 +1,59 @@
++// Common include for AAPI clock generator
++
++&{/clocks} {
++	/* 24.576MHz reference crystal */
++	aapi_clk_xtal: aapi-clk-xtal@0 {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <24576000>;
++	};
++};
++
++&i2c1 {
++	/* to avoid dtc warning */
++	#address-cells = <1>;
++	#size-cells = <0>;
++	status = "okay";
++
++	aapi_clk: si5351@60 {
++		compatible = "silabs,si5351a-msop";
++		reg = <0x60>;
++		#address-cells = <1>;
++		#size-cells = <0>;
++		#clock-cells = <1>;
++
++		power-supply = <&reg_vcc_vna>;
++
++		/* connect input to the clock ref */
++		clocks = <&aapi_clk_xtal>;
++		clock-names = "xtal";
++
++		/* connect xtal input as source of pll0 and pll1 */
++		silabs,pll-source = <0 0>, <1 0>;
++
++		clkout@0 {
++			reg = <0>;
++			silabs,multisynth-source = <0>;
++			silabs,clock-source = <0>;
++			silabs,pll-master;
++			silabs,drive-strength = <8>;
++			silabs,disable-state = <0>;
++		};
++
++		clkout@1 {
++			reg = <1>;
++			silabs,multisynth-source = <1>;
++			silabs,clock-source = <0>;
++			silabs,pll-master;
++			silabs,drive-strength = <8>;
++			silabs,disable-state = <0>;
++		};
++
++		clkout@2 {
++			reg = <2>;
++			silabs,clock-source = <2>;
++			silabs,drive-strength = <8>;
++			silabs,disable-state = <2>;
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-clk.dtso b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-clk.dtso
+new file mode 100644
+index 0000000..64965a1
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-clk.dtso
+@@ -0,0 +1,10 @@
++// Overlay for AAPI clock generator
++
++/dts-v1/;
++/plugin/;
++
++#include "sun8i-a33-aapi-clk.dtsi"
++
++/ {
++	compatible = "allwinner,sun8i-a33";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-fgauge.dtsi b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-fgauge.dtsi
+new file mode 100644
+index 0000000..e222d41
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-fgauge.dtsi
+@@ -0,0 +1,22 @@
++// Common include for AAPI fuel gauge
++
++&i2c1 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++	clock-frequency = <100000>;
++	status = "okay";
++
++
++	aapi_fgauge: bq34z100-g1@55 {
++		compatible = "ti,bq34z100";
++		reg = <0x55>;
++
++		/* BQ_ALERT signal */
++		interrupt-parent = <&pio>;
++		interrupts = <1 1 IRQ_TYPE_EDGE_FALLING>;	/*PB1*/
++
++		resistor-sense = <10>; /*mOhm*/
++		monitored-battery = <&aapi_battery>;
++		power-supplies = <&aapi_charger>;
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-fgauge.dtso b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-fgauge.dtso
+new file mode 100644
+index 0000000..746dc1a
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-fgauge.dtso
+@@ -0,0 +1,14 @@
++// Overlay for the AAPI fuel gauge
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++#include "sun8i-a33-aapi-fgauge.dtsi"
++
++
++/ {
++	compatible = "allwinner,sun8i-a33";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtsi b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtsi
+new file mode 100644
+index 0000000..71d01d4
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtsi
+@@ -0,0 +1,71 @@
++// Common include for AAPI display
++
++
++&dsi {
++	#address-cells = <1>;
++	#size-cells = <0>;
++	vcc-dsi-supply = <&reg_dcdc1>;	/* VCC-DSI */
++	status = "okay";
++
++	aapi_lcd: panel@0 {
++		compatible = "startek,kd050hdfia020", "ilitek,ili9881c";
++		reg = <0>;
++
++		power-supply = <&reg_vcc_lcd>;
++		reset-gpios = <&r_pio 0 5 GPIO_ACTIVE_LOW>;	/*PL05*/
++
++		backlight = <&aapi_pwm_bl>;
++
++		rotation = <0>;	/*Valid: 0, 90, 180, 270 */
++	};
++};
++
++&dphy {
++	status = "okay";
++};
++
++&de {
++	status = "okay";
++};
++
++&tcon0 {
++	status = "okay";
++};
++
++&{/} {
++
++	aapi_pwm_bl: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm 0 5000000 0>;	/*200 Hz*/
++		brightness-levels = <0 8 16 32 64 96 128 192 255>;
++		default-brightness-level = <6>;
++	};
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm0_pin>;
++	status = "okay";
++};
++
++&i2c0 {
++	/* to avoid dtc warning */
++	#address-cells = <1>;
++	#size-cells = <0>;
++	clock-frequency = <100000>;	/*TODO: test if 400KHz feasible */
++	status = "okay";
++
++	aapi_tp: tp-gt911@5d {
++		compatible = "goodix,gt911";
++		reg = <0x5d>;
++
++		AVDD28-supply = <&reg_vcc_lcd>;
++		/*no separate VDDIO supply, use dummy */
++
++		interrupt-parent = <&pio>;
++		interrupts = <1 5 IRQ_TYPE_EDGE_FALLING>;	/*PB5*/
++		irq-gpios = <&pio 1 5 GPIO_ACTIVE_HIGH>;
++
++		reset-gpios = <&pio 1 6 GPIO_ACTIVE_HIGH>;	/*PB6*/
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtso b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtso
+new file mode 100644
+index 0000000..d3ae42d
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtso
+@@ -0,0 +1,14 @@
++// Overlay for AAPI display
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pwm/pwm.h>
++
++#include "sun8i-a33-aapi-lcd.dtsi"
++
++/ {
++	compatible = "allwinner,sun8i-a33";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-power.dtsi b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-power.dtsi
+new file mode 100644
+index 0000000..6ca5d23
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-power.dtsi
+@@ -0,0 +1,45 @@
++// Common include for AAPI power regulators
++
++&{/} {
++	reg_vcc_lcd: aapi-vcc-lcd {
++		compatible = "regulator-fixed";
++		regulator-name = "aapi-vcc-lcd";
++		regulator-min-microvolt = <2800000>;
++		regulator-max-microvolt = <2800000>;
++		gpios = <&pio 1 7 GPIO_ACTIVE_HIGH>;	/* PANEL_EN: PB7 */
++		enable-active-high;
++		startup-delay-us = <10000>;
++		vin-supply = <&reg_vcc5v0>;
++	};
++
++	reg_vdd_adc: aapi-vdd-adc {
++		compatible = "regulator-fixed";
++		regulator-name = "aapi-vdd-adc";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>;    /* ADC_EN: PD22 */
++		enable-active-high;
++		startup-delay-us = <40000>;	/*HPF requires ~40ms delay*/
++		vin-supply = <&reg_vcc5v0>;
++	};
++
++	reg_vcc_vna: aapi-vcc-vna {
++		compatible = "regulator-fixed";
++		regulator-name = "aapi-vcc-radio";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		gpios = <&pio 3 26 GPIO_ACTIVE_HIGH>;	/* RADIO_EN: PD26 */
++		enable-active-high;
++		startup-delay-us = <10000>;
++		vin-supply = <&reg_vcc5v0>;
++	};
++
++	aapi_battery: battery {
++		compatible = "simple-battery";
++		device-chemistry = "lithium-ion";
++		voltage-min-design-microvolt = <3200000>;
++		voltage-max-design-microvolt = <4200000>;
++		energy-full-design-microwatt-hours = <14060000>;
++		charge-full-design-microamp-hours = <3800000>;
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-power.dtso b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-power.dtso
+new file mode 100644
+index 0000000..a06eee9
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-power.dtso
+@@ -0,0 +1,11 @@
++// Overlay for AAPI power regulators
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include "sun8i-a33-aapi-power.dtsi"
++
++/ {
++	compatible = "allwinner,sun8i-a33";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-sound.dtsi b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-sound.dtsi
+new file mode 100644
+index 0000000..c09668e
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-sound.dtsi
+@@ -0,0 +1,33 @@
++// Common include for AAPI sound subsystem
++
++
++&{/} {
++	aapi_sound: aapi-sound {
++		compatible = "orpaltech,aapi-sound-pcm180x";
++		#sound-dai-cells = <0>;
++
++		orpal,i2s-controller = <&i2s1>;
++		orpal,audio-codec = <&aapi_codec>;
++		orpal,sysclk-freq = <24576000>;
++	};
++
++	aapi_codec: pcm1803 {
++		compatible = "ti,pcm1803";
++		#sound-dai-cells = <0>;
++		#clock-cells = <1>;
++
++		power-supply = <&reg_vdd_adc>;
++
++		clocks = <&aapi_clk 2>;
++		clock-names = "sysclk";
++
++		sysclk-freq = <24576000>;
++		sysclk-ratio = <256>;
++	};
++};
++
++&i2s1 {
++	pinctrl-0 = <&i2s1_bclk_pin &i2s1_lrck_pin &i2s1_di_pin>;
++	pinctrl-names = "default";
++	status = "okay";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-sound.dtso b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-sound.dtso
+new file mode 100644
+index 0000000..99e4c12
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-sound.dtso
+@@ -0,0 +1,10 @@
++// Overlay for AAPI sound subsystem
++
++/dts-v1/;
++/plugin/;
++
++#include "sun8i-a33-aapi-sound.dtsi"
++
++/ {
++	compatible = "allwinner,sun8i-a33";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-vna.dtsi b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-vna.dtsi
+new file mode 100644
+index 0000000..36faea6
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-vna.dtsi
+@@ -0,0 +1,28 @@
++// Common include for AAPI analyzer node
++
++&{/} {
++	aapi_vna: aapi-vna {
++		compatible = "orpaltech,aapi-160";
++		#clock-cells = <1>;
++
++		clocks = <&aapi_clk 0>,
++			 <&aapi_clk 1>,
++			 <&aapi_clk 2>;
++		clock-names = "measure",
++			      "local-osc",
++			      "adc-sysclk";
++
++		radio-supply = <&reg_vcc_vna>;
++
++		intermediate-freq = <12288>;
++		measure-freq = <14000000>;
++
++		shutdown-ctrl-gpios = <&pio 3 20 GPIO_ACTIVE_LOW>; /*PD20*/
++		shutdown-req-gpios = <&pio 1 3 0>;	/*PB3*/
++
++		charger-en-gpios = <&pio 3 18 GPIO_ACTIVE_LOW>;	/*PD18*/
++		charger-pg-gpios = <&pio 1 2 0>;	/*PB2*/
++		charger-stat1-gpios = <&pio 6 12 0>;	/*PG12*/
++		charger-stat2-gpios = <&r_pio 0 11 0>;	/*PL11*/
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-vna.dtso b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-vna.dtso
+new file mode 100644
+index 0000000..198b79e
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-vna.dtso
+@@ -0,0 +1,13 @@
++// Overlay for AAPI analyzer node
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++#include "sun8i-a33-aapi-vna.dtsi"
++
++/ {
++	compatible = "allwinner,sun8i-a33";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi.dtso b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi.dtso
+new file mode 100644
+index 0000000..93040eb
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi.dtso
+@@ -0,0 +1,20 @@
++// Overlay for AAPI main
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pwm/pwm.h>
++
++#include "sun8i-a33-aapi-power.dtsi"
++#include "sun8i-a33-aapi-charger.dtsi"
++#include "sun8i-a33-aapi-fgauge.dtsi"
++#include "sun8i-a33-aapi-clk.dtsi"
++#include "sun8i-a33-aapi-sound.dtsi"
++#include "sun8i-a33-aapi-lcd.dtsi"
++#include "sun8i-a33-aapi-vna.dtsi"
++
++/ {
++	compatible = "allwinner,sun8i-a33";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-fixup.scr-cmd b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-fixup.scr-cmd
+new file mode 100644
+index 0000000..93f2d3d
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-fixup.scr-cmd
+@@ -0,0 +1,21 @@
++# overlays fixup script
++# implements overlay arguments functionality using u-boot
++# scripting, environment variables and "fdt" command
++
++if test -n "${aapi_lcd_rotation}"; then
++	fdt set /soc/dsi@1ca0000/panel@0 rotation "<${aapi_lcd_rotation}>";
++fi
++
++if test "${aapi_tp_swap_xy}" = "yes"; then
++	fdt set /soc/i2c@1c2ac00/tp-gt911@5d touchscreen-swapped-x-y;
++fi
++if test -n "${aapi_tp_x_mm}"; then
++	fdt set /soc/i2c@1c2ac00/tp-gt911@5d touchscreen-x-mm "<${aapi_tp_x_mm}>";
++fi
++if test -n "${aapi_tp_y_mm}"; then
++	fdt set /soc/i2c@1c2ac00/tp-gt911@5d touchscreen-y-mm "<${aapi_tp_y_mm}>";
++fi
++
++if test -n "${aapi_codec_sysclk_ratio}"; then
++	fdt set /pcm1803 sysclk-ratio "<${aapi_codec_sysclk_ratio}>";
++fi
+-- 
+2.43.0
+

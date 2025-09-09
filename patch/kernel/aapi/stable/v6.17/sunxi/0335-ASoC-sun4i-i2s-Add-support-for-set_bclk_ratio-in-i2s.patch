@@ -1,0 +1,47 @@
+From 769a3416722fe3ed30170e42dcc85c37683a8c18 Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Fri, 21 Mar 2025 16:22:14 +0300
+Subject: [PATCH] ASoC: sun4i-i2s: Add support for set_bclk_ratio in i2s
+
+---
+ sound/soc/sunxi/sun4i-i2s.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/sound/soc/sunxi/sun4i-i2s.c b/sound/soc/sunxi/sun4i-i2s.c
+index 40de99a..9863eb5 100644
+--- a/sound/soc/sunxi/sun4i-i2s.c
++++ b/sound/soc/sunxi/sun4i-i2s.c
+@@ -1086,6 +1086,22 @@ static int sun4i_i2s_set_tdm_slot(struct snd_soc_dai *dai,
+ 	return 0;
+ }
+ 
++static int sun4i_i2s_set_bclk_ratio(struct snd_soc_dai *dai,
++				    unsigned int ratio)
++{
++	struct sun4i_i2s *i2s = snd_soc_dai_get_drvdata(dai);
++
++	if (!ratio) {
++		i2s->slots = 0;
++		return 0;
++	}
++
++	i2s->slots = 2;
++	i2s->slot_width = ratio / 2;
++
++	return 0;
++}
++
+ static int sun4i_i2s_dai_probe(struct snd_soc_dai *dai)
+ {
+ 	struct sun4i_i2s *i2s = snd_soc_dai_get_drvdata(dai);
+@@ -1113,6 +1129,7 @@ static const struct snd_soc_dai_ops sun4i_i2s_dai_ops = {
+ 	.set_fmt	= sun4i_i2s_set_fmt,
+ 	.set_sysclk	= sun4i_i2s_set_sysclk,
+ 	.set_tdm_slot	= sun4i_i2s_set_tdm_slot,
++	.set_bclk_ratio	= sun4i_i2s_set_bclk_ratio,
+ 	.trigger	= sun4i_i2s_trigger,
+ };
+ 
+-- 
+2.43.0
+

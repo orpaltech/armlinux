@@ -1,0 +1,130 @@
+From 19975d43bdd92a978cbf72924a396fa41a3bc5eb Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <sergey.suloev@gmail.com>
+Date: Tue, 1 Jul 2025 22:27:54 +0300
+Subject: [PATCH] power: Add support for BQ34Z1xx standalone fuel gauge
+
+---
+ drivers/power/supply/bq27xxx_battery.c     | 15 +++++++--------
+ drivers/power/supply/bq27xxx_battery_i2c.c |  9 +++++++++
+ include/linux/power/bq27xxx_battery.h      |  3 +++
+ 3 files changed, 19 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/power/supply/bq27xxx_battery.c b/drivers/power/supply/bq27xxx_battery.c
+index 93dcebb..25ac25d 100644
+--- a/drivers/power/supply/bq27xxx_battery.c
++++ b/drivers/power/supply/bq27xxx_battery.c
+@@ -87,7 +87,6 @@
+ #define BQ27XXX_SOFT_RESET		0x42
+ #define BQ27XXX_RESET			0x41
+ 
+-#define BQ27XXX_RS			(20) /* Resistor sense mOhm */
+ #define BQ27XXX_POWER_CONSTANT		(29200) /* 29.2 µV^2 * 1000 */
+ #define BQ27XXX_CURRENT_CONSTANT	(3570) /* 3.57 µV * 1000 */
+ 
+@@ -540,7 +539,7 @@ static u8
+ 		[BQ27XXX_REG_AE] = 0x24,
+ 		[BQ27XXX_REG_SOC] = 0x02,
+ 		[BQ27XXX_REG_DCAP] = 0x3c,
+-		[BQ27XXX_REG_AP] = 0x22,
++		[BQ27XXX_REG_AP] = 0x26,
+ 		BQ27XXX_DM_REG_ROWS,
+ 	},
+ 	bq78z100_regs[BQ27XXX_REG_MAX] = {
+@@ -1601,7 +1600,7 @@ static int bq27xxx_battery_read_charge(struct bq27xxx_device_info *di, u8 reg,
+ 	}
+ 
+ 	if (di->opts & BQ27XXX_O_ZERO)
+-		charge *= BQ27XXX_CURRENT_CONSTANT / BQ27XXX_RS;
++		charge *= BQ27XXX_CURRENT_CONSTANT / di->rs_val;
+ 	else
+ 		charge *= 1000;
+ 
+@@ -1666,7 +1665,7 @@ static int bq27xxx_battery_read_dcap(struct bq27xxx_device_info *di,
+ 	}
+ 
+ 	if (di->opts & BQ27XXX_O_ZERO)
+-		dcap = (dcap << 8) * BQ27XXX_CURRENT_CONSTANT / BQ27XXX_RS;
++		dcap = (dcap << 8) * BQ27XXX_CURRENT_CONSTANT / di->rs_val;
+ 	else
+ 		dcap *= 1000;
+ 
+@@ -1694,7 +1693,7 @@ static int bq27xxx_battery_read_energy(struct bq27xxx_device_info *di,
+ 	}
+ 
+ 	if (di->opts & BQ27XXX_O_ZERO)
+-		ae *= BQ27XXX_POWER_CONSTANT / BQ27XXX_RS;
++		ae *= BQ27XXX_POWER_CONSTANT / di->rs_val;
+ 	else
+ 		ae *= 1000;
+ 
+@@ -1889,7 +1888,7 @@ static int bq27xxx_battery_current_and_status(
+ 			curr = -curr;
+ 		}
+ 
+-		curr = curr * BQ27XXX_CURRENT_CONSTANT / BQ27XXX_RS;
++		curr = curr * BQ27XXX_CURRENT_CONSTANT / di->rs_val;
+ 	} else {
+ 		/* Other gauges return signed value */
+ 		curr = (int)((s16)curr) * 1000;
+@@ -1983,7 +1982,7 @@ static int bq27xxx_battery_pwr_avg(struct bq27xxx_device_info *di,
+ 	}
+ 
+ 	if (di->opts & BQ27XXX_O_ZERO)
+-		val->intval = (power * BQ27XXX_POWER_CONSTANT) / BQ27XXX_RS;
++		val->intval = (power * BQ27XXX_POWER_CONSTANT) / di->rs_val;
+ 	else
+ 		/* Other gauges return a signed value in units of 10mW */
+ 		val->intval = (int)((s16)power) * 10000;
+@@ -2131,7 +2130,7 @@ static int bq27xxx_battery_get_property(struct power_supply *psy,
+ 	mutex_unlock(&di->lock);
+ 
+ 	if (psp != POWER_SUPPLY_PROP_PRESENT && di->cache.flags < 0)
+-		return di->cache.flags;
++		return -ENODEV;
+ 
+ 	switch (psp) {
+ 	case POWER_SUPPLY_PROP_STATUS:
+diff --git a/drivers/power/supply/bq27xxx_battery_i2c.c b/drivers/power/supply/bq27xxx_battery_i2c.c
+index 868e95f..cc48370 100644
+--- a/drivers/power/supply/bq27xxx_battery_i2c.c
++++ b/drivers/power/supply/bq27xxx_battery_i2c.c
+@@ -182,6 +182,15 @@ static int bq27xxx_battery_i2c_probe(struct i2c_client *client)
+ 	di->dev = &client->dev;
+ 	di->chip = id->driver_data;
+ 	di->name = name;
++	di->rs_val = BQ27XXX_RS;
++
++	ret = device_property_read_u32(&client->dev, "resistor-sense",
++					&di->rs_val);
++	if (ret < 0) {
++		dev_warn(&client->dev,
++			"Use default resistor sense of %d mOhm\n",
++			BQ27XXX_RS);
++	}
+ 
+ 	di->bus.read = bq27xxx_battery_i2c_read;
+ 	di->bus.write = bq27xxx_battery_i2c_write;
+diff --git a/include/linux/power/bq27xxx_battery.h b/include/linux/power/bq27xxx_battery.h
+index d56e127..672915f 100644
+--- a/include/linux/power/bq27xxx_battery.h
++++ b/include/linux/power/bq27xxx_battery.h
+@@ -4,6 +4,8 @@
+ 
+ #include <linux/power_supply.h>
+ 
++#define BQ27XXX_RS	(20) /* Resistor sense, mOhm */
++
+ enum bq27xxx_chip {
+ 	BQ27000 = 1, /* bq27000, bq27200 */
+ 	BQ27010, /* bq27010, bq27210 */
+@@ -71,6 +73,7 @@ struct bq27xxx_device_info {
+ 	struct list_head list;
+ 	struct mutex lock;
+ 	u8 *regs;
++	u32 rs_val;	/* Resistor sense, mOhm */
+ };
+ 
+ void bq27xxx_battery_update(struct bq27xxx_device_info *di);
+-- 
+2.43.0
+

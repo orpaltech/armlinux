@@ -1,0 +1,1133 @@
+From ade2f1b87e0dd150b7d9df3c88f17324ffbd72b2 Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Thu, 20 Mar 2025 20:25:54 +0300
+Subject: [PATCH] sun7i-a20: Add DT-overlays for A20-based boards
+
+---
+ arch/arm/boot/dts/allwinner/Makefile          |   2 +
+ arch/arm/boot/dts/allwinner/overlays/Makefile |  20 +++
+ .../overlays/README.sun7i-a20-overlays        |  15 ++
+ .../overlays/sun7i-a20-bananapi-lcd.dtso      |  79 ++++++++++
+ .../overlays/sun7i-a20-bpi-lcd-tcon1.dtso     |  79 ++++++++++
+ .../allwinner/overlays/sun7i-a20-bpi-lcd.dtso |  79 ++++++++++
+ .../overlays/sun7i-a20-ertft0356-drm.dtso     | 130 +++++++++++++++++
+ .../overlays/sun7i-a20-esp32-spi.dtso         |  27 ++++
+ .../overlays/sun7i-a20-fixup.scr-cmd          | 135 ++++++++++++++++++
+ .../overlays/sun7i-a20-gy-pcm5102-sound.dtso  |  33 +++++
+ .../allwinner/overlays/sun7i-a20-nand.dtso    | 103 +++++++++++++
+ .../overlays/sun7i-a20-nrf24-spi.dtso         |  67 +++++++++
+ .../allwinner/overlays/sun7i-a20-pwm0.dtso    |  12 ++
+ .../allwinner/overlays/sun7i-a20-pwm1.dtso    |  12 ++
+ .../overlays/sun7i-a20-spi0-cs1.dtso          |  14 ++
+ .../allwinner/overlays/sun7i-a20-spidev.dtso  |  56 ++++++++
+ .../overlays/sun7i-a20-waveshare35-drm.dtso   |  71 +++++++++
+ .../allwinner/overlays/sun7i-a20-wlan.dtso    |  14 ++
+ .../allwinner/overlays/sun7i-a20-wlan0.dtso   |  21 +++
+ 19 files changed, 969 insertions(+)
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/Makefile
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/README.sun7i-a20-overlays
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bananapi-lcd.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd-tcon1.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-ertft0356-drm.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-esp32-spi.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-fixup.scr-cmd
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-gy-pcm5102-sound.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-nand.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-nrf24-spi.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm0.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm1.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spi0-cs1.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spidev.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-waveshare35-drm.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan.dtso
+ create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan0.dtso
+
+diff --git a/arch/arm/boot/dts/allwinner/Makefile b/arch/arm/boot/dts/allwinner/Makefile
+index 48666f7..f816caf 100644
+--- a/arch/arm/boot/dts/allwinner/Makefile
++++ b/arch/arm/boot/dts/allwinner/Makefile
+@@ -269,3 +269,5 @@ dtb-$(CONFIG_MACH_SUNIV) += \
+ 	suniv-f1c100s-licheepi-nano.dtb \
+ 	suniv-f1c200s-lctech-pi.dtb \
+ 	suniv-f1c200s-popstick-v1.1.dtb
++
++subdir-y := overlays
+diff --git a/arch/arm/boot/dts/allwinner/overlays/Makefile b/arch/arm/boot/dts/allwinner/overlays/Makefile
+new file mode 100644
+index 0000000..6672e92
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/Makefile
+@@ -0,0 +1,20 @@
++# SPDX-License-Identifier: GPL-2.0
++ifeq ($(CONFIG_OF_OVERLAY),y)
++
++dtb-$(CONFIG_MACH_SUN7I) += \
++	sun7i-a20-bpi-lcd.dtbo \
++	sun7i-a20-gy-pcm5102-sound.dtbo \
++	sun7i-a20-nrf24-spi.dtbo \
++	sun7i-a20-pwm0.dtbo \
++	sun7i-a20-pwm1.dtbo \
++	sun7i-a20-spidev.dtbo \
++	sun7i-a20-ertft0356-drm.dtbo \
++	sun7i-a20-waveshare35-drm.dtbo
++
++scr-$(CONFIG_MACH_SUN7I) += \
++	sun7i-a20-fixup.scr
++
++dtbotxt-$(CONFIG_MACH_SUN7I) += \
++	README.sun7i-a20-overlays
++
++endif
+diff --git a/arch/arm/boot/dts/allwinner/overlays/README.sun7i-a20-overlays b/arch/arm/boot/dts/allwinner/overlays/README.sun7i-a20-overlays
+new file mode 100644
+index 0000000..3c42a62
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/README.sun7i-a20-overlays
+@@ -0,0 +1,15 @@
++This document describes overlays provided in the kernel packages
++
++### Platform:
++
++sun7i-a20 (Allwinner A20)
++
++### Platform details:
++
++Supported pin banks: PB, PC, PD, PE, PG, PH, PI
++
++SPI controller 0 have 2 exposed hardware CS,
++other SPI controllers have only one hardware CS
++Reference: A20 Datasheet sections 6.3.5.1, 1.19.2
++
++I2C bus 0 is used for the AXP209 PMIC
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bananapi-lcd.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bananapi-lcd.dtso
+new file mode 100644
+index 0000000..09e4697
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bananapi-lcd.dtso
+@@ -0,0 +1,79 @@
++/* Device-tree overlay for BananaPi 7inch display */
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
++
++/ {
++	compatible = "allwinner,sun7i-a20";
++};
++
++&{/soc} {
++	panel {
++		compatible = "bananapi,s070wv20-ct16";
++		enable-gpios = <&pio 7 12 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH12 */
++		backlight = <&panel_bl>;
++
++		port {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			panel_dpi_in: endpoint {
++				remote-endpoint = <&tcon0_out_lcd>;
++			};
++		};
++	};
++
++	panel_bl: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
++		brightness-levels = <0 16 32 64 96 128 160 192 255>;
++		default-brightness-level = <5>;
++		enable-gpios = <&pio 7 9 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PH9 */
++		post-pwm-on-delay-ms = <10>;
++		pwm-off-delay-ms = <10>;
++	};
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm0_pin>;
++	status = "okay";
++};
++
++&tcon0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&lcd0_rgb888_pins>;
++};
++
++&tcon0_out {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	tcon0_out_lcd: endpoint@0 {
++		reg = <0>;
++		remote-endpoint = <&panel_dpi_in>;
++		allwinner,tcon-channel = <0>;
++	};
++};
++
++&de {
++	status = "okay";
++};
++
++&i2c3 {
++	#address-cells = <1>;
++        #size-cells = <0>;
++	status = "okay";
++
++	panel_ts: panel-ts@5d {
++		compatible = "goodix,gt928";
++		reg = <0x5d>;
++		interrupt-parent = <&pio>;
++		interrupts = <7 7 IRQ_TYPE_EDGE_FALLING>; /* PH7 */
++		reset-gpios = <&pio 7 8 GPIO_ACTIVE_LOW>; /* PH8 */
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd-tcon1.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd-tcon1.dtso
+new file mode 100644
+index 0000000..070a73f
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd-tcon1.dtso
+@@ -0,0 +1,79 @@
++/* Device-tree overlay for BananaPi 7inch display */
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
++
++/ {
++	compatible = "allwinner,sun7i-a20";
++};
++
++&{/soc} {
++	panel {
++		compatible = "bananapi,s070wv20-ct16";
++		enable-gpios = <&pio 7 12 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH12 */
++		backlight = <&panel_bl>;
++
++		port {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			panel_dpi_in: endpoint {
++				remote-endpoint = <&tcon1_out_lcd>;
++			};
++		};
++	};
++
++	panel_bl: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
++		brightness-levels = <0 16 32 64 96 128 160 192 255>;
++		default-brightness-level = <6>;
++		enable-gpios = <&pio 7 9 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PH9 */
++		post-pwm-on-delay-ms = <10>;
++		pwm-off-delay-ms = <10>;
++	};
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm0_pin>;
++	status = "okay";
++};
++
++&tcon1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&lcd0_rgb888_pins>;
++};
++
++&tcon1_out {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	tcon1_out_lcd: endpoint@0 {
++		reg = <0>;
++		remote-endpoint = <&panel_dpi_in>;
++		allwinner,tcon-channel = <0>;
++	};
++};
++
++&de {
++	status = "okay";
++};
++
++&i2c3 {
++	#address-cells = <1>;
++        #size-cells = <0>;
++	status = "okay";
++
++	panel_ts: panel-ts@5d {
++		compatible = "goodix,gt928";
++		reg = <0x5d>;
++		interrupt-parent = <&pio>;
++		interrupts = <7 7 IRQ_TYPE_EDGE_FALLING>; /* PH7 */
++		reset-gpios = <&pio 7 8 GPIO_ACTIVE_LOW>; /* PH8 */
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd.dtso
+new file mode 100644
+index 0000000..00fa190
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-bpi-lcd.dtso
+@@ -0,0 +1,79 @@
++/* Device-tree overlay for BananaPi 7inch display */
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
++
++/ {
++	compatible = "allwinner,sun7i-a20";
++};
++
++&{/soc} {
++	panel {
++		compatible = "bananapi,s070wv20-ct16";
++		enable-gpios = <&pio 7 12 GPIO_ACTIVE_HIGH>; /* LCD-PWR-EN: PH12 */
++		backlight = <&panel_bl>;
++
++		port {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			panel_dpi_in: endpoint {
++				remote-endpoint = <&tcon0_out_lcd>;
++			};
++		};
++	};
++
++	panel_bl: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
++		brightness-levels = <0 16 32 64 96 128 160 192 255>;
++		default-brightness-level = <6>;
++		enable-gpios = <&pio 7 9 GPIO_ACTIVE_HIGH>; /* LCD-BL-EN: PH9 */
++		post-pwm-on-delay-ms = <10>;
++		pwm-off-delay-ms = <10>;
++	};
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm0_pin>;
++	status = "okay";
++};
++
++&tcon0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&lcd0_rgb888_pins>;
++};
++
++&tcon0_out {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	tcon0_out_lcd: endpoint@0 {
++		reg = <0>;
++		remote-endpoint = <&panel_dpi_in>;
++		allwinner,tcon-channel = <0>;
++	};
++};
++
++&de {
++	status = "okay";
++};
++
++&i2c3 {
++	#address-cells = <1>;
++        #size-cells = <0>;
++	status = "okay";
++
++	panel_ts: panel-ts@5d {
++		compatible = "goodix,gt928";
++		reg = <0x5d>;
++		interrupt-parent = <&pio>;
++		interrupts = <7 7 IRQ_TYPE_EDGE_FALLING>; /* PH7 */
++		reset-gpios = <&pio 7 8 GPIO_ACTIVE_LOW>; /* PH8 */
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-ertft0356-drm.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-ertft0356-drm.dtso
+new file mode 100644
+index 0000000..0d3a089
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-ertft0356-drm.dtso
+@@ -0,0 +1,130 @@
++// Device Tree overlay for EastRising 3.5inch TFT LCD 
++// on SPI bus via TinyDRM
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/ {
++       compatible = "allwinner,sun7i-a20";
++
++       fragment@0 {
++               target = <&pio>;
++               __overlay__ {
++                       ertft_tp_pins: ertft_tp@819 {
++                               pins = "PI19";
++                               function = "gpio_in";
++                       };
++
++                       ertft_pins_rst: ertft@816 {
++                                pins = "PI16";
++                                function = "gpio_out";
++                       };
++
++                       ertft_pins_dc: ertft@721 {
++                                pins = "PH21";
++                                function = "gpio_out";
++                        };
++
++                       ertft_pins_bl: ertft@720 {
++                               pins = "PH20";
++                               function = "gpio_out";
++                       };
++               };
++       };
++
++       fragment@1 {
++               target = <&spi0>;
++               __overlay__ {
++                       /* needed to avoid dtc warning */
++                       #address-cells = <1>;
++                       #size-cells = <0>;
++
++                       ertft {
++                               compatible = "eastrising,er-tft035-6",
++                                            "ilitek,ili9488";
++                               reg = <0>;
++                               spi-max-frequency = <20000000>;
++
++                               pinctrl-names = "default";
++                               pinctrl-0 = <&ertft_pins_rst>,
++                                           <&ertft_pins_dc>,
++                                           <&ertft_pins_bl>;
++
++                               reset-gpios = <&pio 8 16 GPIO_ACTIVE_HIGH>;     /* PI16 */
++                               dc-gpios = <&pio 7 21 GPIO_ACTIVE_HIGH>;        /* PH21 */
++
++                               rotation = <90>;
++                               backlight = <&ertft_bl>;
++                               status = "disabled";
++                       };
++               };
++       };
++
++       fragment@2 {
++               target = <&spi1>;
++               __overlay__ {
++                       /* needed to avoid dtc warning */
++                       #address-cells = <1>;
++                       #size-cells = <0>;
++
++                       ertft {
++                               compatible = "eastrising,er-tft035-6",
++                                            "ilitek,ili9488";
++                               reg = <0>;
++                               spi-max-frequency = <20000000>;
++
++                               pinctrl-names = "default";
++                               pinctrl-0 = <&ertft_pins_rst>,
++                                           <&ertft_pins_dc>,
++                                           <&ertft_pins_bl>;
++
++                               reset-gpios = <&pio 8 16 GPIO_ACTIVE_HIGH>;     /* PI16 */
++                               dc-gpios = <&pio 7 21 GPIO_ACTIVE_HIGH>;        /* PH21 */
++
++                               rotation = <90>;
++                               backlight = <&ertft_bl>;
++                               status = "disabled";
++                       };
++               };
++       };
++
++       fragment@3 {
++               target-path = "/soc";
++               __overlay__ {
++                       ertft_bl: backlight@720 {
++                               compatible = "gpio-backlight";
++                               gpios = <&pio 7 20 0>;          /* PH20 */
++                       };
++               };
++       };
++
++       fragment@4 {
++               target = <&i2c2>;
++               __overlay__ {
++                       /* needed to avoid dtc warning */
++                       #address-cells = <1>;
++                       #size-cells = <0>;
++
++                       ertft_tp {
++                               compatible = "focaltech,ft6236";
++                               reg = <0x38>;
++
++                               pinctrl-names = "default";
++                               pinctrl-0 = <&ertft_tp_pins>;
++
++                               interrupt-parent = <&pio>;
++                               interrupts = <8 19 IRQ_TYPE_EDGE_FALLING>;      /* PI19 */
++
++                               touchscreen-size-x = <320>;
++                               touchscreen-size-y = <480>;
++                               /*touchscreen-inverted-x;*/
++                               /*touchscreen-inverted-y;*/
++                               touchscreen-swapped-x-y;
++                               status = "disabled";
++                       };
++               };
++       };
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-esp32-spi.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-esp32-spi.dtso
+new file mode 100644
+index 0000000..409a09e
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-esp32-spi.dtso
+@@ -0,0 +1,27 @@
++// Overlay for ESP32 SPI shield
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "allwinner,sun7i-a20";
++};
++
++&spi0 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi0_pi_pins &spi0_cs0_pi_pin>;
++
++	esp32_spi: esp32-spi@0 {
++		compatible = "espressif,esp32-spi";
++		reg = <0>;
++		spi-max-frequency = <10000000>;
++
++		handshake-gpios = <&pio 1 5 0>;	/*PB5*/
++		dataready-gpios = <&pio 1 6 0>;	/*PB6*/
++		reset-gpios = <&pio 1 7 0>;	/*PB7*/
++
++		status = "disabled";
++	};
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-fixup.scr-cmd b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-fixup.scr-cmd
+new file mode 100644
+index 0000000..f1d0584
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-fixup.scr-cmd
+@@ -0,0 +1,135 @@
++# overlays fixup script
++# implements (or rather substitutes) overlay arguments functionality
++# using u-boot scripting, environment variables and "fdt" command
++
++if test "${param_codec_enabled}" = "yes"; then
++	fdt set /soc/codec@1c22c00 status "okay"
++else
++	fdt set /soc/codec@1c22c00 status "disabled"
++fi
++
++if test -n "${param_i2s0_slot_width}"; then
++	fdt set /soc/i2s@1c22400 allwinner,slot-width-override "<${param_i2s0_slot_width}>";
++fi
++
++if test "${param_esp32_spi_bus}" = "0"; then
++	setenv tmp_spi_path "spi@1c05000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/esp32-spi status "okay"
++
++	if test -n "${param_esp32_spi_freq}"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-max-frequency "<${param_esp32_spi_freq}>"
++	fi
++
++	if test -n "${param_esp32_spi_mode}"; then
++		fdt rm /soc/${tmp_spi_path}/esp32-spi spi-cpha
++		fdt rm /soc/${tmp_spi_path}/esp32-spi spi-cpol
++
++		if test "${param_esp32_spi_mode}" = "1"; then
++			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpha
++		elif test "${param_esp32_spi_mode}" = "2"; then
++			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpol
++		elif test "${param_esp32_spi_mode}" = "3"; then
++			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpha
++			fdt set /soc/${tmp_spi_path}/esp32-spi spi-cpol
++		fi
++	fi
++
++	if test "${param_esp32_spi_cs_auto}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-cs-auto
++	fi
++	if test "${param_esp32_spi_cs_change}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-cs-change
++	fi
++	if test -n "${param_esp32_spi_cs_setup_delay}"; then
++		fdt set /soc/${tmp_spi_path}/esp32-spi spi-cs-setup-delay-ns "<${param_esp32_spi_cs_setup_delay}>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++
++if test -n "${param_spidev_spi_bus}"; then
++	test "${param_spidev_spi_bus}" = "0" && setenv tmp_spi_path "spi@1c05000"
++	test "${param_spidev_spi_bus}" = "1" && setenv tmp_spi_path "spi@1c06000"
++	test "${param_spidev_spi_bus}" = "2" && setenv tmp_spi_path "spi@1c17000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/spidev status "okay"
++
++	if test -n "${param_spidev_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/spidev spi-max-frequency "<${param_spidev_max_freq}>"
++	fi
++	if test "${param_spidev_spi_bus}" = "0" && test "${param_spidev_spi_cs}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/spidev reg "<1>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test -n "${param_nrf24_spi_bus}"; then
++	test "${param_nrf24_spi_bus}" = "0" && setenv tmp_spi_path "spi@1c05000"
++	test "${param_nrf24_spi_bus}" = "1" && setenv tmp_spi_path "spi@1c06000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/nrf24 status "okay"
++
++	if test -n "${param_nrf24_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/nrf24 spi-max-frequency "<${param_nrf24_max_freq}>"
++	fi
++	if test "${param_nrf24_spi_cs}" = "1"; then
++		fdt set /soc/${tmp_spi_path}/nrf24 reg "<1>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test "${param_waveshare35_spi_bus}" = "0"; then
++	setenv tmp_spi_path "spi@1c05000"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/waveshare35 status "okay"
++	fdt set /soc/${tmp_spi_path}/waveshare35_ts status "okay"
++
++	if test -n "${param_waveshare35_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/waveshare35 spi-max-frequency "<${param_waveshare35_max_freq}>"
++	fi
++	if test -n "${param_waveshare35_rotation}"; then
++		fdt set /soc/${tmp_spi_path}/waveshare35 rotation "<${param_waveshare35_rotation}>"
++	fi
++
++	env delete tmp_spi_path
++fi
++
++if test -n "${param_ertft_spi_bus}"; then
++	test "${param_ertft_spi_bus}" = "0" && setenv tmp_spi_path "spi@1c05000"
++	test "${param_ertft_spi_bus}" = "1" && setenv tmp_spi_path "spi@1c06000"
++
++	setenv tmp_i2c_path "i2c@1c2b400"
++
++	fdt set /soc/${tmp_spi_path} status "okay"
++	fdt set /soc/${tmp_spi_path}/ertft status "okay"
++	fdt set /soc/${tmp_i2c_path} status "okay"
++	fdt set /soc/${tmp_i2c_path}/ertft_tp status "okay"
++
++	if test -n "${param_ertft_max_freq}"; then
++		fdt set /soc/${tmp_spi_path}/ertft spi-max-frequency "<${param_ertft_max_freq}>"
++	fi
++	if test -n "${param_ertft_rotation}"; then
++		fdt set /soc/${tmp_spi_path}/ertft rotation "<${param_ertft_rotation}>"
++	fi
++
++	if test "${param_ertft_tp_inverted_x}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-inverted-x
++	fi
++	if test "${param_ertft_tp_inverted_y}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-inverted-y
++	fi
++	if test "${param_ertft_tp_swapped_x_y}" = "1"; then
++		fdt set /soc/${tmp_i2c_path}/ertft_tp touchscreen-swapped-x-y
++	fi
++
++	env delete tmp_spi_path
++	env delete tmp_i2c_path
++fi
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-gy-pcm5102-sound.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-gy-pcm5102-sound.dtso
+new file mode 100644
+index 0000000..cc144f6
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-gy-pcm5102-sound.dtso
+@@ -0,0 +1,33 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++       compatible = "allwinner,sun7i-a20";
++
++       fragment@0 {
++               target = <&i2s0>;
++               __overlay__ {
++                       pinctrl-names = "default";
++                       pinctrl-0 = <&i2s0_pins_mclk>, <&i2s0_pins_bclk>,
++                                   <&i2s0_pins_lrck>, <&i2s0_pins_do0>;
++                       status = "okay";
++               };
++       };
++
++       fragment@1 {
++               target-path = "/soc@1c00000/";
++               __overlay__ {
++                       pcm5102: pcm5102a-i2s@0 {
++                               compatible = "ti,pcm5102a";
++                               status = "okay";
++                       };
++
++                       gy-pcm5102-sound {
++                               compatible = "orpaltech,gy-pcm5102-sound";
++                               cpu-node = <&i2s0>;
++                               codec-node = <&pcm5102>;
++                               status = "okay";
++                        };
++                };
++       };
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-nand.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-nand.dtso
+new file mode 100644
+index 0000000..dce3c51
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-nand.dtso
+@@ -0,0 +1,103 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++       compatible = "allwinner,sun7i-a20";
++
++       fragment@0 {
++               target = <&pio>;
++               __overlay__ {
++                       nand_pins_a: nand_pins@0 {
++                               pins = "PC0", "PC1", "PC2",
++                                               "PC5", "PC8", "PC9", "PC10",
++                                               "PC11", "PC12", "PC13", "PC14",
++                                               "PC15", "PC16";
++                               function = "nand0";
++                       };
++
++                       nand_cs0_pins_a: nand_cs@0 {
++                               pins = "PC4";
++                               function = "nand0";
++                       };
++
++                       nand_cs1_pins_a: nand_cs@1 {
++                               pins = "PC3";
++                               function = "nand0";
++                       };
++
++                       nand_cs2_pins_a: nand_cs@2 {
++                               pins = "PC17";
++                               function = "nand0";
++                       };
++
++                       nand_cs3_pins_a: nand_cs@3 {
++                               pins = "PC18";
++                               function = "nand0";
++                       };
++
++                       nand_rb0_pins_a: nand_rb@0 {
++                               pins = "PC6";
++                               function = "nand0";
++                       };
++
++                       nand_rb1_pins_a: nand_rb@1 {
++                               pins = "PC7";
++                               function = "nand0";
++                       };
++               };
++       };
++
++       fragment@1 {
++               target = <&nfc>;
++               __overlay__ {
++                       #address-cells = <1>;
++                       #size-cells = <0>;
++                       pinctrl-names = "default";
++                       pinctrl-0 = <&nand_pins_a>, <&nand_cs0_pins_a>, <&nand_rb0_pins_a>;
++                       status = "okay";
++
++                       nand@0 {
++                               reg = <0>;
++                               allwinner,rb = <0>;
++                               nand-ecc-mode = "hw";
++                               nand-on-flash-bbt;
++
++                               partitions {
++                                       compatible = "fixed-partitions";
++                                       #address-cells = <2>;
++                                       #size-cells = <2>;
++
++                                       partition@0 {
++                                               label = "SPL";
++                                               reg = <0x0 0x0 0x0 0x400000>;
++                                       };
++
++                                       partition@400000 {
++                                               label = "SPL.backup";
++                                               reg = <0x0 0x400000 0x0 0x400000>;
++                                       };
++
++                                       partition@800000 {
++                                               label = "U-Boot";
++                                               reg = <0x0 0x800000 0x0 0x400000>;
++                                       };
++
++                                       partition@c00000 {
++                                               label = "U-Boot.backup";
++                                               reg = <0x0 0xc00000 0x0 0x400000>;
++                                       };
++
++                                       partition@1000000 {
++                                               label = "env";
++                                               reg = <0x0 0x1000000 0x0 0x400000>;
++                                       };
++
++                                       partition@1400000 {
++                                               label = "rootfs";
++                                               reg = <0x0 0xa00000 0x01 0xff000000>;
++                                       };
++                               };
++                       };
++               };
++       };
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-nrf24-spi.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-nrf24-spi.dtso
+new file mode 100644
+index 0000000..df99236
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-nrf24-spi.dtso
+@@ -0,0 +1,67 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++        compatible = "allwinner,sun7i-a20";
++
++       fragment@0 {
++                target = <&pio>;
++                __overlay__ {
++                        nrf24_int: nrf24_int {
++                               pins = "PH1";           /*pin 10 on 40-pin GPIO connector*/
++                               function = "gpio_in";
++                       };
++
++                       nrf24_ce: nrf24_ce {
++                               pins = "PH2";           /*pin 12 on 40-pin GPIO connector */
++                               function = "gpio_out";
++                       };
++               };
++       };
++
++       fragment@1 {
++               target = <&spi0>;
++               __overlay__ {
++                       #address-cells = <1>;
++                       #size-cells = <0>;
++
++                       nrf24 {
++                               compatible = "nordic,nrf24";
++                               reg = <0>; /* CS0 */
++                               spi-max-frequency = <8000000>;
++
++                               pinctrl-names = "default";
++                               pinctrl-0 = <&nrf24_int &nrf24_ce>;
++
++                               interrupt-parent = <&pio>;
++                               interrupts = <7 1 2>;           /* PH1, irq, falling edge */
++                               irq-gpios = <&pio 7 1 0>;       /* PH1, pio */
++                               ce-gpios = <&pio 7 2 0>;        /* PH2, pio  */
++                               status = "disabled";
++                       };
++               };
++       };
++
++       fragment@2 {
++               target = <&spi1>;
++               __overlay__ {
++                       #address-cells = <1>;
++                       #size-cells = <0>;
++
++                       nrf24 {
++                               compatible = "nordic,nrf24";
++                               reg = <0>; /* CS0 */
++                               spi-max-frequency = <8000000>;
++
++                               pinctrl-names = "default";
++                               pinctrl-0 = <&nrf24_int &nrf24_ce>;
++
++                               interrupt-parent = <&pio>;
++                               interrupts = <7 1 2>;           /* PH1, irq, falling edge */
++                               irq-gpios = <&pio 7 1 0>;       /* PH1, pio */
++                               ce-gpios = <&pio 7 2 0>;        /* PH2, pio  */
++                               status = "disabled";
++                       };
++               };
++       };
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm0.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm0.dtso
+new file mode 100644
+index 0000000..9cd78cb
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm0.dtso
+@@ -0,0 +1,12 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++       compatible = "allwinner,sun7i-a20";
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm0_pin>;
++	status = "okay";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm1.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm1.dtso
+new file mode 100644
+index 0000000..adf7c8a
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-pwm1.dtso
+@@ -0,0 +1,12 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++       compatible = "allwinner,sun7i-a20";
++};
++
++&pwm {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pwm1_pin>;
++	status = "okay";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spi0-cs1.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spi0-cs1.dtso
+new file mode 100644
+index 0000000..5db501b
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spi0-cs1.dtso
+@@ -0,0 +1,14 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++        compatible = "allwinner,sun7i-a20";
++
++        fragment@0 {
++                target = <&spi0>;
++                __overlay__ {
++                        pinctrl-names = "default", "default";
++                        pinctrl-1 = <&spi0_cs1_pins_a>;
++                };
++        };
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spidev.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spidev.dtso
+new file mode 100644
+index 0000000..d54ef28
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-spidev.dtso
+@@ -0,0 +1,56 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++        compatible = "allwinner,sun7i-a20";
++
++        fragment@0 {
++                target-path = "/aliases";
++                __overlay__ {
++                        spi0 = "/soc@1c00000/spi@1c05000";
++                        spi1 = "/soc@1c00000/spi@1c06000";
++                        spi2 = "/soc@1c00000/spi@1c17000";
++                };
++        };
++
++        fragment@1 {
++                target = <&spi0>;
++                __overlay__ {
++                        #address-cells = <1>;
++                        #size-cells = <0>;
++                        spidev {
++                                compatible = "spidev";
++                                status = "disabled";
++                                reg = <0>;
++                                spi-max-frequency = <1000000>;
++                        };
++                };
++        };
++
++        fragment@2 {
++                target = <&spi1>;
++                __overlay__ {
++                        #address-cells = <1>;
++                        #size-cells = <0>;
++                        spidev {
++                                compatible = "spidev";
++                                status = "disabled";
++                                reg = <0>;
++                                spi-max-frequency = <1000000>;
++                        };
++                };
++        };
++        fragment@3 {
++                target = <&spi2>;
++                __overlay__ {
++                        #address-cells = <1>;
++                        #size-cells = <0>;
++                        spidev {
++                                compatible = "spidev";
++                                status = "disabled";
++                                reg = <0>;
++                                spi-max-frequency = <1000000>;
++                        };
++                };
++        };
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-waveshare35-drm.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-waveshare35-drm.dtso
+new file mode 100644
+index 0000000..cc11c6f
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-waveshare35-drm.dtso
+@@ -0,0 +1,71 @@
++/*
++ * Device Tree overlay for Waveshare 3.5inch TFT LCD
++ * on SPI via TinyDRM
++ */
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/ {
++       compatible = "allwinner,sun7i-a20";
++
++       fragment@0 {
++               target = <&pio>;
++               __overlay__ {
++                       waveshare35_int: waveshare35@19 {
++                               pins = "PI19";
++                               function = "gpio_in";
++                       };
++
++                       waveshare35_rst: waveshare35@16 {
++                                pins = "PI16";
++                                function = "gpio_out";
++                        };
++
++                       waveshare35_dc: waveshare35@21 {
++                                pins = "PH21";
++                                function = "gpio_out";
++                        };
++               };
++       };
++
++       fragment@1 {
++               target = <&spi0>;
++               __overlay__ {
++                       /* needed to avoid dtc warning */
++                       #address-cells = <1>;
++                       #size-cells = <0>;
++
++                       waveshare35 {
++                               compatible = "waveshare,rpi-lcd-35",
++                                            "ilitek,ili9486";
++                               reg = <0>;
++                               spi-max-frequency = <16000000>;
++                               pinctrl-names = "default";
++                               pinctrl-0 = <&waveshare35_int>,
++                                           <&waveshare35_rst>,
++                                           <&waveshare35_dc>;
++                               rotation = <90>;
++                               bgr = <1>;
++                               reset-gpios = <&pio 8 16 0>;    /* PI16 */
++                               dc-gpios = <&pio 7 21 0>;       /* PH21 */
++                               status = "disabled";
++                       };
++
++                       waveshare35_ts {
++                               compatible = "ti,ads7846";
++                               reg = <1>;
++                               spi-max-frequency = <2000000>;
++                               interrupts = <8 19 IRQ_TYPE_EDGE_FALLING>;      /* PI19, irq */
++                               interrupt-parent = <&pio>;
++                               pendown-gpio = <&pio 8 19 0>;                   /* PI19 */
++                               ti,swap-xy;
++                               ti,x-plate-ohms = /bits/ 16 <60>;
++                               ti,pressure-max = /bits/ 16 <255>;
++                               status = "disabled";
++                       };
++               };
++       };
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan.dtso
+new file mode 100644
+index 0000000..4c861d1
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan.dtso
+@@ -0,0 +1,14 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++       compatible = "allwinner,sun7i-a20";
++};
++
++&mmc3 {
++	status = "okay";
++};
++
++&brcmf {
++	status = "okay";
++};
+diff --git a/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan0.dtso b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan0.dtso
+new file mode 100644
+index 0000000..a58ccac
+--- /dev/null
++++ b/arch/arm/boot/dts/allwinner/overlays/sun7i-a20-wlan0.dtso
+@@ -0,0 +1,21 @@
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++/ {
++       compatible = "allwinner,sun7i-a20";
++};
++
++&mmc3 {
++	status = "okay";
++
++	brcmf0: wifi@0 {
++		reg = <0>;
++		compatible = "brcm,bcm4329-fmac";
++		interrupt-parent = <&pio>;
++		interrupts = <7 15 IRQ_TYPE_LEVEL_LOW>;
++		interrupt-names = "host-wake";
++	};
++};
+-- 
+2.43.0
+

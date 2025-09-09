@@ -4,7 +4,7 @@
 
 MESA_REPO_URL="https://gitlab.freedesktop.org/mesa/mesa.git"
 MESA_BRANCH="main"
-MESA_VERSION=25.1.4
+MESA_VERSION=25.2.2
 MESA_TAG="mesa-${MESA_VERSION}"
 MESA_SRC_DIR=${EXTRADIR}/mesa/rpi
 MESA_OUT_DIR=${MESA_SRC_DIR}/${BB_BUILD_OUT}

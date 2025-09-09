@@ -1,0 +1,50 @@
+From f26a0958a391805908c7f299b4e6b71e22f1fce1 Mon Sep 17 00:00:00 2001
+From: ssuloev <ssuloev@orpaltech.com>
+Date: Sat, 21 Sep 2024 01:35:22 +0300
+Subject: [PATCH] ASoC/bcm2835: Add I2S controller pins
+
+---
+ arch/arm/boot/dts/broadcom/bcm2835-rpi.dtsi | 6 ++++++
+ arch/arm/boot/dts/broadcom/bcm283x.dtsi     | 9 +++++++++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/arch/arm/boot/dts/broadcom/bcm2835-rpi.dtsi b/arch/arm/boot/dts/broadcom/bcm2835-rpi.dtsi
+index e9bf41b..563f594 100644
+--- a/arch/arm/boot/dts/broadcom/bcm2835-rpi.dtsi
++++ b/arch/arm/boot/dts/broadcom/bcm2835-rpi.dtsi
+@@ -66,6 +66,12 @@
+ 	clock-frequency = <100000>;
+ };
+ 
++&i2s {
++	#sound-dai-cells = <0>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2s_gpio18>;
++};
++
+ &usb {
+ 	power-domains = <&power RPI_POWER_DOMAIN_USB>;
+ };
+diff --git a/arch/arm/boot/dts/broadcom/bcm283x.dtsi b/arch/arm/boot/dts/broadcom/bcm283x.dtsi
+index 69b0919..b372244 100644
+--- a/arch/arm/boot/dts/broadcom/bcm283x.dtsi
++++ b/arch/arm/boot/dts/broadcom/bcm283x.dtsi
+@@ -207,6 +207,15 @@
+ 				brcm,function = <BCM2835_FSEL_ALT2>;
+ 			};
+ 
++			i2s_gpio18: i2s_gpio18 {
++				brcm,pins = <18 19 20 21>;
++				brcm,function = <BCM2835_FSEL_ALT0>;
++			};
++			i2s_gpio28: i2s_gpio28 {
++				brcm,pins = <28 29 30 31>;
++				brcm,function = <BCM2835_FSEL_ALT2>;
++			};
++
+ 			jtag_gpio22: jtag-gpio22 {
+ 				brcm,pins = <22 23 24 25 26 27>;
+ 				brcm,function = <BCM2835_FSEL_ALT4>;
+-- 
+2.34.1
+

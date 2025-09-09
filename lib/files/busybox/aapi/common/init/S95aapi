@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+# Start aapi application
+#
+
+case "$1" in
+ start)
+	echo "Starting aapi..."
+
+	LC_ALL=en_US.UTF-8 \
+	LANG=en_US.UTF-8 \
+	DISPLAY=:0 \
+	QT_QPA_PLATFORM=eglfs \
+	QT_QPA_EGLFS_INTEGRATION=eglfs_kms \
+	QT_QPA_EGLFS_KMS_ATOMIC=1 \
+	QT_QPA_EGLFS_HIDECURSOR=1 \
+	QT_QPA_NO_LIBINPUT=1 \
+	QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS=/dev/input/event1:rotate=0 \
+	QT_LOGGING_RULES=qt.qpa.*=true \
+	/usr/local/bin/aapi_app &
+	;;
+  stop)
+	/usr/bin/killall aapi_app
+	;;
+  restart|reload)
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit $?

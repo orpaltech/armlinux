@@ -9,8 +9,8 @@ BUSYBOX_TAG=
 #1_37_0
 BUSYBOX_SRC_DIR=${EXTRADIR}/busybox
 BUSYBOX_BUILD_DIR=${BUSYBOX_SRC_DIR}/${BB_BUILD_OUT}
-BUSYBOX_REBUILD=yes
-BUSYBOX_FORCE_UPDATE=yes
+BUSYBOX_FORCE_REBUILD=yes
+BUSYBOX_FORCE_UPDATE=
 
 BB_SHDOWN_SCRIPT=to_be_tested
 BB_SHDOWN_SRC_DIR=${BUSYBOX_SRC_DIR}/examples/shutdown-1.0/script
@@ -21,18 +21,19 @@ GLIBC_REPO_URL="https://sourceware.org/git/glibc.git"
 GLIBC_VERSION=2.41
 GLIBC_BRANCH="release/${GLIBC_VERSION}/master"
 GLIBC_TAG=
+GLIBC_PREFIX=
 GLIBC_SRC_DIR=${EXTRADIR}/glibc
 GLIBC_BUILD_DIR=${GLIBC_SRC_DIR}/${BB_BUILD_OUT}
-GLIBC_REBUILD=yes
+GLIBC_FORCE_REBUILD=yes
+GLIBC_FORCE_UPDATE=
 
-
-MUSLLIBC_REPO_URL="https://git.musl-libc.org/git/musl"
-MUSLLIBC_VERSION=1.2.5
-MUSLLIBC_BRANCH="master"
-MUSLLIBC_TAG=
-MUSLLIBC_SRC_DIR=${EXTRADIR}/musl-libc
-MUSLLIBC_BUILD_DIR=${MUSLLIBC_SRC_DIR}/${BB_BUILD_OUT}
-MUSLLIBC_REBUILD=yes
+MUSLC_REPO_URL="https://git.musl-libc.org/git/musl"
+MUSLC_VERSION=1.2.5
+MUSLC_BRANCH="master"
+MUSLC_TAG=
+MUSLC_SRC_DIR=${EXTRADIR}/musl-libc
+MUSLC_BUILD_DIR=${MUSLC_SRC_DIR}/${BB_BUILD_OUT}
+MUSLC_FORCE_REBUILD=yes
 
 
 SOURCE_NAME=$(basename ${BASH_SOURCE[0]})
@@ -45,7 +46,7 @@ SOURCE_DIR=$(dirname $(realpath ${BASH_SOURCE[0]}))
 busybox_install()
 {
     # build busybox
-    PKG_FORCE_CLEAN="${BUSYBOX_REBUILD}" \
+    PKG_FORCE_CLEAN="${BUSYBOX_FORCE_REBUILD}" \
     PKG_FORCE_UPDATE="${BUSYBOX_FORCE_UPDATE}" \
 	update_src_pkg "busybox" \
 		$BUSYBOX_VERSION \
@@ -71,14 +72,14 @@ busybox_install()
 #    fi
 
 
-    if [ "${BUSYBOX_REBUILD}" = yes ] ; then
+    if [ "${BUSYBOX_FORCE_REBUILD}" = yes ] ; then
 	rm -rf ${BUSYBOX_BUILD_DIR}
     fi
 
     export ARCH=${KERNEL_ARCH}
     export CROSS_COMPILE="${BB_CROSS_COMPILE}"
 
-    if [ "${BUSYBOX_REBUILD}" = yes ] ; then
+    if [ "${BUSYBOX_FORCE_REBUILD}" = yes ] ; then
 	cd ${BUSYBOX_SRC_DIR}
 	make mrproper
     fi
@@ -126,7 +127,8 @@ busybox_install()
 glibc_install()
 {
     # build GLIBC
-    PKG_FORCE_CLEAN="${GLIBC_REBUILD}" \
+    PKG_FORCE_CLEAN="${GLIBC_FORCE_REBUILD}" \
+    PKG_FORCE_UPDATE="${GLIBC_FORCE_UPDATE}" \
 	update_src_pkg "glibc" \
                     $GLIBC_VERSION \
                     $GLIBC_SRC_DIR \
@@ -134,53 +136,79 @@ glibc_install()
                     $GLIBC_BRANCH \
                     $GLIBC_TAG
 
-    if [ "${GLIBC_REBUILD}" = yes ] ; then
-        rm -rf ${GLIBC_BUILD_DIR}
+    if [ -z "${GLIBC_BUILD_DIR}" ]; then
+	echo "ERROR: variable GLIBC_BUILD_DIR must be set!"
+	exit 1
     fi
 
+    if [ "${GLIBC_FORCE_REBUILD}" = yes ] ; then
+	rm -rf ${GLIBC_BUILD_DIR}
+    fi
     mkdir -p ${GLIBC_BUILD_DIR}
     cd ${GLIBC_BUILD_DIR}/
+
+    echo "${SOURCE_NAME}: Configure glibc..."
 
 #IMPORTANT:  LD_LIBRARY_PATH shouldn't contain the current directory when building glibc.
     LD_LIBRARY_PATH= \
     CC=${BB_GCC} CXX=${BB_CXX} NM=${BB_NM} OBJDUMP=${BB_OBJDUMP} STRIP=${BB_STRIP} RANLIB=${BB_RANLIB} AR=${BB_AR} \
     MAKEINFO=/bin/true \
-        ../configure \
+	../configure \
 		--host=${LINUX_PLATFORM} \
 		--srcdir=${GLIBC_SRC_DIR} \
-		--prefix=/ \
+		--prefix=${GLIBC_PREFIX} \
 		--enable-add-ons
 
+    echo "${SOURCE_NAME}: Done."
+    echo "${SOURCE_NAME}: Make glibc..."
+
     chrt -i 0 make -s -j${HOST_CPU_CORES}
-    [ $? -eq 0 ] || exit $?;
+    [ $? -eq 0 ] || exit $?
+
+    echo "${SOURCE_NAME}: Done."
+    echo "${SOURCE_NAME}: Install glibc into rootfs ${R} ..."
 
     make  install install_root=${R}
-    [ $? -eq 0 ] || exit $?;
+    [ $? -eq 0 ] || exit $?
+
+    if [ "${GLIBC_INSTALL_LOCALES}" = yes ] ; then
+	# if you need ALL the locales
+	make  localedata/install-locales install_root=${R}
+	[ $? -eq 0 ] || exit $?
+    else
+	mkdir -p ${R}${GLIBC_PREFIX}/lib/locale
+	# if you only need a few locales
+	chroot_exec /bin/localedef -f UTF-8 -i en_US en_US.UTF-8
+	chroot_exec /bin/localedef -f UTF-8 -i ru_RU ru_RU.UTF-8
+    fi
+
+    echo "${SOURCE_NAME}: Done."
 }
 
 
 musl_libc_install()
 {
     # build MUSL LIBC
-    update_src_pkg "musl-libc" \
-                    $MUSLLIBC_VERSION \
-                    $MUSLLIBC_SRC_DIR \
-                    $MUSLLIBC_REPO_URL \
-                    $MUSLLIBC_BRANCH \
-                    $MUSLLIBC_TAG
+    PKG_FORCE_CLEAN="${MUSLC_FORCE_REBUILD}" \
+	update_src_pkg "musl-libc" \
+                    $MUSLC_VERSION \
+                    $MUSLC_SRC_DIR \
+                    $MUSLC_REPO_URL \
+                    $MUSLC_BRANCH \
+                    $MUSLC_TAG
 
-    if [ "${MUSLLIBC_REBUILD}" = yes ] ; then
-        rm -rf ${MUSLLIBC_BUILD_DIR}
+    if [ "${MUSLC_FORCE_REBUILD}" = yes ] ; then
+        rm -rf ${MUSLC_BUILD_DIR}
     fi
 
-    mkdir -p ${MUSLLIBC_BUILD_DIR}
-    cd ${MUSLLIBC_BUILD_DIR}/
+    mkdir -p ${MUSLC_BUILD_DIR}
+    cd ${MUSLC_BUILD_DIR}/
 
     CC=${BB_GCC} CXX=${BB_CXX} NM=${BB_NM} OBJDUMP=${BB_OBJDUMP} STRIP=${BB_STRIP} RANLIB=${BB_RANLIB} AR=${BB_AR} \
     MAKEINFO=/bin/true \
 	../configure \
 		--host=${MUSL_TOOLCHAIN_PLATFORM} \
-		--srcdir=${MUSLLIBC_SRC_DIR} \
+		--srcdir=${MUSLC_SRC_DIR} \
 		--prefix=/
 
     echo "${SOURCE_NAME}: Make MUSL libc..."
@@ -278,7 +306,7 @@ if [ "${BB_LIBC}" = gnu ] ; then
   BB_LIBC_FULL="${BB_LIBC}-${GLIBC_VERSION}"
 elif [ "${BB_LIBC}" = musl ] ; then
 
-  BB_LIBC_FULL="${BB_LIBC}-${MUSLLIBC_VERSION}"
+  BB_LIBC_FULL="${BB_LIBC}-${MUSLC_VERSION}"
 else
 
   display_alert "BB_LIBC isn't set correctly! Please, update scripts and try again." "BB_LIBC=${BB_LIBC}" "err"
@@ -351,10 +379,11 @@ if [ ! -f ${BB_TAR_DIR}/${ROOTFS_TAR}.tar.gz ] ; then
     fi
 
 
-    # IMPORTANT: need to install some of gcc libraries
+    # IMPORTANT: need to install gcc/g++ libraries
     if [ -n "${TOOLCHAIN_LIB_DIR}" ] ; then
-	cp -P ${TOOLCHAIN_LIB_DIR}/libgcc_s.so*	  ${R}/lib/
-	cp -P ${TOOLCHAIN_LIB_DIR}/libatomic.so*  ${R}/lib/
+	cp -P ${TOOLCHAIN_LIB_DIR}/libgcc_s.so*		${R}/lib/
+	cp -P ${TOOLCHAIN_LIB_DIR}/libatomic.so*	${R}/lib/
+	cp -P ${TOOLCHAIN_LIB_DIR}/libstdc++.so*	${R}/lib/
     fi
 
 
@@ -394,12 +423,12 @@ if [ ! -f ${BB_TAR_DIR}/${ROOTFS_TAR}.tar.gz ] ; then
     install_exec ${FILES_DIR}/misc/shutdown	${R}/bin/
 
 
-    # ldconfig will search for libraries in the trusted directory /lib.
-    # Add more search paths to the configuration file.
     if [ "${BB_LIBC}" = gnu ] ; then
+	# ldconfig will search for libraries in the trusted directory /lib.
+	# Add more search paths to the configuration file.
 
 	echo "/usr/lib" >> ${ETC_DIR}/ld.so.conf
-	chroot_exec ldconfig -v
+
     elif [ "${BB_LIBC}" = musl ] ; then
 
 	echo "/usr/lib" >> ${ETC_DIR}/ld-musl-${MUSL_ARCH}.path
@@ -460,10 +489,9 @@ chroot_exec ln -s /proc/mounts /etc/mtab
 
 
 
-# Create the main scripts
+# Install main init scripts
 install_exec ${FILES_DIR}/init/rcS	${ETC_DIR}/init.d/
 install_exec ${FILES_DIR}/init/rcK	${ETC_DIR}/init.d/
-
 # Copy all init scripts
 for src_file in $(ls ${FILES_DIR}/init/S??*) ; do
     scr_name=$(basename ${src_file})
@@ -480,9 +508,6 @@ chroot_exec /sbin/mdev -s
 chroot_exec mkdir /dev/pts
 chroot_exec mount -t devpts none /dev/pts
 echo "${SOURCE_NAME}: Done."
-
-
-
 
 
 # TODO: add more stuff, if needed

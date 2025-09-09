@@ -1,16 +1,16 @@
-From 107f018b033b7120b31473694da5a808ba4bc162 Mon Sep 17 00:00:00 2001
-From: Sergey <ssuloev@orpaltech.com>
-Date: Wed, 21 May 2025 00:55:13 +0300
+From 4a730f4026298579ccd1e812cefa6acca206e381 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <sergey.suloev@gmail.com>
+Date: Tue, 15 Jul 2025 23:46:01 +0300
 Subject: [PATCH] power: Add support for BQ34Z1xx standalone fuel gauge
 
 ---
  drivers/power/supply/bq27xxx_battery.c     | 13 ++++++-------
- drivers/power/supply/bq27xxx_battery_i2c.c | 11 +++++++++++
+ drivers/power/supply/bq27xxx_battery_i2c.c | 10 ++++++++++
  include/linux/power/bq27xxx_battery.h      |  3 +++
- 3 files changed, 20 insertions(+), 7 deletions(-)
+ 3 files changed, 19 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/power/supply/bq27xxx_battery.c b/drivers/power/supply/bq27xxx_battery.c
-index 2f31d75..25ac25d 100644
+index 93dcebb..559e43c 100644
 --- a/drivers/power/supply/bq27xxx_battery.c
 +++ b/drivers/power/supply/bq27xxx_battery.c
 @@ -87,7 +87,6 @@
@@ -76,10 +76,10 @@ index 2f31d75..25ac25d 100644
  		/* Other gauges return a signed value in units of 10mW */
  		val->intval = (int)((s16)power) * 10000;
 diff --git a/drivers/power/supply/bq27xxx_battery_i2c.c b/drivers/power/supply/bq27xxx_battery_i2c.c
-index ba0d22d..c0bf00e 100644
+index 868e95f..225452d 100644
 --- a/drivers/power/supply/bq27xxx_battery_i2c.c
 +++ b/drivers/power/supply/bq27xxx_battery_i2c.c
-@@ -171,12 +171,23 @@ static int bq27xxx_battery_i2c_probe(struct i2c_client *client)
+@@ -182,6 +182,16 @@ static int bq27xxx_battery_i2c_probe(struct i2c_client *client)
  	di->dev = &client->dev;
  	di->chip = id->driver_data;
  	di->name = name;
@@ -96,13 +96,6 @@ index ba0d22d..c0bf00e 100644
  
  	di->bus.read = bq27xxx_battery_i2c_read;
  	di->bus.write = bq27xxx_battery_i2c_write;
- 	di->bus.read_bulk = bq27xxx_battery_i2c_bulk_read;
- 	di->bus.write_bulk = bq27xxx_battery_i2c_bulk_write;
- 
-+
- 	ret = bq27xxx_battery_setup(di);
- 	if (ret)
- 		return ret;
 diff --git a/include/linux/power/bq27xxx_battery.h b/include/linux/power/bq27xxx_battery.h
 index d56e127..672915f 100644
 --- a/include/linux/power/bq27xxx_battery.h

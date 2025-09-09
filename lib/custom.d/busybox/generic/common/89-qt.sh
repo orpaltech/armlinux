@@ -12,6 +12,8 @@ QT_MODULES=("qtshadertools" \
 "qtimageformats" \
 "qtlanguageserver" \
 "qtdeclarative" \
+"qtactiveqt" \
+"qttools" \
 "qtquicktimeline" \
 "qtquick3d" \
 "qtquickeffectmaker" \
@@ -21,9 +23,7 @@ QT_MODULES=("qtshadertools" \
 "qt5compat" \
 "qtdeviceutilities" \
 "qtserialport" \
-"qtvirtualkeyboard" \
-"qtactiveqt" \
-"qttools")
+"qtvirtualkeyboard")
 
 set -x
 
@@ -33,9 +33,8 @@ QTBASE_REPO_URL=${QT_GIT_ROOT}/qtbase.git
 QTBASE_SRC_DIR=${QT_ROOT_DIR}/qtbase
 QTBASE_OUT_DIR=${QT_BUILD_DIR}/qtbase
 
-# if host  QT is pre-built then use it
-QT_PREBUILT_HOST=${QT_PREBUILT_HOST:=""}
-#${QT_PREFIX}
+# if host QT is pre-built then use it
+QT_PREBUILT_HOST=${QT_PREBUILT_HOST:="$QT_PREFIX"}
 
 QT_HOST_PREFIX=${QT_BUILD_DIR}/qt-host
 QT_EXT_PREFIX=${QT_BUILD_DIR}/qt-board

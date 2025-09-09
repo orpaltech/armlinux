@@ -1,14 +1,14 @@
-From 89d87092d26861177dde624a14d5b4cfe4f6fd4f Mon Sep 17 00:00:00 2001
-From: Sergey <ssuloev@orpaltech.com>
-Date: Wed, 26 Mar 2025 19:28:09 +0300
+From eb7857b0a86d4c1d983364148c7949af43e19761 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <sergey.suloev@gmail.com>
+Date: Sun, 29 Jun 2025 21:50:59 +0300
 Subject: [PATCH] drm/sun4i: dsi: Updates for sun6-mipi-dsi driver
 
 ---
- drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
-index c35b70d..295d5ae 100644
+index c35b70d..d5a920c 100644
 --- a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
 +++ b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
 @@ -720,6 +720,7 @@ static void sun6i_dsi_encoder_enable(struct drm_encoder *encoder)
@@ -33,6 +33,35 @@ index c35b70d..295d5ae 100644
  
  	regmap_write(dsi->regs, SUN6I_DSI_TRANS_START_REG, 10);
  	regmap_write(dsi->regs, SUN6I_DSI_TRANS_ZERO_REG, 0);
+@@ -1052,6 +1057,7 @@ static int sun6i_dsi_bind(struct device *dev, struct device *master,
+ {
+ 	struct drm_device *drm = data;
+ 	struct sun6i_dsi *dsi = dev_get_drvdata(dev);
++	struct drm_connector *connector = &dsi->connector;
+ 	int ret;
+ 
+ 	drm_encoder_helper_add(&dsi->encoder,
+@@ -1064,9 +1070,9 @@ static int sun6i_dsi_bind(struct device *dev, struct device *master,
+ 	}
+ 	dsi->encoder.possible_crtcs = BIT(0);
+ 
+-	drm_connector_helper_add(&dsi->connector,
++	drm_connector_helper_add(connector,
+ 				 &sun6i_dsi_connector_helper_funcs);
+-	ret = drm_connector_init(drm, &dsi->connector,
++	ret = drm_connector_init(drm, connector,
+ 				 &sun6i_dsi_connector_funcs,
+ 				 DRM_MODE_CONNECTOR_DSI);
+ 	if (ret) {
+@@ -1075,7 +1081,7 @@ static int sun6i_dsi_bind(struct device *dev, struct device *master,
+ 		goto err_cleanup_connector;
+ 	}
+ 
+-	drm_connector_attach_encoder(&dsi->connector, &dsi->encoder);
++	drm_connector_attach_encoder(connector, &dsi->encoder);
+ 
+ 	dsi->drm = drm;
+ 
 -- 
 2.43.0
 

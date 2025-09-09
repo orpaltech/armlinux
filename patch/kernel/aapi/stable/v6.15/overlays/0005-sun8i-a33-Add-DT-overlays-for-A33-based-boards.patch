@@ -1,11 +1,11 @@
-From 8a8dd662a6743d95125b61cea81a9dbde5bbcfc5 Mon Sep 17 00:00:00 2001
+From c4d494db7be74e895560c33435ab68c9ead930c9 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <sergey.suloev@gmail.com>
-Date: Mon, 23 Jun 2025 16:54:22 +0300
+Date: Sun, 29 Jun 2025 01:27:56 +0300
 Subject: [PATCH] sun8i-a33: Add DT-overlays for A33-based boards
 
 ---
  arch/arm/boot/dts/allwinner/Makefile          |  2 +
- arch/arm/boot/dts/allwinner/overlays/Makefile | 20 +++++
+ arch/arm/boot/dts/allwinner/overlays/Makefile | 20 ++++++
  .../overlays/README.sun8i-a33-overlays        |  1 +
  .../overlays/sun8i-a33-aapi-charger.dtsi      | 15 ++++
  .../overlays/sun8i-a33-aapi-charger.dtso      | 14 ++++
@@ -13,17 +13,17 @@ Subject: [PATCH] sun8i-a33: Add DT-overlays for A33-based boards
  .../overlays/sun8i-a33-aapi-clk.dtso          | 10 +++
  .../overlays/sun8i-a33-aapi-fgauge.dtsi       | 22 ++++++
  .../overlays/sun8i-a33-aapi-fgauge.dtso       | 14 ++++
- .../overlays/sun8i-a33-aapi-lcd.dtsi          | 73 +++++++++++++++++++
+ .../overlays/sun8i-a33-aapi-lcd.dtsi          | 71 +++++++++++++++++++
  .../overlays/sun8i-a33-aapi-lcd.dtso          | 14 ++++
  .../overlays/sun8i-a33-aapi-power.dtsi        | 45 ++++++++++++
  .../overlays/sun8i-a33-aapi-power.dtso        | 11 +++
  .../overlays/sun8i-a33-aapi-sound.dtsi        | 33 +++++++++
  .../overlays/sun8i-a33-aapi-sound.dtso        | 10 +++
- .../overlays/sun8i-a33-aapi-vna.dtsi          | 28 +++++++
+ .../overlays/sun8i-a33-aapi-vna.dtsi          | 28 ++++++++
  .../overlays/sun8i-a33-aapi-vna.dtso          | 13 ++++
- .../allwinner/overlays/sun8i-a33-aapi.dtso    | 20 +++++
- .../overlays/sun8i-a33-fixup.scr-cmd          |  7 ++
- 19 files changed, 411 insertions(+)
+ .../allwinner/overlays/sun8i-a33-aapi.dtso    | 20 ++++++
+ .../overlays/sun8i-a33-fixup.scr-cmd          | 17 +++++
+ 19 files changed, 419 insertions(+)
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/Makefile
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/README.sun8i-a33-overlays
  create mode 100644 arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-charger.dtsi
@@ -258,10 +258,10 @@ index 0000000..746dc1a
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtsi b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtsi
 new file mode 100644
-index 0000000..616e1f0
+index 0000000..71d01d4
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtsi
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,71 @@
 +// Common include for AAPI display
 +
 +
@@ -271,16 +271,16 @@ index 0000000..616e1f0
 +	vcc-dsi-supply = <&reg_dcdc1>;	/* VCC-DSI */
 +	status = "okay";
 +
-+	panel@0 {
++	aapi_lcd: panel@0 {
 +		compatible = "startek,kd050hdfia020", "ilitek,ili9881c";
 +		reg = <0>;
 +
 +		power-supply = <&reg_vcc_lcd>;
 +		reset-gpios = <&r_pio 0 5 GPIO_ACTIVE_LOW>;	/*PL05*/
 +
-+		backlight = <&pwm_bl>;
++		backlight = <&aapi_pwm_bl>;
 +
-+		rotation = <90>;	/*Valid: 0, 90, 180, 270 */
++		rotation = <0>;	/*Valid: 0, 90, 180, 270 */
 +	};
 +};
 +
@@ -298,7 +298,7 @@ index 0000000..616e1f0
 +
 +&{/} {
 +
-+	pwm_bl: backlight {
++	aapi_pwm_bl: backlight {
 +		compatible = "pwm-backlight";
 +		pwms = <&pwm 0 5000000 0>;	/*200 Hz*/
 +		brightness-levels = <0 8 16 32 64 96 128 192 255>;
@@ -319,7 +319,7 @@ index 0000000..616e1f0
 +	clock-frequency = <100000>;	/*TODO: test if 400KHz feasible */
 +	status = "okay";
 +
-+	tp-gt911@5d {
++	aapi_tp: tp-gt911@5d {
 +		compatible = "goodix,gt911";
 +		reg = <0x5d>;
 +
@@ -331,8 +331,6 @@ index 0000000..616e1f0
 +		irq-gpios = <&pio 1 5 GPIO_ACTIVE_HIGH>;
 +
 +		reset-gpios = <&pio 1 6 GPIO_ACTIVE_HIGH>;	/*PB6*/
-+
-+		touchscreen-swapped-x-y;
 +	};
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtso b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-aapi-lcd.dtso
@@ -559,17 +557,27 @@ index 0000000..93040eb
 +};
 diff --git a/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-fixup.scr-cmd b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-fixup.scr-cmd
 new file mode 100644
-index 0000000..f016830
+index 0000000..daa8eae
 --- /dev/null
 +++ b/arch/arm/boot/dts/allwinner/overlays/sun8i-a33-fixup.scr-cmd
-@@ -0,0 +1,7 @@
+@@ -0,0 +1,17 @@
 +# overlays fixup script
-+# implements (or rather substitutes) overlay arguments functionality
-+# using u-boot scripting, environment variables and "fdt" command
++# implements overlay arguments functionality using u-boot
++# scripting, environment variables and "fdt" command
 +
-+setenv tmp_soc_path "soc"
++if test -n "${aapi_lcd_rotation}"; then
++	fdt set /soc/dsi@1ca0000/panel@0 rotation "<${aapi_lcd_rotation}>";
++fi
 +
-+env delete tmp_soc_path
++if test "${aapi_tp_swap_xy}" = "yes"; then
++	fdt set /soc/i2c@1c2ac00/tp-gt911@5d touchscreen-swapped-x-y;
++fi
++if test -n "${aapi_tp_x_mm}"; then
++	fdt set /soc/i2c@1c2ac00/tp-gt911@5d touchscreen-x-mm "<${aapi_tp_x_mm}>";
++fi
++if test -n "${aapi_tp_y_mm}"; then
++	fdt set /soc/i2c@1c2ac00/tp-gt911@5d touchscreen-y-mm "<${aapi_tp_y_mm}>";
++fi
 -- 
 2.43.0
 

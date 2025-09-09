@@ -319,11 +319,12 @@ mkdir ${BOOTSTRAP_DIR}
 mkdir ${CUSTOM_DIR}
 
 # Prepare required files
-copy_custom_files "${FILES_D}" "${FILES_DIR}"
+copy_custom_files "${FILES_D}/generic"	  "${FILES_DIR}"
+copy_custom_files "${FILES_D}/${CONFIG}"  "${FILES_DIR}"
 
 # Prepare bootstrap scripts
-copy_custom_files "${BOOTSTRAP_D}/generic"  "${BOOTSTRAP_DIR}"  ".sh"
-copy_custom_files "${BOOTSTRAP_D}/${CONFIG}"  "${BOOTSTRAP_DIR}"  ".sh"
+copy_custom_files "${BOOTSTRAP_D}/generic"    "${BOOTSTRAP_DIR}" ".sh"
+copy_custom_files "${BOOTSTRAP_D}/${CONFIG}"  "${BOOTSTRAP_DIR}" ".sh"
 
 
 # Execute bootstrapping scripts

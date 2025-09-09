@@ -59,4 +59,3 @@ copy_custom_files()
     fi
   fi
 }
-

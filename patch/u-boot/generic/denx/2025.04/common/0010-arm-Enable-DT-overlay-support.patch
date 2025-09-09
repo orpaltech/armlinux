@@ -1,6 +1,6 @@
-From b3a15e6e13fa13a1955396466be34f543a4f565c Mon Sep 17 00:00:00 2001
-From: ssuloev <ssuloev@orpaltech.com>
-Date: Tue, 4 Mar 2025 12:33:52 +0300
+From 996dc1fc6d7de356d792a13dc45f541479c3604c Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <sergey.suloev@gmail.com>
+Date: Mon, 28 Jul 2025 16:05:05 +0300
 Subject: [PATCH] arm: Enable DT-overlay support
 
 ---
@@ -8,10 +8,10 @@ Subject: [PATCH] arm: Enable DT-overlay support
  1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
-index 7282c41..38685b4 100644
+index da6f117..2e9a759 100644
 --- a/arch/arm/Kconfig
 +++ b/arch/arm/Kconfig
-@@ -657,6 +657,8 @@ config ARCH_BCM283X
+@@ -667,6 +667,8 @@ config ARCH_BCM283X
  	select DM_SERIAL
  	select GPIO_EXTRA_HEADER
  	select OF_CONTROL
@@ -20,7 +20,7 @@ index 7282c41..38685b4 100644
  	select PL01X_SERIAL
  	select SERIAL_SEARCH_ALL
  	imply CMD_DM
-@@ -1168,6 +1170,8 @@ config ARCH_SUNXI
+@@ -1186,6 +1188,8 @@ config ARCH_SUNXI
  	select OF_BOARD_SETUP
  	select OF_CONTROL
  	select OF_SEPARATE
@@ -29,7 +29,7 @@ index 7282c41..38685b4 100644
  	select PINCTRL
  	select SPECIFY_CONSOLE_INDEX
  	select SPL_SEPARATE_BSS if SPL
-@@ -1192,7 +1196,6 @@ config ARCH_SUNXI
+@@ -1209,7 +1213,6 @@ config ARCH_SUNXI
  	imply DM_REGULATOR_FIXED
  	imply FAT_WRITE
  	imply FIT

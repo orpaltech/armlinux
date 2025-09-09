@@ -1,0 +1,274 @@
+From a2bd2a0fa126f0c1014df8cf68122aee1911190d Mon Sep 17 00:00:00 2001
+From: Sergey <ssuloev@orpaltech.com>
+Date: Sat, 22 Mar 2025 00:40:13 +0300
+Subject: [PATCH] arm/dts/sun7i: Device tree updates for A20 SoC boards
+
+---
+ .../allwinner/sun7i-a20-bananapi-m1-plus.dts  |  23 +++-
+ arch/arm/boot/dts/allwinner/sun7i-a20.dtsi    | 123 +++++++++++++++---
+ 2 files changed, 123 insertions(+), 23 deletions(-)
+
+diff --git a/arch/arm/boot/dts/allwinner/sun7i-a20-bananapi-m1-plus.dts b/arch/arm/boot/dts/allwinner/sun7i-a20-bananapi-m1-plus.dts
+index f2d7fab..9bdc516 100644
+--- a/arch/arm/boot/dts/allwinner/sun7i-a20-bananapi-m1-plus.dts
++++ b/arch/arm/boot/dts/allwinner/sun7i-a20-bananapi-m1-plus.dts
+@@ -45,8 +45,10 @@
+ /dts-v1/;
+ #include "sun7i-a20.dtsi"
+ #include "sunxi-common-regulators.dtsi"
++
+ #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/interrupt-controller/arm-gic.h>
++#include <dt-bindings/interrupt-controller/irq.h>
+ 
+ / {
+ 	model = "Banana Pi BPI-M1-Plus";
+@@ -77,6 +79,7 @@
+ 		led-0 {
+ 			label = "bananapi-m1-plus:green:usr";
+ 			gpios = <&pio 7 24 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "heartbeat";
+ 		};
+ 
+ 		led-1 {
+@@ -86,7 +89,7 @@
+ 		};
+ 	};
+ 
+-	mmc3_pwrseq: pwrseq {
++	wifi_pwrseq: pwrseq {
+ 		compatible = "mmc-pwrseq-simple";
+ 		reset-gpios = <&pio 7 22 GPIO_ACTIVE_LOW>; /* PH22 WL-PMU-EN */
+ 	};
+@@ -100,6 +103,16 @@
+ 		enable-active-high;
+ 		gpio = <&pio 7 23 GPIO_ACTIVE_HIGH>;
+ 	};
++
++	reg_vcc_wifi: vcc-wifi {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc-wifi";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		startup-delay-us = <100000>;
++		enable-active-high;
++		gpio = <&pio 7 27 GPIO_ACTIVE_HIGH>;
++	};
+ };
+ 
+ &ahci {
+@@ -164,7 +177,7 @@
+ &ir0 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&ir0_rx_pin>;
+-	status = "okay";
++	status = "disabled";
+ };
+ 
+ &gmac_mdio {
+@@ -183,8 +196,8 @@
+ &mmc3 {
+ 	#address-cells = <1>;
+ 	#size-cells = <0>;
+-	vmmc-supply = <&reg_vcc3v3>;
+-	mmc-pwrseq = <&mmc3_pwrseq>;
++	vmmc-supply = <&reg_vcc_wifi>;
++	mmc-pwrseq = <&wifi_pwrseq>;
+ 	bus-width = <4>;
+ 	non-removable;
+ 	wakeup-source;
+@@ -214,7 +227,7 @@
+ &reg_dcdc2 {
+ 	regulator-always-on;
+ 	regulator-min-microvolt = <1000000>;
+-	regulator-max-microvolt = <1400000>;
++	regulator-max-microvolt = <1450000>;
+ 	regulator-name = "vdd-cpu";
+ };
+ 
+diff --git a/arch/arm/boot/dts/allwinner/sun7i-a20.dtsi b/arch/arm/boot/dts/allwinner/sun7i-a20.dtsi
+index 5f44f09..6caee5b 100644
+--- a/arch/arm/boot/dts/allwinner/sun7i-a20.dtsi
++++ b/arch/arm/boot/dts/allwinner/sun7i-a20.dtsi
+@@ -96,6 +96,59 @@
+ 		};
+ 	};
+ 
++	cpu0_opp_table: opp_table0 {
++		compatible = "operating-points-v2";
++		opp-shared;
++
++		opp-1008000000 {
++			opp-hz = /bits/ 64 <1008000000>;
++			opp-microvolt = <1450000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp-960000000 {
++			opp-hz = /bits/ 64 <960000000>;
++			opp-microvolt = <1400000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp-912000000 {
++			opp-hz = /bits/ 64 <912000000>;
++			opp-microvolt = <1400000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp-864000000 {
++			opp-hz = /bits/ 64 <864000000>;
++			opp-microvolt = <1300000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp-720000000 {
++			opp-hz = /bits/ 64 <720000000>;
++			opp-microvolt = <1200000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp-528000000 {
++			opp-hz = /bits/ 64 <528000000>;
++			opp-microvolt = <1100000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp-312000000 {
++			opp-hz = /bits/ 64 <312000000>;
++			opp-microvolt = <1050000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++
++		opp-144000000 {
++			opp-hz = /bits/ 64 <144000000>;
++			opp-microvolt = <1000000>;
++			clock-latency-ns = <244144>; /* 8 32k periods */
++		};
++	};
++
+ 	cpus {
+ 		#address-cells = <1>;
+ 		#size-cells = <0>;
+@@ -106,15 +159,7 @@
+ 			reg = <0>;
+ 			clocks = <&ccu CLK_CPU>;
+ 			clock-latency = <244144>; /* 8 32k periods */
+-			operating-points =
+-				/* kHz	  uV */
+-				<960000	1400000>,
+-				<912000	1400000>,
+-				<864000	1300000>,
+-				<720000	1200000>,
+-				<528000	1100000>,
+-				<312000	1000000>,
+-				<144000	1000000>;
++			operating-points-v2 = <&cpu0_opp_table>;
+ 			#cooling-cells = <2>;
+ 		};
+ 
+@@ -124,15 +169,7 @@
+ 			reg = <1>;
+ 			clocks = <&ccu CLK_CPU>;
+ 			clock-latency = <244144>; /* 8 32k periods */
+-			operating-points =
+-				/* kHz	  uV */
+-				<960000	1400000>,
+-				<912000	1400000>,
+-				<864000	1300000>,
+-				<720000	1200000>,
+-				<528000	1100000>,
+-				<312000	1000000>,
+-				<144000	1000000>;
++			operating-points-v2 = <&cpu0_opp_table>;
+ 			#cooling-cells = <2>;
+ 		};
+ 	};
+@@ -160,6 +197,13 @@
+ 					type = "passive";
+ 				};
+ 
++				cpu_hot: cpu_hot {
++					/* milliCelsius */
++					temperature = <85000>;
++					hysteresis = <2000>;
++					type = "hot";
++				};
++
+ 				cpu_crit: cpu-crit {
+ 					/* milliCelsius */
+ 					temperature = <100000>;
+@@ -354,6 +398,8 @@
+ 			dmas = <&dma SUN4I_DMA_DEDICATED 27>,
+ 			       <&dma SUN4I_DMA_DEDICATED 26>;
+ 			dma-names = "rx", "tx";
++			pinctrl-names = "default";
++			pinctrl-0 = <&spi0_pi_pins &spi0_cs0_pi_pin>;
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+@@ -369,6 +415,8 @@
+ 			dmas = <&dma SUN4I_DMA_DEDICATED 9>,
+ 			       <&dma SUN4I_DMA_DEDICATED 8>;
+ 			dma-names = "rx", "tx";
++			pinctrl-names = "default";
++			pinctrl-0 = <&spi1_pi_pins &spi1_cs0_pi_pin>;
+ 			status = "disabled";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+@@ -908,6 +956,33 @@
+ 				function = "i2c3";
+ 			};
+ 
++			/omit-if-no-ref/
++			i2c4_pins: i2c4-pins {
++				pins = "PI2", "PI3";
++				function = "i2c4";
++			};
++
++			i2s0_mclk_pin: i2s0-pins-mclk {
++				pins = "PB5";
++				function = "i2s0";
++			};
++			i2s0_bclk_pin: i2s0-pins-bclk {
++				pins = "PB6";
++				function = "i2s0";
++			};
++			i2s0_lrck_pin: i2s0-pins-lrck {
++				pins = "PB7";
++				function = "i2s0";
++			};
++			i2s0_do0_pin: i2s0-pins-do0 {
++				pins = "PB8";
++				function = "i2s0";
++			};
++			i2s0_di_pin: i2s0-pins-di {
++				pins = "PB12";
++				function = "i2s0";
++			};
++
+ 			/omit-if-no-ref/
+ 			ir0_rx_pin: ir0-rx-pin {
+ 				pins = "PB4";
+@@ -946,6 +1021,18 @@
+ 				function = "lvds1";
+ 			};
+ 
++			/omit-if-no-ref/
++			lcd0_rgb888_pins: lcd0-rgb888-pins {
++				pins = "PD0", "PD1", "PD2", "PD3",
++					"PD4", "PD5", "PD6", "PD7",
++					"PD8", "PD9", "PD10", "PD11",
++					"PD12", "PD13", "PD14", "PD15",
++					"PD16", "PD17", "PD18", "PD19",
++					"PD20", "PD21", "PD22", "PD23",
++					"PD24", "PD25", "PD26", "PD27";
++				function = "lcd0";
++			};
++
+ 			/omit-if-no-ref/
+ 			mmc0_pins: mmc0-pins {
+ 				pins = "PF0", "PF1", "PF2",
+-- 
+2.43.0
+

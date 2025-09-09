@@ -7,7 +7,7 @@ PRODUCT_FULL_VER=1.0-0
 CONFIG=armlinux
 
 
-BASEDIR=/home/sergey/Projects/orpaltech/armlinux
+BASEDIR=/srv/projects/orpaltech/armlinux
 LIBDIR=${BASEDIR}/lib
 TOOLCHAINDIR=${BASEDIR}/toolchains
 EXTRADIR=/home/sergey/Projects/orpaltech
@@ -21,7 +21,7 @@ if [ "${SOC_ARCH}" = arm ]; then
 
 	LINUX_PLATFORM=arm-linux-gnueabihf
 
-	BOARD=bananapi-m1plus
+	BOARD=bananapi-m2m
 
 elif [ "${SOC_ARCH}" = arm64 ]; then
 
@@ -58,7 +58,7 @@ BB_PKG_CONFIG=${BASEDIR}/output/images/busybox/build/cross-pkg-config.sh
 BB_LIBC=gnu
 
 BB_PLATFORM=${LINUX_PLATFORM}
-BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/14/${BB_PLATFORM}/bin/${BB_PLATFORM}-
+BB_CROSS_COMPILE=${TOOLCHAINDIR}/linaro/13/${BB_PLATFORM}/bin/${BB_PLATFORM}-
 BB_GCC=${BB_CROSS_COMPILE}gcc
 BB_CXX=${BB_CROSS_COMPILE}g++
 BB_LD=${BB_CROSS_COMPILE}ld
@@ -137,13 +137,13 @@ EOF
 #. ./11-sysroot.sh
 #. ./17-ncurses.sh
 #. ./19-linux-utils.sh
-. ./22-ntp.sh
+#. ./22-ntp.sh
 #. ./22-pkg-config.sh
 
 #SND_FORCE_REBUILD=yes
 #. ./65-sound.sh
 
-#. ./66-ffmpeg.sh
+. ./66-ffmpeg.sh
 
 #BTH_FORCE_REBUILD=yes
 #. ./71-bluetooh.sh
