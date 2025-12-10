@@ -359,7 +359,7 @@ EOF
 
 # ----------------------------------------------------------------------------
 
-if [ "${ENABLE_QT}" = yes ] ; then
+if is_true "${ENABLE_QT}"; then
 
 	if [ -z "${QT_DEVICE_CONFIG}" ] ; then
 		echo "error: QT device config was not specified - can't continue."

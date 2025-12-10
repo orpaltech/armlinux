@@ -43,14 +43,14 @@ if [ "${NET_ADDRESS}" != "" ] ; then
 fi
 
 # Remove IPv6 hosts
-if [ "${ENABLE_IPV6}" != yes ] ; then
+if is_false "${ENABLE_IPV6}"; then
   sed -i -e "/::[1-9]/d" -e "/^$/d"  ${ETC_DIR}/hosts
 fi
 
 # Install network interfaces configuration file
 install_readonly ${FILES_DIR}/network/interfaces  ${ETC_DIR}/network/
 
-if [ "${ENABLE_ETHERNET}" = yes ] ; then
+if is_true "${ENABLE_ETHERNET}"; then
   cat << EOF >> ${ETC_DIR}/network/interfaces
 
 # Ethernet
@@ -61,7 +61,8 @@ iface eth0 inet dhcp
 EOF
 fi
 
-if [ "${ENABLE_WLAN}" = yes ] ; then
+if is_true "${ENABLE_WLAN}"; then
+
   WPA_IFACE=wlan0
 
   cat << EOF >> ${ETC_DIR}/network/interfaces
@@ -108,7 +109,7 @@ install_readonly ${FILES_DIR}/network/host.conf	${ETC_DIR}/
 
 
 # Enable network stack hardening
-if [ "${ENABLE_HARDNET}" = yes ] ; then
+if is_true "${ENABLE_HARDNET}"; then
   # Install sysctl.d configuration files
   install_readonly ${FILES_DIR}/sysctl/82-net-hardening.conf	${ETC_DIR}/sysctl.d/
 

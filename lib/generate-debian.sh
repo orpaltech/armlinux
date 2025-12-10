@@ -90,7 +90,12 @@ fi
 
 set_cross_compile
 
-[ "${SUPPORT_WLAN}" = yes ] || ENABLE_WLAN="no"
+if is_false "${SUPPORT_ETHERNET}"; then
+  ENABLE_ETHERNET="no"
+fi
+if is_false "${SUPPORT_WLAN}"; then
+  ENABLE_WLAN="no"
+fi
 
 # Introduce settings
 echo -n -e "\n#\n# Custom Settings\n#\n"
@@ -370,56 +375,64 @@ APT_FORCE_YES="--allow-downgrades --allow-remove-essential"
 
 ########################################################################
 # Add required packages for the minbase installation
-if [ "${DEBIAN_MINBASE}" = yes ] ; then
+if is_true "${ENABLE_MINBASE}"; then
   APT_INCLUDES="nano,netbase,net-tools,ifupdown,${APT_INCLUDES}"
 fi
 
 # Bluetooth requires some dependencies
-if [ "${ENABLE_BTH}" = yes ] ; then
+if is_true "${ENABLE_BTH}"; then
   ENABLE_DEVEL=yes
   ENABLE_DBUS=yes
   ENABLE_SOUND=yes
 fi
-[ "${ENABLE_MESA}" = yes ] && ENABLE_DEVEL=yes
+
+if is_true "${ENABLE_MESA}"; then
+  ENABLE_DEVEL=yes
+fi
 
 # Add basic development packages
-if [ "${ENABLE_DEVEL}" = yes ] ; then
+if is_true "${ENABLE_DEVEL}"; then
   APT_INCLUDES="zlib1g-dev,libzstd-dev,libglib2.0-dev,libudev-dev,libsystemd-dev,libelf-dev,${APT_INCLUDES}"
 fi
 
 # Add dbus package, recommended if using systemd
-if [ "${ENABLE_DBUS}" = yes ] ; then
+if is_true "${ENABLE_DBUS}"; then
   APT_INCLUDES="dbus,${APT_INCLUDES}"
-  [ "${ENABLE_DEVEL}" = yes ] && APT_INCLUDES="libdbus-1-dev,${APT_INCLUDES}"
+  if is_true "${ENABLE_DEVEL}"; then
+    APT_INCLUDES="libdbus-1-dev,${APT_INCLUDES}"
+  fi
 fi
 
-if [ "${ENABLE_X11}" = yes ] ; then
-  [ "${ENABLE_DEVEL}" = yes ] && APT_INCLUDES="libx11-dev,libxshmfence-dev,libxext-dev,libxrender-dev,libxfixes-dev,libxi-dev,libxcb1-dev,libx11-xcb-dev,libxkbcommon-dev,libxkbcommon-x11-dev,${APT_INCLUDES}"
+if is_true "${ENABLE_X11}"; then
+  if is_true "${ENABLE_DEVEL}"; then
+    APT_INCLUDES="libx11-dev,libxshmfence-dev,libxext-dev,libxrender-dev,libxfixes-dev,libxi-dev,libxcb1-dev,libx11-xcb-dev,libxkbcommon-dev,libxkbcommon-x11-dev,${APT_INCLUDES}"
+  fi
 fi
 
 # Add iptables IPv4/IPv6 package
-if [ "${ENABLE_IPTABLES}" = yes ] ; then
+if is_true "${ENABLE_IPTABLES}"; then
   APT_INCLUDES="iptables,iptables-persistent,${APT_INCLUDES}"
 fi
 
-if [ "${ENABLE_SOUND}" = yes ] ; then
+if is_true "${ENABLE_SOUND}"; then
   APT_INCLUDES="alsa-utils,libvorbisenc2,${APT_INCLUDES}"
-  if [ "${ENABLE_DEVEL}" = yes ] ; then
+
+  if is_true "${ENABLE_DEVEL}"; then
     APT_INCLUDES="libjack-jackd2-dev,libasound2-dev,libsndfile1-dev,libogg-dev,libvorbis-dev,libflac-dev,libopus-dev,libfdk-aac-dev,libmp3lame-dev,${APT_INCLUDES}"
     APT_EXCLUDES="libjack-dev,libjack0,${APT_EXCLUDES}"
   fi
 fi
 
 # Add openssh server package
-if [ "${ENABLE_SSHD}" = yes ] ; then
+if is_true "${ENABLE_SSHD}"; then
   APT_INCLUDES="openssh-server,${APT_INCLUDES}"
 fi
 
-if [ "${ENABLE_BTH}" = yes ] ; then
+if is_true "${ENABLE_BTH}"; then
   APT_INCLUDES="bluez,bluez-tools,libreadline-dev,libdw-dev,libbluetooth-dev,libsbc-dev,libbsd-dev,${APT_INCLUDES}"
 fi
 
-if [ "${ENABLE_MESA}" = yes ] ; then
+if is_true "${ENABLE_MESA}"; then
   APT_INCLUDES="libexpat1-dev,libdrm-dev,${APT_INCLUDES}"
 fi
 

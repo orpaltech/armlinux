@@ -4,7 +4,7 @@
 
 MESA_REPO_URL="https://gitlab.freedesktop.org/mesa/mesa.git"
 MESA_BRANCH="main"
-MESA_VERSION=25.2.2
+MESA_VERSION=25.3.1
 MESA_TAG="mesa-${MESA_VERSION}"
 MESA_SRC_DIR=${EXTRADIR}/mesa/rpi
 MESA_OUT_DIR=${MESA_SRC_DIR}/${BB_BUILD_OUT}
@@ -53,8 +53,7 @@ mesa_install()
 		-Dgbm=enabled \
 		-Dglx=disabled \
 		-Dllvm=disabled \
-		-Dlibunwind=disabled \
-		-Dgallium-vdpau=disabled
+		-Dlibunwind=disabled
 
     [ $? -eq 0 ] || exit 1
 

@@ -62,7 +62,7 @@ set +x
 # ############# install modules ##############
 #
 
-if [ "${ENABLE_WLAN}" = yes ] ; then
+if is_true "${ENABLE_WLAN}"; then
 
   RTL8189_BRANCH=
 

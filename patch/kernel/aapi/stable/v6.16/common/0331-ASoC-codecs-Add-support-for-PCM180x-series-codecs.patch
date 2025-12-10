@@ -1,13 +1,13 @@
-From b95f4e3ca2086ac2be836cb7a0229af1f4362827 Mon Sep 17 00:00:00 2001
+From a2e957bfb54334eba77c40c425f204851d457300 Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <sergey.suloev@gmail.com>
-Date: Tue, 1 Jul 2025 22:19:23 +0300
+Date: Tue, 4 Nov 2025 21:10:57 +0300
 Subject: [PATCH] ASoC: codecs: Add support for PCM180x-series codecs
 
 ---
- sound/soc/codecs/Kconfig         |  10 ++
+ sound/soc/codecs/Kconfig         |  10 +
  sound/soc/codecs/Makefile        |   4 +-
- sound/soc/codecs/orpal-pcm180x.c | 265 +++++++++++++++++++++++++++++++
- 3 files changed, 278 insertions(+), 1 deletion(-)
+ sound/soc/codecs/orpal-pcm180x.c | 320 +++++++++++++++++++++++++++++++
+ 3 files changed, 333 insertions(+), 1 deletion(-)
  create mode 100644 sound/soc/codecs/orpal-pcm180x.c
 
 diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
@@ -67,10 +67,10 @@ index 6d7aa10..c2b5fe6 100644
 +obj-$(CONFIG_SND_SOC_SIMPLE_MUX)	+= snd-soc-simple-mux.o
 diff --git a/sound/soc/codecs/orpal-pcm180x.c b/sound/soc/codecs/orpal-pcm180x.c
 new file mode 100644
-index 0000000..43d714c
+index 0000000..f6d37c4
 --- /dev/null
 +++ b/sound/soc/codecs/orpal-pcm180x.c
-@@ -0,0 +1,265 @@
+@@ -0,0 +1,320 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * ALSA SoC PCM180x support
@@ -89,7 +89,9 @@ index 0000000..43d714c
 +#include <linux/module.h>
 +#include <linux/moduleparam.h>
 +#include <linux/of.h>
++#include <linux/gpio/consumer.h>
 +#include <linux/regulator/consumer.h>
++#include <linux/pm_runtime.h>
 +#include <linux/slab.h>
 +#include <sound/soc.h>
 +#include <sound/pcm.h>
@@ -99,6 +101,7 @@ index 0000000..43d714c
 +struct pcm180x_data {
 +	struct device *dev;
 +	struct regulator *power;
++	struct gpio_desc *pdwn_gpio;
 +	struct clk *sysclk;
 +	u32 sysclk_rate;
 +	u32 sysclk_ratio;
@@ -249,6 +252,13 @@ index 0000000..43d714c
 +		return ret;
 +	}
 +
++	data->pdwn_gpio = devm_gpiod_get(dev, "pdwn", GPIOD_OUT_LOW);
++	if (IS_ERR(data->pdwn_gpio)) {
++		ret = dev_err_probe(dev, PTR_ERR(data->pdwn_gpio),
++				"Could not get standby gpio\n");
++		return ret;
++	}
++
 +	data->sysclk = devm_clk_get(dev, "sysclk");
 +	if (IS_ERR(data->sysclk)) {
 +		ret = dev_err_probe(dev, PTR_ERR(data->sysclk),
@@ -295,8 +305,16 @@ index 0000000..43d714c
 +			break;
 +		}
 +
++		pm_runtime_set_active(dev);
++		pm_runtime_set_autosuspend_delay(dev, 1000);
++		pm_runtime_use_autosuspend(dev);
++		pm_runtime_enable(dev);
++
 +		return 0;
++
 +	} while (0);
++
++	// An error occurred
 +
 +	regulator_disable(data->power);
 +	return ret;
@@ -312,6 +330,41 @@ index 0000000..43d714c
 +	regulator_disable(data->power);
 +}
 +
++#ifdef CONFIG_PM
++
++static int pcm180x_codec_runtime_resume(struct device *dev)
++{
++	struct pcm180x_data *data = dev_get_drvdata(dev);
++	int ret;
++
++	dev_dbg(dev, "%s: device resume\n",  __func__);
++
++	/* disable standby mode */
++	gpiod_set_value(data->pdwn_gpio, 0);
++
++	return 0;
++}
++
++static int pcm180x_codec_runtime_suspend(struct device *dev)
++{
++	struct pcm180x_data *data = dev_get_drvdata(dev);
++
++	dev_dbg(dev, "%s: device suspend\n",  __func__);
++
++	/* enable standby mode */
++	gpiod_set_value(data->pdwn_gpio, 1);
++
++	return 0;
++}
++
++/*
++ * Declare device runtime PM ops.
++ */
++static DEFINE_RUNTIME_DEV_PM_OPS(pcm180x_codec_pm_ops, pcm180x_codec_runtime_suspend,
++				 pcm180x_codec_runtime_resume,
++				 NULL);
++#endif
++
 +#ifdef CONFIG_OF
 +static const struct of_device_id pcm180x_codec_dt_ids[] = {
 +	{ .compatible = "ti,pcm1803", },
@@ -321,12 +374,14 @@ index 0000000..43d714c
 +MODULE_DEVICE_TABLE(of, pcm180x_codec_dt_ids);
 +#endif
 +
++
 +static struct platform_driver pcm180x_codec_driver = {
-+	.probe		= pcm180x_codec_probe,
-+	.remove		= pcm180x_codec_remove,
-+	.driver		= {
-+		.name	= "pcm180x-adc",
++	.probe	= pcm180x_codec_probe,
++	.remove	= pcm180x_codec_remove,
++	.driver = {
++		.name = "pcm180x-adc",
 +		.of_match_table = of_match_ptr(pcm180x_codec_dt_ids),
++		.pm = pm_ptr(&pcm180x_codec_pm_ops),
 +	},
 +};
 +

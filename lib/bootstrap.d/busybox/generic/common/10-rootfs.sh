@@ -18,7 +18,7 @@ BB_SHDOWN_DST_DIR=/app/shutdown-1.0/script
 
 
 GLIBC_REPO_URL="https://sourceware.org/git/glibc.git"
-GLIBC_VERSION=2.41
+GLIBC_VERSION=2.42
 GLIBC_BRANCH="release/${GLIBC_VERSION}/master"
 GLIBC_TAG=
 GLIBC_PREFIX=
@@ -26,14 +26,6 @@ GLIBC_SRC_DIR=${EXTRADIR}/glibc
 GLIBC_BUILD_DIR=${GLIBC_SRC_DIR}/${BB_BUILD_OUT}
 GLIBC_FORCE_REBUILD=yes
 GLIBC_FORCE_UPDATE=
-
-MUSLC_REPO_URL="https://git.musl-libc.org/git/musl"
-MUSLC_VERSION=1.2.5
-MUSLC_BRANCH="master"
-MUSLC_TAG=
-MUSLC_SRC_DIR=${EXTRADIR}/musl-libc
-MUSLC_BUILD_DIR=${MUSLC_SRC_DIR}/${BB_BUILD_OUT}
-MUSLC_FORCE_REBUILD=yes
 
 
 SOURCE_NAME=$(basename ${BASH_SOURCE[0]})
@@ -185,47 +177,6 @@ glibc_install()
     echo "${SOURCE_NAME}: Done."
 }
 
-
-musl_libc_install()
-{
-    # build MUSL LIBC
-    PKG_FORCE_CLEAN="${MUSLC_FORCE_REBUILD}" \
-	update_src_pkg "musl-libc" \
-                    $MUSLC_VERSION \
-                    $MUSLC_SRC_DIR \
-                    $MUSLC_REPO_URL \
-                    $MUSLC_BRANCH \
-                    $MUSLC_TAG
-
-    if [ "${MUSLC_FORCE_REBUILD}" = yes ] ; then
-        rm -rf ${MUSLC_BUILD_DIR}
-    fi
-
-    mkdir -p ${MUSLC_BUILD_DIR}
-    cd ${MUSLC_BUILD_DIR}/
-
-    CC=${BB_GCC} CXX=${BB_CXX} NM=${BB_NM} OBJDUMP=${BB_OBJDUMP} STRIP=${BB_STRIP} RANLIB=${BB_RANLIB} AR=${BB_AR} \
-    MAKEINFO=/bin/true \
-	../configure \
-		--host=${MUSL_TOOLCHAIN_PLATFORM} \
-		--srcdir=${MUSLC_SRC_DIR} \
-		--prefix=/
-
-    echo "${SOURCE_NAME}: Make MUSL libc..."
-
-    chrt -i 0 make  -j${HOST_CPU_CORES}
-    [ $? -eq 0 ] || exit $?;
-
-    echo "${SOURCE_NAME}: Done."
-    echo "${SOURCE_NAME}: Install MUSL libc into rootfs ${R} ..."
-
-    make  install DESTDIR=${R}
-    [ $? -eq 0 ] || exit $?;
-
-    echo "${SOURCE_NAME}: Done."
-}
-
-
 meson_cross_init()
 {
     local CROSS_FILE=$1
@@ -304,9 +255,6 @@ sed -i "s|^\(set(CROSS_COMPILE[[:space:]]\).*|\1${BB_CROSS_COMPILE})|"	${BB_CMAK
 if [ "${BB_LIBC}" = gnu ] ; then
 
   BB_LIBC_FULL="${BB_LIBC}-${GLIBC_VERSION}"
-elif [ "${BB_LIBC}" = musl ] ; then
-
-  BB_LIBC_FULL="${BB_LIBC}-${MUSLC_VERSION}"
 else
 
   display_alert "BB_LIBC isn't set correctly! Please, update scripts and try again." "BB_LIBC=${BB_LIBC}" "err"
@@ -314,7 +262,7 @@ else
 fi
 
 
-ROOTFS_TAR="rootfs-${CONFIG}-busybox-${SOC_ARCH}_${PRODUCT_FULL_VER}-${SOC_FAMILY}"
+ROOTFS_TAR="rootfs-${CONFIG}_${PRODUCT_FULL_VER}-busybox-${SOC_ARCH}-${SOC_FAMILY}"
 
 BB_TAR_DIR=${BASEDIR}/debs
 mkdir -p ${BB_TAR_DIR}
@@ -372,10 +320,6 @@ if [ ! -f ${BB_TAR_DIR}/${ROOTFS_TAR}.tar.gz ] ; then
     if [ "${BB_LIBC}" = gnu ] ; then
 
 	glibc_install
-
-    elif [ "${BB_LIBC}" = musl ] ; then
-
-	musl_libc_install
     fi
 
 
@@ -390,9 +334,9 @@ if [ ! -f ${BB_TAR_DIR}/${ROOTFS_TAR}.tar.gz ] ; then
     echo "${SOURCE_NAME}: Create required filesystem folders..."
     mkdir ${R}/app	${R}/dev	${R}/opt	${R}/tmp	${R}/proc	${R}/sys	${R}/root	${R}/home
 
-    mkdir -p ${ETC_DIR}/default	${ETC_DIR}/init.d	${ETC_DIR}/sysctl.d	${ETC_DIR}/syslog.d	${ETC_DIR}/mdev
+    mkdir -p ${ETC_DIR}/default	${ETC_DIR}/init.d	${ETC_DIR}/sysctl.d	${ETC_DIR}/syslog.d	${ETC_DIR}/mdev	${ETC_DIR}/config
 
-    mkdir -p ${USR_DIR}/share	${USR_DIR}/lib
+    mkdir -p ${USR_DIR}/share	${USR_DIR}/lib	${USR_DIR}/local/bin
 
     mkdir -p ${R}/var/run	${R}/var/log	${R}/var/lock	${R}/var/spool/cron/crontabs
     echo "${SOURCE_NAME}: Done."
@@ -428,11 +372,6 @@ if [ ! -f ${BB_TAR_DIR}/${ROOTFS_TAR}.tar.gz ] ; then
 	# Add more search paths to the configuration file.
 
 	echo "/usr/lib" >> ${ETC_DIR}/ld.so.conf
-
-    elif [ "${BB_LIBC}" = musl ] ; then
-
-	echo "/usr/lib" >> ${ETC_DIR}/ld-musl-${MUSL_ARCH}.path
-	chmod 644 ${ETC_DIR}/ld-musl-${MUSL_ARCH}.path
     fi
 
     # Install user management files as they are needed by packages
@@ -495,9 +434,15 @@ install_exec ${FILES_DIR}/init/rcK	${ETC_DIR}/init.d/
 # Copy all init scripts
 for src_file in $(ls ${FILES_DIR}/init/S??*) ; do
     scr_name=$(basename ${src_file})
-    install_exec ${src_file}	${ETC_DIR}/init.d/${scr_name}
+    install_exec ${src_file}		${ETC_DIR}/init.d/${scr_name}
 done
 
+# Copy misc config files
+mkdir -p ${ETC_DIR}/config
+for cfg_file in $(ls ${FILES_DIR}/config/*) ; do
+    cfg_name=$(basename ${cfg_file})
+    install_readonly ${cfg_file}	${ETC_DIR}/config/${cfg_name}
+done
 
 
 echo "${SOURCE_NAME}: Temporary mount system directories..."

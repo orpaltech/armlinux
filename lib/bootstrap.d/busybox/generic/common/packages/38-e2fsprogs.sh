@@ -1,5 +1,6 @@
-E2FSPROGS_REPO_URL="https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git"
-E2FSPROGS_VERSION=1.47.2
+E2FSPROGS_REPO_URL="https://kernel.googlesource.com/pub/scm/fs/ext2/e2fsprogs"
+#https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git"
+E2FSPROGS_VERSION=1.47.3
 E2FSPROGS_BRANCH=master
 E2FSPROGS_TAG="v${E2FSPROGS_VERSION}"
 E2FSPROGS_SRC_DIR=${EXTRADIR}/e2fsprogs

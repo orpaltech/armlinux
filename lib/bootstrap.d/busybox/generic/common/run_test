@@ -143,11 +143,13 @@ EOF
 
 #. ./packages/12-zstd.sh
 #. ./packages/13-lz4.sh
-. ./packages/49-rsync.sh
+#. ./packages/32-strace.sh
+. ./packages/45-wpa_supp.sh
 
 #sysklogd_install
 #libusb_install
 #dbus_install
 #zstd_install
-rsync_install
+#strace_install
 #lz4_install
+wpa_supp_install

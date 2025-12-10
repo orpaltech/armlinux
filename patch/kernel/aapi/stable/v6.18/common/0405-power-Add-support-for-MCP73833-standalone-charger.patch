@@ -1,0 +1,670 @@
+From 465426ac6a716d1b8ebfdb0a016dee694341ee55 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <sergey.suloev@gmail.com>
+Date: Mon, 3 Nov 2025 20:53:55 +0300
+Subject: [PATCH] power: Add support for MCP73833 standalone charger
+
+---
+ drivers/power/supply/Kconfig            |   8 +
+ drivers/power/supply/Makefile           |   1 +
+ drivers/power/supply/mcp73833-charger.c | 618 ++++++++++++++++++++++++
+ 3 files changed, 627 insertions(+)
+ create mode 100644 drivers/power/supply/mcp73833-charger.c
+
+diff --git a/drivers/power/supply/Kconfig b/drivers/power/supply/Kconfig
+index dca4be2..528a573 100644
+--- a/drivers/power/supply/Kconfig
++++ b/drivers/power/supply/Kconfig
+@@ -817,6 +817,14 @@ config CHARGER_BQ256XX
+ 	  charge management and system power path management devices for single
+ 	  cell Li-ion and Li-polymer batteries.
+ 
++config CHARGER_MCP73833
++	tristate "Microchip MCP73833 Stand-Alone Linear Li-Ion/Li-Po Charger"
++	depends on EXTCON
++	depends on GPIOLIB || COMPILE_TEST
++	help
++	  Say Y to include support for Microchip MCP73833 Battery Charger
++	  in kernel or M to compile it as a module.
++
+ config CHARGER_RK817
+ 	tristate "Rockchip RK817 PMIC Battery Charger"
+ 	depends on MFD_RK8XX
+diff --git a/drivers/power/supply/Makefile b/drivers/power/supply/Makefile
+index 99a820d..58bc6ab 100644
+--- a/drivers/power/supply/Makefile
++++ b/drivers/power/supply/Makefile
+@@ -103,6 +103,7 @@ obj-$(CONFIG_CHARGER_BQ257XX)	+= bq257xx_charger.o
+ obj-$(CONFIG_CHARGER_BQ25890)	+= bq25890_charger.o
+ obj-$(CONFIG_CHARGER_BQ25980)	+= bq25980_charger.o
+ obj-$(CONFIG_CHARGER_BQ256XX)	+= bq256xx_charger.o
++obj-$(CONFIG_CHARGER_MCP73833)	+= mcp73833-charger.o
+ obj-$(CONFIG_CHARGER_RK817)	+= rk817_charger.o
+ obj-$(CONFIG_CHARGER_SMB347)	+= smb347-charger.o
+ obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o
+diff --git a/drivers/power/supply/mcp73833-charger.c b/drivers/power/supply/mcp73833-charger.c
+new file mode 100644
+index 0000000..35a9626
+--- /dev/null
++++ b/drivers/power/supply/mcp73833-charger.c
+@@ -0,0 +1,618 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Microchip MCP73833 standalone battery charger driver
++ *
++ * Copyright (C) 2025 ORPAL Technology,Inc.
++ *
++ * Author: Sergey Suloev <ssuloev@orpaltech.ru>
++ */
++
++#define DEBUG
++
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/err.h>
++#include <linux/init.h>
++#include <linux/interrupt.h>
++#include <linux/types.h>
++#include <linux/device.h>
++#include <linux/sysfs.h>
++#include <linux/platform_device.h>
++#include <linux/power_supply.h>
++#include <linux/delay.h>
++#include <linux/of.h>
++#include <linux/workqueue.h>
++#include <linux/gpio/consumer.h>
++
++
++#define MCP73833_NAME		"mcp73833"
++#define MCP73833_MANUFACTURER	"Microchip Technology Inc."
++#define MCP73833_CHARGER	"mcp73833-charger"
++
++static DEFINE_IDA(charger_id);
++
++enum mcp73833_charger_status {
++	MCP73833_CHRG_SHUTDOWN = 0,
++	MCP73833_CHRG_STANDBY,
++	MCP73833_CHRG_CHARGING,
++	MCP73833_CHRG_END_OF_CHARGE,
++	MCP73833_CHRG_TEMP_FAULT,
++	MCP73833_CHRG_TIMER_FAULT,
++	MCP73833_CHRG_TEST_MODE,	/* normally should never be set */
++};
++
++struct mcp73833_charger_status_desc {
++	const char *name;
++	enum mcp73833_charger_status	status;
++};
++
++static struct mcp73833_charger_status_desc	mcp73833_status_desc_list[] = {
++	{ .status = MCP73833_CHRG_SHUTDOWN,		.name = "shutdown" },
++	{ .status = MCP73833_CHRG_STANDBY,		.name = "standby" },
++	{ .status = MCP73833_CHRG_CHARGING,		.name = "charging" },
++	{ .status = MCP73833_CHRG_END_OF_CHARGE,	.name = "end_of_charge" },
++	{ .status = MCP73833_CHRG_TEMP_FAULT,		.name = "temperature_fault" },
++	{ .status = MCP73833_CHRG_TIMER_FAULT,		.name = "timer_fault" },
++	{ .status = MCP73833_CHRG_TEST_MODE,		.name = "test_mode" },
++};
++
++
++/* structure to manage status lines */
++struct mcp73833_status_line {
++	struct gpio_desc *gpio;
++	char		name[32];
++	unsigned int	irq;
++};
++
++struct mcp73833_charger {
++	struct device	*dev;
++	const char	*name;
++
++	struct workqueue_struct	*charger_wq;
++	struct work_struct	work;
++
++	struct power_supply	*charger;
++	struct gpio_desc	*enable_gpio;
++	struct gpio_desc	*fast_charge_gpio;
++	bool			fast_charge_enabled;
++
++	struct mcp73833_status_line	pg;
++	struct mcp73833_status_line	stat1;
++	struct mcp73833_status_line	stat2;
++
++	enum mcp73833_charger_status	status;
++};
++
++
++static int mcp73833_charger_read_pg(struct mcp73833_charger *mcp, bool *val)
++{
++	int ret;
++
++	ret = gpiod_get_value_cansleep(mcp->pg.gpio);
++	if (ret < 0) {
++		dev_err(mcp->dev, "Failed to read PG line: %d\n", ret);
++		return ret;
++	}
++
++	// report "inverted" PG value
++	*val = ( ret == 0 );
++	dev_dbg(mcp->dev, "PG line is %s\n", (*val ? "LO" : "HI"));
++
++	return 0;
++}
++
++static int mcp73833_charger_read_stat1(struct mcp73833_charger *mcp, bool *val)
++{
++	int ret;
++
++	ret = gpiod_get_value_cansleep(mcp->stat1.gpio);
++	if (ret < 0) {
++		dev_err(mcp->dev, "Failed to read STAT1 line: %d\n", ret);
++		return ret;
++	}
++
++	// report STAT1 value "as is"
++	*val = ( ret > 0 );
++	dev_dbg(mcp->dev, "STAT1 line is %s\n", (*val ? "HI" : "LO"));
++
++	return 0;
++}
++
++static int mcp73833_charger_read_stat2(struct mcp73833_charger *mcp, bool *val)
++{
++	int ret;
++
++	ret = gpiod_get_value_cansleep(mcp->stat2.gpio);
++	if (ret < 0) {
++		dev_err(mcp->dev, "Failed to read STAT2 line: %d\n", ret);
++		return ret;
++	}
++
++	// report STAT2 value "as is"
++	*val = ( ret > 0 );
++	dev_dbg(mcp->dev, "STAT2 line is %s\n", (*val ? "HI" : "LO"));
++
++	return 0;
++}
++
++static int mcp73833_charger_read_enable(struct mcp73833_charger *mcp, bool *val)
++{
++	int ret;
++
++	ret = gpiod_get_value_cansleep(mcp->enable_gpio);
++	if (ret < 0) {
++		dev_err(mcp->dev, "Failed to read enable state\n");
++		return ret;
++	}
++
++	// report enable value "as is"
++	*val = ( ret > 0 );
++	dev_dbg(mcp->dev, "enable is %s\n", (*val ? "HI" : "LO"));
++
++	return 0;
++}
++
++static int mcp73833_charger_read_fast_charge(struct mcp73833_charger *mcp, bool *val)
++{
++	*val = mcp->fast_charge_enabled;
++	dev_dbg(mcp->dev, "fast charge is %s\n", (*val ? "ON" : "OFF"));
++
++	return 0;
++}
++
++static int mcp73833_charger_update_status(struct mcp73833_charger *mcp)
++{
++	int ret;
++	bool enabled, pwr_good, stat1, stat2;
++
++
++	ret = mcp73833_charger_read_pg(mcp, &pwr_good);
++	if (ret)
++		return ret;
++
++	if (!pwr_good) {
++		mcp->status = MCP73833_CHRG_SHUTDOWN;
++		return 0;
++	}
++
++	ret = mcp73833_charger_read_stat1(mcp, &stat1);
++	if (ret)
++		return ret;
++
++	ret = mcp73833_charger_read_stat2(mcp, &stat2);
++	if (ret)
++		return ret;
++
++
++	ret = mcp73833_charger_read_enable(mcp, &enabled);
++	if (ret)
++		return ret;
++
++
++	/* TODO: is there a way to determine temp/timer fault? */
++
++	if (stat1 && stat2) {
++		if (enabled)
++			mcp->status = MCP73833_CHRG_TIMER_FAULT;
++		else
++			mcp->status = MCP73833_CHRG_STANDBY;
++
++	} else if (!stat1 && stat2) {
++		mcp->status = MCP73833_CHRG_CHARGING;
++
++	} else if (stat1 && !stat2) {
++		mcp->status = MCP73833_CHRG_END_OF_CHARGE;
++
++	} else /* if (!stat1 && !stat2) */ {
++		mcp->status = MCP73833_CHRG_TEST_MODE;
++		/* NOTE: should never get here */
++	}
++
++	return 0;
++}
++
++static struct mcp73833_status_line *
++mcp73833_get_status_line(struct mcp73833_charger *mcp, int irq)
++{
++	if (mcp->pg.irq == irq)		return &mcp->pg;
++	if (mcp->stat1.irq == irq)	return &mcp->stat1;
++	if (mcp->stat2.irq == irq)	return &mcp->stat2;
++	return NULL;
++}
++
++static void mcp73833_charger_status_work(struct work_struct *work)
++{
++	int ret;
++	struct mcp73833_charger *mcp = container_of(work,
++					struct mcp73833_charger, work);
++
++	ret = mcp73833_charger_update_status(mcp);
++
++	if (!ret && mcp->charger)
++		power_supply_changed(mcp->charger);
++}
++
++static irqreturn_t mcp73833_status_line_handler(int irq, void *data)
++{
++	struct mcp73833_charger	*mcp = data;
++	struct mcp73833_status_line *line;
++	int ret;
++
++	/* Delay until power supply gets registered */
++	if (!mcp->charger)
++		return IRQ_HANDLED;
++
++	line = mcp73833_get_status_line(mcp, irq);
++	if (line != NULL) {
++		dev_dbg(mcp->dev, "irq: '%s' state changed\n", line->name);
++
++		queue_work(mcp->charger_wq, &mcp->work);
++	}
++
++	return IRQ_HANDLED;
++}
++
++static int mcp73833_init_status_line(struct mcp73833_charger *mcp,
++				     struct mcp73833_status_line *line,
++				     unsigned int irq_flags)
++{
++	int ret;
++
++	line->gpio = devm_gpiod_get(mcp->dev, line->name, GPIOD_IN);
++	if (IS_ERR(line->gpio)) {
++		ret = dev_err_probe(mcp->dev, PTR_ERR(line->gpio),
++					"Couldn't get '%s' line gpio\n",
++					line->name);
++		return ret;
++	}
++
++	ret = gpiod_to_irq(line->gpio);
++	if (ret < 0) {
++		dev_err(mcp->dev, "Couldn't get '%s' irq\n", line->name);
++		return ret;
++	}
++
++	line->irq = ret;
++
++	ret = devm_request_irq(mcp->dev, line->irq, mcp73833_status_line_handler,
++				irq_flags, mcp->name, mcp);
++	if (ret) {
++		dev_err(mcp->dev, "Failed to request irq %d: %d\n",
++			line->irq, ret);
++		return ret;
++	}
++
++	dev_dbg(mcp->dev, "status line '%s' ready: gpio=%d, irq=%d\n",
++		line->name, desc_to_gpio(line->gpio), line->irq);
++
++	return 0;
++}
++
++static ssize_t mcp73833_sysfs_show_enable(struct device *dev,
++					struct device_attribute *attr,
++					char *buf)
++{
++	struct power_supply *psy = dev_to_psy(dev);
++	struct mcp73833_charger *mcp = power_supply_get_drvdata(psy);
++	bool enabled;
++	int ret;
++
++	ret = mcp73833_charger_read_enable(mcp, &enabled);
++	if (ret < 0)
++		return ret;
++
++	return sysfs_emit(buf, "%d\n", enabled);
++}
++
++static ssize_t mcp73833_sysfs_set_enable(struct device *dev,
++					struct device_attribute *attr,
++					const char *buf,
++					size_t count)
++{
++	struct power_supply *psy = dev_to_psy(dev);
++	struct mcp73833_charger *mcp = power_supply_get_drvdata(psy);
++	long val;
++	int ret;
++
++	if (kstrtol(buf, 10, &val) < 0)
++		return -EINVAL;
++
++	ret = gpiod_set_value_cansleep(mcp->enable_gpio, val);
++	if (ret < 0)
++		return ret;
++
++	return count;
++}
++
++static ssize_t mcp73833_sysfs_show_fast_charge(struct device *dev,
++					       struct device_attribute *attr,
++					       char *buf)
++{
++	struct power_supply *psy = dev_to_psy(dev);
++	struct mcp73833_charger *mcp = power_supply_get_drvdata(psy);
++	bool fast_charge;
++	int ret;
++
++	ret = mcp73833_charger_read_fast_charge(mcp, &fast_charge);
++	if (ret < 0)
++		return ret;
++
++	return sysfs_emit(buf, "%d\n", fast_charge);
++}
++
++static ssize_t mcp73833_sysfs_set_fast_charge(struct device *dev,
++					      struct device_attribute *attr,
++					      const char *buf,
++					      size_t count)
++{
++	struct power_supply *psy = dev_to_psy(dev);
++	struct mcp73833_charger *mcp = power_supply_get_drvdata(psy);
++	long val;
++	int ret;
++
++	if (kstrtol(buf, 10, &val) < 0)
++		return -EINVAL;
++
++	if (val == 0) {
++		// disable fast charge: set gpio to IN mode
++		ret = gpiod_direction_input(mcp->fast_charge_gpio);
++	} else {
++		// enable fast charge: set gpio to OUT mode
++		ret = gpiod_direction_output(mcp->fast_charge_gpio, 1);
++	}
++	if (ret < 0)
++		return ret;
++
++	mcp->fast_charge_enabled = (val != 0);
++
++	return count;
++}
++
++static ssize_t mcp73833_sysfs_show_status(struct device *dev,
++					  struct device_attribute *attr,
++					  char *buf)
++{
++	struct power_supply *psy = dev_to_psy(dev);
++	struct mcp73833_charger *mcp = power_supply_get_drvdata(psy);
++	struct mcp73833_charger_status_desc *desc;
++        enum mcp73833_charger_status status;
++	int i;
++
++	status = mcp->status;
++
++	for (i = 0; i < ARRAY_SIZE(mcp73833_status_desc_list); i++) {
++		desc = &mcp73833_status_desc_list[i];
++		if (desc->status == status)
++			return sysfs_emit(buf, "%s\n", desc->name);
++	}
++
++	return -EINVAL;
++}
++
++
++static int mcp73833_charger_get_prop(struct power_supply *psy,
++				     enum power_supply_property psp,
++				     union power_supply_propval *val)
++{
++	struct mcp73833_charger *mcp = power_supply_get_drvdata(psy);
++	enum mcp73833_charger_status status;
++	bool fast_charge;
++	int ret;
++
++	status = mcp->status;
++
++	switch (psp) {
++	case POWER_SUPPLY_PROP_STATUS:
++		if (status == MCP73833_CHRG_END_OF_CHARGE)
++			val->intval = POWER_SUPPLY_STATUS_FULL;
++		else if (status == MCP73833_CHRG_CHARGING)
++			val->intval = POWER_SUPPLY_STATUS_CHARGING;
++		else if (status == MCP73833_CHRG_TEMP_FAULT ||
++			 status == MCP73833_CHRG_TIMER_FAULT)
++			val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
++		else
++			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
++		break;
++	case POWER_SUPPLY_PROP_CHARGE_TYPE:
++		if (status == MCP73833_CHRG_CHARGING) {
++			ret = mcp73833_charger_read_fast_charge(mcp, &fast_charge);
++			if (ret < 0)
++				return ret;
++			val->intval = (fast_charge ? POWER_SUPPLY_CHARGE_TYPE_FAST : POWER_SUPPLY_CHARGE_TYPE_STANDARD);
++		} else {
++			val->intval = POWER_SUPPLY_CHARGE_TYPE_NONE;
++		}
++		break;
++	case POWER_SUPPLY_PROP_ONLINE:
++		val->intval = (status != MCP73833_CHRG_SHUTDOWN);
++		break;
++	case POWER_SUPPLY_PROP_MANUFACTURER:
++		val->strval = MCP73833_MANUFACTURER;
++		break;
++	case POWER_SUPPLY_PROP_MODEL_NAME:
++		val->strval = MCP73833_NAME;
++		break;
++	default:
++		return -EINVAL;
++	}
++	return 0;
++}
++
++static void mcp73833_charger_ida_free(void *data)
++{
++	int num = (long)data;
++
++	ida_free(&charger_id, num);
++}
++
++static DEVICE_ATTR(charger_enable, S_IWUSR | S_IRUGO,
++		   mcp73833_sysfs_show_enable, mcp73833_sysfs_set_enable);
++
++static DEVICE_ATTR(charger_status, S_IRUGO,
++		   mcp73833_sysfs_show_status, NULL);
++
++static DEVICE_ATTR(charger_fast_charge, S_IWUSR | S_IRUGO,
++		   mcp73833_sysfs_show_fast_charge, mcp73833_sysfs_set_fast_charge);
++
++static struct attribute *mcp73833_charger_sysfs_attrs[] = {
++	&dev_attr_charger_enable.attr,
++	&dev_attr_charger_status.attr,
++	&dev_attr_charger_fast_charge.attr,
++	NULL,
++};
++ATTRIBUTE_GROUPS(mcp73833_charger_sysfs);
++
++static enum power_supply_property mcp73833_charger_props[] = {
++	POWER_SUPPLY_PROP_ONLINE,
++	POWER_SUPPLY_PROP_STATUS,
++	POWER_SUPPLY_PROP_CHARGE_TYPE,
++	POWER_SUPPLY_PROP_MANUFACTURER,
++	POWER_SUPPLY_PROP_MODEL_NAME,
++};
++
++static char *mcp73833_charger_supplied_to[] = {
++	"main-battery",
++};
++
++static int mcp73833_charger_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct power_supply_desc *psy_desc;
++	struct mcp73833_charger *mcp;
++	char *name, *wq_name;
++	long num;
++	int ret;
++	struct power_supply_config psy_cfg = {
++		.fwnode = dev_fwnode(dev),
++		.attr_grp = mcp73833_charger_sysfs_groups,
++		.supplied_to = mcp73833_charger_supplied_to,
++		.num_supplicants = ARRAY_SIZE(mcp73833_charger_supplied_to),
++		.no_wakeup_source = true,
++	};
++
++	/* Get new ID for the new charger device */
++	num = ida_alloc(&charger_id, GFP_KERNEL);
++	if (num < 0)
++		return num;
++	ret = devm_add_action_or_reset(dev, mcp73833_charger_ida_free,
++					(void *)num);
++	if (ret)
++		return ret;
++
++	name = devm_kasprintf(dev, GFP_KERNEL, "%s-%ld", MCP73833_NAME, num);
++	if (!name)
++		return -ENOMEM;
++
++	mcp = devm_kzalloc(dev, sizeof(*mcp), GFP_KERNEL);
++	if (!mcp)
++		return -ENOMEM;
++
++	mcp->dev = dev;
++	mcp->name = name;
++	platform_set_drvdata(pdev, mcp);
++
++        /* charger enable line, charger is ON by default */
++	mcp->enable_gpio = devm_gpiod_get(dev, "enable", GPIOD_OUT_HIGH);
++	if (IS_ERR(mcp->enable_gpio)) {
++		ret = dev_err_probe(dev, PTR_ERR(mcp->enable_gpio),
++					"Could not get enable gpio\n");
++		return ret;
++	}
++
++	/* fast charge line, normal charge is set when gpio open IN */
++	mcp->fast_charge_gpio = devm_gpiod_get(dev, "fast-charge", GPIOD_IN);
++	if (IS_ERR(mcp->fast_charge_gpio)) {
++		ret = dev_err_probe(dev, PTR_ERR(mcp->fast_charge_gpio),
++					"Could not get fast-charge gpio\n");
++		return ret;
++	}
++	mcp->fast_charge_enabled = false;
++
++	wq_name = devm_kasprintf(dev, GFP_KERNEL, "wq-%s", name);
++	if (!wq_name)
++		return -ENOMEM;
++
++	mcp->charger_wq = create_singlethread_workqueue(wq_name);
++	if (!mcp->charger_wq) {
++		dev_err(dev, "Failed to create work queue\n");
++		return -ENOMEM;
++	}
++
++	/* Init work for charger status */
++	INIT_WORK(&mcp->work, mcp73833_charger_status_work);
++
++        /* set charger status line names */
++	strcpy(mcp->pg.name, "pg");
++	strcpy(mcp->stat1.name, "stat1");
++	strcpy(mcp->stat2.name, "stat2");
++
++	ret = mcp73833_init_status_line(mcp, &mcp->stat1, IRQ_TYPE_EDGE_BOTH);
++	if (ret)
++		return ret;
++
++	ret = mcp73833_init_status_line(mcp, &mcp->stat2, IRQ_TYPE_EDGE_BOTH);
++	if (ret)
++		return ret;
++
++	ret = mcp73833_init_status_line(mcp, &mcp->pg, IRQ_TYPE_EDGE_BOTH);
++	if (ret)
++		return ret;
++
++	ret = mcp73833_charger_update_status(mcp);
++	if (ret)
++		return ret;
++
++	psy_desc = devm_kzalloc(dev, sizeof(*psy_desc), GFP_KERNEL);
++	if (!psy_desc)
++		return -ENOMEM;
++
++	psy_desc->name	= mcp->name;
++	psy_desc->type	= POWER_SUPPLY_TYPE_MAINS;
++	psy_desc->properties = mcp73833_charger_props;
++	psy_desc->num_properties = ARRAY_SIZE(mcp73833_charger_props);
++	psy_desc->get_property = mcp73833_charger_get_prop;
++//	psy_desc->set_property = mcp73833_charger_set_prop,
++//	psy_desc->property_is_writeable = mcp73833_charger_prop_is_writeable;
++
++	psy_cfg.drv_data = mcp;
++
++	mcp->charger = devm_power_supply_register(mcp->dev, psy_desc,
++						&psy_cfg);
++	if (IS_ERR(mcp->charger)) {
++		dev_err(dev, "Failed to register charger: %d\n", ret);
++		return ret;
++	}
++
++
++	return 0;
++}
++
++static void mcp73833_charger_remove(struct platform_device *pdev)
++{
++	struct mcp73833_charger *mcp = platform_get_drvdata(pdev);
++
++	destroy_workqueue(mcp->charger_wq);
++}
++
++#ifdef CONFIG_OF
++static const struct of_device_id mcp73833_of_match[] = {
++	{ .compatible = "microchip,mcp73833", },
++	{},
++};
++MODULE_DEVICE_TABLE(of, mcp73833_of_match);
++#endif
++
++static struct platform_driver mcp73833_charger_driver = {
++	.probe	= mcp73833_charger_probe,
++	.remove	= mcp73833_charger_remove,
++	.driver	= {
++		.of_match_table	= of_match_ptr(mcp73833_of_match),
++		.name		= MCP73833_CHARGER,
++	},
++};
++module_platform_driver(mcp73833_charger_driver);
++
++MODULE_DESCRIPTION("Microchip MCP73833 Charger Driver");
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.ru>");
++MODULE_LICENSE("GPL");
++MODULE_ALIAS("platform:mcp73833-charger");
+-- 
+2.43.0
+

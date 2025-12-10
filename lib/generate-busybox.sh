@@ -84,9 +84,13 @@ set_cross_compile
 # configure meson build
 . ${LIBDIR}/meson-build.sh
 
-[ "${SUPPORT_ETHERNET}" = yes ] || ENABLE_ETHERNET="no"
+if is_false "${SUPPORT_ETHERNET}"; then
+  ENABLE_ETHERNET="no"
+fi
 # Do not install WLAN if there's no hardware support
-[ "${SUPPORT_WLAN}" = yes ] || ENABLE_WLAN="no"
+if is_false "${SUPPORT_WLAN}"; then
+  ENABLE_WLAN="no"
+fi
 
 # Introduce settings
 echo -n -e "\n#\n# Custom Settings\n#\n"
@@ -186,18 +190,11 @@ BB_BUILD_CONFIG=${BB_BUILD_CONFIG:="busybox.config"}
 BB_LIBC=${BB_LIBC:="gnu"}
 
 if [ $BB_LIBC = gnu ] ; then
+
   BB_PLATFORM=${LINUX_PLATFORM}
   BB_CROSS_COMPILE=${CROSS_COMPILE}
-
-elif [ $BB_LIBC = musl ] ; then
-  BB_PLATFORM=${MUSL_TOOLCHAIN_PLATFORM}
-  BB_CROSS_COMPILE=${MUSL_CROSS_COMPILE}
-
-  # bluez requires GLib which, in turn, requires GNU libc to compile
-  ENABLE_BTH=no
-
 else
-  echo "error: libc '{EXTRADIR}' not supported!"
+  echo "error: libc '{BB_LIBC}' not supported!"
   exit 1
 fi
 BB_GCC=${BB_CROSS_COMPILE}gcc

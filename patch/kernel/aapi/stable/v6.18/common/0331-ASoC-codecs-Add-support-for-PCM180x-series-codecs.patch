@@ -1,0 +1,391 @@
+From 4fe898a858b50290f511b9a012c808ca3ed9c430 Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <sergey.suloev@gmail.com>
+Date: Sat, 22 Nov 2025 01:40:23 +0300
+Subject: [PATCH] ASoC: codecs: Add support for PCM180x-series codecs
+
+---
+ sound/soc/codecs/Kconfig         |  10 +
+ sound/soc/codecs/Makefile        |   2 +
+ sound/soc/codecs/pcm180x-orpal.c | 322 +++++++++++++++++++++++++++++++
+ 3 files changed, 334 insertions(+)
+ create mode 100644 sound/soc/codecs/pcm180x-orpal.c
+
+diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
+index 160c076..a2b483f 100644
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -182,6 +182,7 @@ config SND_SOC_ALL_CODECS
+ 	imply SND_SOC_PCM1789_I2C
+ 	imply SND_SOC_PCM179X_I2C
+ 	imply SND_SOC_PCM179X_SPI
++	imply SND_SOC_PCM180X_ORPAL
+ 	imply SND_SOC_PCM186X_I2C
+ 	imply SND_SOC_PCM186X_SPI
+ 	imply SND_SOC_PCM3008
+@@ -1479,6 +1480,15 @@ config SND_SOC_PCM179X_SPI
+ 	  Enable support for Texas Instruments PCM179x CODEC.
+ 	  Select this if your PCM179x is connected via an SPI bus.
+ 
++config SND_SOC_PCM180X_ORPAL
++	tristate "Texas Instruments PCM180X-series ADC by ORPALTECH"
++	depends on REGULATOR
++	help
++	  Enable support for Texas Instruments PCM180x-series
++	  analog-to-digital converters by ORPALTECH.
++	  At the moment the support includes the PCM1803 fully
++	  hardware-configurable converter.
++
+ config SND_SOC_PCM186X
+ 	tristate
+ 
+diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
+index bd95a7c..25f3fb1 100644
+--- a/sound/soc/codecs/Makefile
++++ b/sound/soc/codecs/Makefile
+@@ -209,6 +209,7 @@ snd-soc-pcm1789-i2c-y := pcm1789-i2c.o
+ snd-soc-pcm179x-codec-y := pcm179x.o
+ snd-soc-pcm179x-i2c-y := pcm179x-i2c.o
+ snd-soc-pcm179x-spi-y := pcm179x-spi.o
++snd-soc-pcm180x-orpal-y := pcm180x-orpal.o
+ snd-soc-pcm186x-y := pcm186x.o
+ snd-soc-pcm186x-i2c-y := pcm186x-i2c.o
+ snd-soc-pcm186x-spi-y := pcm186x-spi.o
+@@ -635,6 +636,7 @@ obj-$(CONFIG_SND_SOC_PCM1789_I2C)	+= snd-soc-pcm1789-i2c.o
+ obj-$(CONFIG_SND_SOC_PCM1789)	+= snd-soc-pcm1789-codec.o
+ obj-$(CONFIG_SND_SOC_PCM179X_I2C)	+= snd-soc-pcm179x-i2c.o
+ obj-$(CONFIG_SND_SOC_PCM179X_SPI)	+= snd-soc-pcm179x-spi.o
++obj-$(CONFIG_SND_SOC_PCM180X_ORPAL)	+= snd-soc-pcm180x-orpal.o
+ obj-$(CONFIG_SND_SOC_PCM186X)	+= snd-soc-pcm186x.o
+ obj-$(CONFIG_SND_SOC_PCM186X_I2C)	+= snd-soc-pcm186x-i2c.o
+ obj-$(CONFIG_SND_SOC_PCM186X_SPI)	+= snd-soc-pcm186x-spi.o
+diff --git a/sound/soc/codecs/pcm180x-orpal.c b/sound/soc/codecs/pcm180x-orpal.c
+new file mode 100644
+index 0000000..4bec3be
+--- /dev/null
++++ b/sound/soc/codecs/pcm180x-orpal.c
+@@ -0,0 +1,322 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * ALSA SoC PCM180x support
++ *
++ * Author: Sergey Suloev <ssuloev@orpaltech.ru>
++ *
++ * This program is free software. You can redistribute it
++ * and/or modify it under the terms of the
++ * GNU General Public License version 2 as published by
++ * the Free Software Foundation.
++*/
++
++#define DEBUG
++
++#include <linux/clk.h>
++#include <linux/delay.h>
++#include <linux/module.h>
++#include <linux/moduleparam.h>
++#include <linux/of.h>
++#include <linux/gpio/consumer.h>
++#include <linux/regulator/consumer.h>
++#include <linux/pm_runtime.h>
++#include <linux/slab.h>
++#include <sound/soc.h>
++#include <sound/pcm.h>
++#include <sound/initval.h>
++
++
++struct pcm180x_data {
++	struct device *dev;
++	struct regulator *power;
++	struct gpio_desc *pdwn_gpio;
++	struct clk *sysclk;
++	u32 sysclk_rate;
++	u32 sysclk_ratio;
++	unsigned int rates[1];
++	struct snd_pcm_hw_constraint_list constraints;
++};
++
++static const struct snd_soc_dapm_widget pcm180x_dapm_widgets[] = {
++SND_SOC_DAPM_INPUT("LLINEIN"),
++SND_SOC_DAPM_INPUT("RLINEIN"),
++SND_SOC_DAPM_ADC("ADC", NULL, SND_SOC_NOPM, 0, 0)
++};
++
++static const struct snd_soc_dapm_route pcm180x_dapm_routes[] = {
++	{ "Capture", NULL, "ADC" },
++	{ "ADC", NULL, "LLINEIN" },
++	{ "ADC", NULL, "RLINEIN" },
++};
++
++static int pcm180x_setup_sysclk(struct pcm180x_data *data)
++{
++        int ret;
++
++	ret = clk_prepare_enable(data->sysclk);
++	if (ret) {
++		dev_err(data->dev, "Couldn't enable sysclk: %d\n", ret);
++		return ret;
++	}
++
++	do {
++		ret = clk_round_rate(data->sysclk, data->sysclk_rate);
++		if (ret < 0) {
++			dev_err(data->dev, "Couldn't round sysclk: %d\n",
++				ret);
++			break;
++		}
++
++		/* A rounded rate value will be passed */
++		ret = clk_set_rate(data->sysclk, ret);
++		if (ret < 0) {
++			dev_err(data->dev, "Couldn't set sysclk rate: %d\n",
++				ret);
++			break;
++		}
++
++		return 0;
++	} while (0);
++
++        clk_disable_unprepare(data->sysclk);
++        return ret;
++}
++
++static int pcm180x_startup(struct snd_pcm_substream *substream,
++			   struct snd_soc_dai *dai)
++{
++	struct pcm180x_data *data = snd_soc_component_get_drvdata(dai->component);
++	unsigned int rate;
++	int ret;
++
++
++	dev_dbg(data->dev, "%s: enter\n", __func__);
++
++	switch (data->sysclk_ratio) {
++	case 256:
++	case 384:
++	case 512:
++		break;
++	default:
++		dev_err(data->dev, "Invalid sysclk ratio!\n");
++		return -EINVAL;
++	}
++
++
++	rate = data->sysclk_rate / data->sysclk_ratio;
++
++	switch (rate) {
++	case 32000:
++	case 48000:
++	case 64000:
++	case 96000:
++		data->rates[0] = rate;
++		break;
++	default:
++		dev_err(data->dev, "Invalid sysclk frequency!\n");
++		return -ENOMEM;
++	}
++
++	ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
++					SNDRV_PCM_HW_PARAM_RATE,
++					&data->constraints);
++	if (ret < 0) {
++		dev_err(data->dev,
++			"%s: set rate constraints failed: 0x%x\n",
++			__func__, ret);
++	}
++
++	return 0;
++}
++
++static const struct snd_soc_dai_ops pcm180x_dai_ops = {
++	.startup = pcm180x_startup,
++};
++
++static struct snd_soc_dai_driver pcm180x_dai = {
++	.name	 = "pcm180x-hifi",
++	.capture = {
++		.stream_name	= "Capture",
++		.channels_min	= 2,
++		.channels_max	= 2,
++		.rates		= SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000,
++		.formats	= SNDRV_PCM_FMTBIT_S24_LE,
++	},
++	.ops = &pcm180x_dai_ops,
++};
++
++static const struct snd_soc_component_driver soc_component_dev_pcm180x = {
++	.dapm_widgets		= pcm180x_dapm_widgets,
++	.num_dapm_widgets	= ARRAY_SIZE(pcm180x_dapm_widgets),
++	.dapm_routes		= pcm180x_dapm_routes,
++	.num_dapm_routes	= ARRAY_SIZE(pcm180x_dapm_routes),
++	.idle_bias_on		= 1,
++	.use_pmdown_time	= 1,
++	.endianness		= 1,
++};
++
++static int pcm180x_codec_probe(struct platform_device *pdev)
++{
++	struct pcm180x_data *data;
++	struct device *dev = &pdev->dev;
++	int ret;
++
++	dev_dbg(dev, "enter\n");
++
++	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
++	if (!data) {
++		dev_err(dev, "Unable to allocate memory\n");
++		return -ENOMEM;
++	}
++
++	data->dev = dev;
++	data->constraints.list = data->rates;
++	data->constraints.count = 1;
++
++	data->power = devm_regulator_get(dev, "power");
++	if (IS_ERR(data->power)) {
++		ret = dev_err_probe(dev, PTR_ERR(data->power),
++				"Couldn't get power supply\n");
++		return ret;
++	}
++
++	data->pdwn_gpio = devm_gpiod_get(dev, "pdwn", GPIOD_OUT_LOW);
++	if (IS_ERR(data->pdwn_gpio)) {
++		ret = dev_err_probe(dev, PTR_ERR(data->pdwn_gpio),
++				"Could not get standby gpio\n");
++		return ret;
++	}
++
++	data->sysclk = devm_clk_get(dev, "sysclk");
++	if (IS_ERR(data->sysclk)) {
++		ret = dev_err_probe(dev, PTR_ERR(data->sysclk),
++				"Couldn't acquire sysclk\n");
++		return ret;
++	}
++
++	ret = device_property_read_u32(dev, "sysclk-freq",
++					&data->sysclk_rate);
++	if (ret < 0) {
++		dev_err(dev, "sysclk-freq must be specified\n");
++		return ret;
++	}
++
++	ret = device_property_read_u32(dev, "sysclk-ratio",
++					&data->sysclk_ratio);
++	if (ret < 0) {
++		dev_err(dev, "sysclk-ratio must be specified\n");
++		return ret;
++	}
++
++	platform_set_drvdata(pdev, data);
++
++	ret = regulator_enable(data->power);
++	if (ret) {
++		dev_err(dev, "Couldn't power up: %d\n", ret);
++		return ret;
++	}
++
++	do {
++		ret = pcm180x_setup_sysclk(data);
++		if (ret) {
++			dev_err(dev, "Couldn't setup sysclk: %d\n",
++				ret);
++			break;
++		}
++
++		ret = devm_snd_soc_register_component(dev,
++					&soc_component_dev_pcm180x,
++					&pcm180x_dai, 1);
++		if (ret) {
++			dev_err(dev, "Couldn't register codec: %d\n",
++				ret);
++			break;
++		}
++
++		pm_runtime_set_active(dev);
++		pm_runtime_set_autosuspend_delay(dev, 1000);
++		pm_runtime_use_autosuspend(dev);
++		pm_runtime_enable(dev);
++
++		return 0;
++
++	} while (0);
++
++	// An error occurred
++
++	regulator_disable(data->power);
++	return ret;
++}
++
++static void pcm180x_codec_remove(struct platform_device *pdev)
++{
++	struct pcm180x_data *data = platform_get_drvdata(pdev);
++
++	clk_disable_unprepare(data->sysclk);
++
++	/* release power regulator */
++	regulator_disable(data->power);
++}
++
++#ifdef CONFIG_PM
++
++static int pcm180x_codec_runtime_resume(struct device *dev)
++{
++	struct pcm180x_data *data = dev_get_drvdata(dev);
++	int ret;
++
++	dev_dbg(dev, "%s: device resume\n",  __func__);
++
++	/* disable standby mode */
++	gpiod_set_value(data->pdwn_gpio, 0);
++
++	mdelay(5);  // 5 millisec
++	return 0;
++}
++
++static int pcm180x_codec_runtime_suspend(struct device *dev)
++{
++	struct pcm180x_data *data = dev_get_drvdata(dev);
++
++	dev_dbg(dev, "%s: device suspend\n",  __func__);
++
++	/* enable standby mode */
++	gpiod_set_value(data->pdwn_gpio, 1);
++
++	return 0;
++}
++
++/*
++ * Declare device runtime PM ops.
++ */
++static DEFINE_RUNTIME_DEV_PM_OPS(pcm180x_codec_pm_ops, pcm180x_codec_runtime_suspend,
++				 pcm180x_codec_runtime_resume,
++				 NULL);
++#endif
++
++#ifdef CONFIG_OF
++static const struct of_device_id pcm180x_codec_dt_ids[] = {
++	{ .compatible = "ti,pcm1803", },
++	{ .compatible = "ti,pcm1808", },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, pcm180x_codec_dt_ids);
++#endif
++
++
++static struct platform_driver pcm180x_codec_driver = {
++	.probe	= pcm180x_codec_probe,
++	.remove	= pcm180x_codec_remove,
++	.driver = {
++		.name = "pcm180x-adc",
++		.of_match_table = of_match_ptr(pcm180x_codec_dt_ids),
++		.pm = pm_ptr(&pcm180x_codec_pm_ops),
++	},
++};
++
++module_platform_driver(pcm180x_codec_driver);
++
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.ru>");
++MODULE_DESCRIPTION("Sound/SoC PCM180x ADC driver");
++MODULE_LICENSE("GPL");
++MODULE_ALIAS("platform:pcm180x-adc");
+-- 
+2.43.0
+

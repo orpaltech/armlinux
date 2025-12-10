@@ -256,6 +256,11 @@ compile_firmware
 compile_bootloader
 compile_kernel
 
+if is_true "${STOP_ON_KERNEL}"; then
+  echo "=================================================================================="
+  read -p "Kernel has been built. Press any key to continue or Ctrl+C to exit... " -n1 -s
+  echo ""
+fi
 
 # prepare meson build tool
 meson_install
@@ -278,8 +283,7 @@ else
 fi
 . ${LIBDIR}/write-image.sh
 
-if [ "${BUILD_IMAGE}" = yes ] ; then
-
+if is_true "${BUILD_IMAGE}"; then
   # create disk image
   create_image
 

@@ -1,13 +1,13 @@
-From 427236bf2d370da1bd29648c0df62689cc023887 Mon Sep 17 00:00:00 2001
+From b1210e1c0722ed472711370a1eb80dc2f5cb1f4e Mon Sep 17 00:00:00 2001
 From: Sergey Suloev <sergey.suloev@gmail.com>
-Date: Tue, 1 Jul 2025 22:31:23 +0300
+Date: Thu, 25 Sep 2025 10:56:44 +0300
 Subject: [PATCH] power: Add support for MCP73833 standalone charger
 
 ---
  drivers/power/supply/Kconfig            |   8 +
  drivers/power/supply/Makefile           |   1 +
- drivers/power/supply/mcp73833-charger.c | 546 ++++++++++++++++++++++++
- 3 files changed, 555 insertions(+)
+ drivers/power/supply/mcp73833-charger.c | 618 ++++++++++++++++++++++++
+ 3 files changed, 627 insertions(+)
  create mode 100644 drivers/power/supply/mcp73833-charger.c
 
 diff --git a/drivers/power/supply/Kconfig b/drivers/power/supply/Kconfig
@@ -43,10 +43,10 @@ index 4f5f8e3..cccd884 100644
  obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o
 diff --git a/drivers/power/supply/mcp73833-charger.c b/drivers/power/supply/mcp73833-charger.c
 new file mode 100644
-index 0000000..e306f5c
+index 0000000..35a9626
 --- /dev/null
 +++ b/drivers/power/supply/mcp73833-charger.c
-@@ -0,0 +1,546 @@
+@@ -0,0 +1,618 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Microchip MCP73833 standalone battery charger driver
@@ -122,6 +122,8 @@ index 0000000..e306f5c
 +
 +	struct power_supply	*charger;
 +	struct gpio_desc	*enable_gpio;
++	struct gpio_desc	*fast_charge_gpio;
++	bool			fast_charge_enabled;
 +
 +	struct mcp73833_status_line	pg;
 +	struct mcp73833_status_line	stat1;
@@ -188,13 +190,21 @@ index 0000000..e306f5c
 +
 +	ret = gpiod_get_value_cansleep(mcp->enable_gpio);
 +	if (ret < 0) {
-+		dev_err(mcp->dev, "Failed to read charger enable\n");
++		dev_err(mcp->dev, "Failed to read enable state\n");
 +		return ret;
 +	}
 +
 +	// report enable value "as is"
 +	*val = ( ret > 0 );
 +	dev_dbg(mcp->dev, "enable is %s\n", (*val ? "HI" : "LO"));
++
++	return 0;
++}
++
++static int mcp73833_charger_read_fast_charge(struct mcp73833_charger *mcp, bool *val)
++{
++	*val = mcp->fast_charge_enabled;
++	dev_dbg(mcp->dev, "fast charge is %s\n", (*val ? "ON" : "OFF"));
 +
 +	return 0;
 +}
@@ -363,6 +373,50 @@ index 0000000..e306f5c
 +	return count;
 +}
 +
++static ssize_t mcp73833_sysfs_show_fast_charge(struct device *dev,
++					       struct device_attribute *attr,
++					       char *buf)
++{
++	struct power_supply *psy = dev_to_psy(dev);
++	struct mcp73833_charger *mcp = power_supply_get_drvdata(psy);
++	bool fast_charge;
++	int ret;
++
++	ret = mcp73833_charger_read_fast_charge(mcp, &fast_charge);
++	if (ret < 0)
++		return ret;
++
++	return sysfs_emit(buf, "%d\n", fast_charge);
++}
++
++static ssize_t mcp73833_sysfs_set_fast_charge(struct device *dev,
++					      struct device_attribute *attr,
++					      const char *buf,
++					      size_t count)
++{
++	struct power_supply *psy = dev_to_psy(dev);
++	struct mcp73833_charger *mcp = power_supply_get_drvdata(psy);
++	long val;
++	int ret;
++
++	if (kstrtol(buf, 10, &val) < 0)
++		return -EINVAL;
++
++	if (val == 0) {
++		// disable fast charge: set gpio to IN mode
++		ret = gpiod_direction_input(mcp->fast_charge_gpio);
++	} else {
++		// enable fast charge: set gpio to OUT mode
++		ret = gpiod_direction_output(mcp->fast_charge_gpio, 1);
++	}
++	if (ret < 0)
++		return ret;
++
++	mcp->fast_charge_enabled = (val != 0);
++
++	return count;
++}
++
 +static ssize_t mcp73833_sysfs_show_status(struct device *dev,
 +					  struct device_attribute *attr,
 +					  char *buf)
@@ -391,6 +445,8 @@ index 0000000..e306f5c
 +{
 +	struct mcp73833_charger *mcp = power_supply_get_drvdata(psy);
 +	enum mcp73833_charger_status status;
++	bool fast_charge;
++	int ret;
 +
 +	status = mcp->status;
 +
@@ -407,11 +463,14 @@ index 0000000..e306f5c
 +			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 +		break;
 +	case POWER_SUPPLY_PROP_CHARGE_TYPE:
-+		if (status == MCP73833_CHRG_CHARGING)
-+			// TODO: update when fast charge is available
-+			val->intval = POWER_SUPPLY_CHARGE_TYPE_STANDARD;
-+		else
++		if (status == MCP73833_CHRG_CHARGING) {
++			ret = mcp73833_charger_read_fast_charge(mcp, &fast_charge);
++			if (ret < 0)
++				return ret;
++			val->intval = (fast_charge ? POWER_SUPPLY_CHARGE_TYPE_FAST : POWER_SUPPLY_CHARGE_TYPE_STANDARD);
++		} else {
 +			val->intval = POWER_SUPPLY_CHARGE_TYPE_NONE;
++		}
 +		break;
 +	case POWER_SUPPLY_PROP_ONLINE:
 +		val->intval = (status != MCP73833_CHRG_SHUTDOWN);
@@ -441,9 +500,13 @@ index 0000000..e306f5c
 +static DEVICE_ATTR(charger_status, S_IRUGO,
 +		   mcp73833_sysfs_show_status, NULL);
 +
++static DEVICE_ATTR(charger_fast_charge, S_IWUSR | S_IRUGO,
++		   mcp73833_sysfs_show_fast_charge, mcp73833_sysfs_set_fast_charge);
++
 +static struct attribute *mcp73833_charger_sysfs_attrs[] = {
 +	&dev_attr_charger_enable.attr,
 +	&dev_attr_charger_status.attr,
++	&dev_attr_charger_fast_charge.attr,
 +	NULL,
 +};
 +ATTRIBUTE_GROUPS(mcp73833_charger_sysfs);
@@ -504,6 +567,15 @@ index 0000000..e306f5c
 +					"Could not get enable gpio\n");
 +		return ret;
 +	}
++
++	/* fast charge line, normal charge is set when gpio open IN */
++	mcp->fast_charge_gpio = devm_gpiod_get(dev, "fast-charge", GPIOD_IN);
++	if (IS_ERR(mcp->fast_charge_gpio)) {
++		ret = dev_err_probe(dev, PTR_ERR(mcp->fast_charge_gpio),
++					"Could not get fast-charge gpio\n");
++		return ret;
++	}
++	mcp->fast_charge_enabled = false;
 +
 +	wq_name = devm_kasprintf(dev, GFP_KERNEL, "wq-%s", name);
 +	if (!wq_name)

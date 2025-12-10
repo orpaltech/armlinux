@@ -14,7 +14,7 @@ TARGET_BOOT_DIR="/boot/firmware"
 
 FIRMWARE_URL="https://github.com/raspberrypi/firmware.git"
 FIRMWARE_BRANCH=stable
-FIRMWARE_VER=1.20250326
+FIRMWARE_VER=1.20250915
 FIRMWARE_TAG="${FIRMWARE_VER}"
 FIRMWARE_NAME=raspberrypi
 

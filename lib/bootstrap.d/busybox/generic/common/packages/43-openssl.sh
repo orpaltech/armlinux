@@ -1,5 +1,5 @@
 OPENSSL_REPO_URL="https://github.com/openssl/openssl.git"
-OPENSSL_VERSION=3.5.0
+OPENSSL_VERSION=3.6.0
 OPENSSL_BRANCH=master
 OPENSSL_TAG="openssl-${OPENSSL_VERSION}"
 OPENSSL_SRC_DIR=${EXTRADIR}/openssl

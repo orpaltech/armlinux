@@ -76,7 +76,7 @@ if [ "${BOOTLOADER}" = uboot ] ; then
 		patch_base_dir=${BASEDIR}/patch/u-boot/generic/${UBOOT_REPO_NAME}
 	fi
 
-	if [ "${UBOOT_PATCH_DISABLE}" != yes ]  && [ -d $patch_base_dir ] ; then
+	if is_false "${UBOOT_PATCH_DISABLE}" && [[ -d $patch_base_dir ]] ; then
 		local patch_tmp_dir=$(mktemp -u ${patch_out_dir}/u-boot.XXXXXXXXX)
 
 		# Prepare files for patching
@@ -129,40 +129,40 @@ patch_kernel()
 
 	rm -rf ${patch_out_dir}/kernel.*
 
-	if [ "${KERNEL_PATCH_DISABLE}" != yes ]  && [ -d $patch_base_dir ] ; then
-                local patch_tmp_dir=$(mktemp -u ${patch_out_dir}/kernel.XXXXXXXXX)
+	if is_false "${KERNEL_PATCH_DISABLE}" && [[ -d $patch_base_dir ]] ; then
+	    local patch_tmp_dir=$(mktemp -u ${patch_out_dir}/kernel.XXXXXXXXX)
 
-		display_alert "Patching kernel..." "" "info"
+	    display_alert "Patching kernel..." "" "info"
 
-		mkdir -p $patch_tmp_dir
+	    mkdir -p $patch_tmp_dir
 
-                echo "Copy Kernel base patches"
+	    echo "Copy Kernel base patches"
 
-		# Copy normal-priority patches
-                copy_patches  $patch_base_dir  $patch_tmp_dir
+	    # Copy normal-priority patches
+	    copy_patches  $patch_base_dir  $patch_tmp_dir
 
-		# Check if high-priority patches are available and, if yes, copy too
-		local dir_name="${KERNEL_PATCH_HIGH_PRIORITY_DIR}"
-		if [ -z "${dir_name}" ] ; then
-			dir_name="${KERNEL_RELEASE}"
-		fi
-                if [ -n "${dir_name}" ] && [ -d ${patch_base_dir}/${dir_name} ] ; then
-                        echo "Copy Kernel high-priority patches from '${dir_name}', allow overwrite base patches"
+	    # Check if high-priority patches are available and, if yes, copy too
+	    local dir_name="${KERNEL_PATCH_HIGH_PRIORITY_DIR}"
+	    if [ -z "${dir_name}" ] ; then
+		dir_name="${KERNEL_RELEASE}"
+	    fi
+	    if [ -n "${dir_name}" ] && [ -d ${patch_base_dir}/${dir_name} ] ; then
+		echo "Copy Kernel high-priority patches from '${dir_name}', allow overwrite base patches"
 
-                        copy_patches ${patch_base_dir}/${dir_name}  ${patch_tmp_dir}
-                fi
+		copy_patches ${patch_base_dir}/${dir_name}  ${patch_tmp_dir}
+	    fi
 
-		local patch_count=$(count_files "${patch_tmp_dir}/*.patch")
-		if [ $patch_count -gt 0 ] ; then
-			# patching
-			for patch_file in ${patch_tmp_dir}/*.patch; do
-				echo "Applying patch '${patch_file}' to kernel..."
-				patch -d ${KERNEL_SOURCE_DIR} --batch -p1 -N -F5 < ${patch_file}
-				[ $? -eq 0 ] || exit $?;
-				echo "Patched."
-			done
-		fi
+	    local patch_count=$(count_files "${patch_tmp_dir}/*.patch")
+	    if [ $patch_count -gt 0 ] ; then
+		# patching
+		for patch_file in ${patch_tmp_dir}/*.patch; do
+		    echo "Applying patch '${patch_file}' to kernel..."
+		    patch -d ${KERNEL_SOURCE_DIR} --batch -p1 -N -F5 < ${patch_file}
+		    [ $? -eq 0 ] || exit $?;
+		    echo "Patched."
+		done
+	    fi
 
-		echo "Done."
+	    echo "Done."
 	fi
 }

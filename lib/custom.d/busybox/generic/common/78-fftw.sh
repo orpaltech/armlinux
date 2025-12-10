@@ -79,7 +79,7 @@ fftw3_install()
 # ############ install packages ##############
 #
 
-if [ "${ENABLE_FFTW}" = yes ] ; then
+if is_true "${ENABLE_FFTW}"; then
 
     fftw3_install
 fi

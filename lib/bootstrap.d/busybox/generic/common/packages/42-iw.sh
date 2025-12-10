@@ -1,4 +1,5 @@
-IW_REPO_URL="https://git.kernel.org/pub/scm/linux/kernel/git/jberg/iw.git"
+IW_REPO_URL="https://kernel.googlesource.com/pub/scm/linux/kernel/git/jberg/iw"
+#https://git.kernel.org/pub/scm/linux/kernel/git/jberg/iw.git"
 IW_VERSION=6.9
 IW_BRANCH=master
 IW_TAG=v${IW_VERSION}

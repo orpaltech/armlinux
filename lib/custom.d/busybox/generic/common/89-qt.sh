@@ -2,7 +2,7 @@
 # Build QT framework
 #
 QT_GIT_ROOT="git://code.qt.io/qt"
-QT_RELEASE=${QT_RELEASE:="6.8.3"}
+QT_RELEASE=${QT_RELEASE:="6.10.0"}
 QT_BRANCH=${QT_BRANCH:="$QT_RELEASE"}
 QT_TAG=${QT_TAG:=""}
 QT_PREFIX=${QT_PREFIX:="/usr/local/qt-$QT_RELEASE"}
@@ -12,7 +12,6 @@ QT_MODULES=("qtshadertools" \
 "qtimageformats" \
 "qtlanguageserver" \
 "qtdeclarative" \
-"qtactiveqt" \
 "qttools" \
 "qtquicktimeline" \
 "qtquick3d" \
@@ -58,7 +57,7 @@ qt_install()
     # make sure QT root directory exists
     mkdir -p ${QT_ROOT_DIR}
 
-    PKG_FORCE_UPDATE=${QT_UPDATE_SOURCES} PKG_FORCE_CLEAN=${QT_FORCE_REBUILD} \
+    PKG_FORCE_UPDATE=${QT_FORCE_UPDATE} PKG_FORCE_CLEAN=${QT_FORCE_REBUILD} \
         update_src_pkg "qtbase" \
             $QT_RELEASE \
 	    $QTBASE_SRC_DIR \
@@ -72,7 +71,7 @@ qt_install()
 	local QT_MOD_SRC_DIR="${QT_ROOT_DIR}/${MODULE}"
 	local QT_MOD_REPO_URL="${QT_GIT_ROOT}/${MODULE}.git"
 
-	PKG_FORCE_UPDATE=${QT_UPDATE_SOURCES} PKG_FORCE_CLEAN=${QT_FORCE_REBUILD} \
+	PKG_FORCE_UPDATE=${QT_FORCE_UPDATE} PKG_FORCE_CLEAN=${QT_FORCE_REBUILD} \
 	    update_src_pkg "${MODULE}" \
 		$QT_RELEASE \
 		$QT_MOD_SRC_DIR \
@@ -88,7 +87,7 @@ qt_install()
     git -C $QT_MODULE_DIR submodule update --init --recursive
 
 
-    if [ "${QT_FORCE_REBUILD}" = yes ] ; then
+    if is_true "${QT_FORCE_REBUILD}"; then
 	rm -rf ${QTBASE_OUT_DIR}
     fi
 
@@ -138,7 +137,7 @@ qt_make_board()
 
     cat ./config.summary
 
-    if [ "${QT_STOP_ON_CONFIG}" = yes ]; then
+    if is_true "${QT_STOP_ON_CONFIG}"; then
 	echo "=================================================================================="
 	read -p "Please, review configuration output. Press any key to continue or Ctrl+C to exit... " -n1 -s
 	echo ""
@@ -197,7 +196,7 @@ qt_make_host()
 
     cat ./config.summary
 
-    if [ "${QT_STOP_ON_CONFIG}" = yes ]; then
+    if is_true "${QT_STOP_ON_CONFIG}"; then
 	echo "=================================================================================="
 	read -p "Please, review configuration output. Press any key to continue or Ctrl+C to exit... " -n1 -s
 	echo ""
@@ -247,7 +246,7 @@ qt_make_mod()
 	mkdir -p ${QT_MOD_OUT_DIR}
 	cd ${QT_MOD_OUT_DIR}/
 
-	if [ "${QT_FORCE_REBUILD}" = yes ] ; then
+	if is_true "${QT_FORCE_REBUILD}"; then
 		echo "${SOURCE_NAME}: Force rebuild ${MODULE}"
 		rm -rf ./*
 	fi
@@ -268,7 +267,7 @@ qt_make_mod()
 
 # ----------------------------------------------------------------------------
 
-if [ "${ENABLE_QT}" = yes ] ; then
+if is_true "${ENABLE_QT}"; then
 
     if [ -z "${QT_DEVICE_CONFIG}" ] ; then
 	echo "ERROR: QT device config was not specified - can't continue."
@@ -276,13 +275,13 @@ if [ "${ENABLE_QT}" = yes ] ; then
     fi
 
     if [[ ${CLEAN} =~ (^|,)qt(,|$) ]] ; then
-	QT_UPDATE_SOURCES=yes
+	QT_FORCE_UPDATE=yes
 	QT_FORCE_REBUILD=yes
     fi
 
     echo -n -e "\n*** Build Settings ***\n"
     set -x
-    QT_UPDATE_SOURCES=${QT_UPDATE_SOURCES:="no"}
+    QT_FORCE_UPDATE=${QT_FORCE_UPDATE:="no"}
     QT_FORCE_REBUILD=${QT_FORCE_REBUILD:="no"}
     set +x
 

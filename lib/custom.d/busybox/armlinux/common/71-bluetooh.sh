@@ -34,7 +34,8 @@ LIBBSD_TAG="${LIBBSD_VERSION}"
 LIBBSD_SRC_DIR=${EXTRADIR}/libbsd
 LIBBSD_BUILD_DIR=${LIBBSD_SRC_DIR}/${BB_BUILD_OUT}
 
-LIBSBC_REPO_URL="https://git.kernel.org/pub/scm/bluetooth/sbc.git"
+LIBSBC_REPO_URL="https://kernel.googlesource.com/pub/scm/bluetooth/sbc"
+#https://git.kernel.org/pub/scm/bluetooth/sbc.git"
 LIBSBC_BRANCH=master
 LIBSBC_VERSION=2.1
 LIBSBC_TAG="${LIBSBC_VERSION}"
@@ -400,7 +401,8 @@ EOF
 # ############ install packages ##############
 #
 
-if [ "${ENABLE_BTH}" = yes ] ; then
+if is_true "${ENABLE_BTH}"; then
+
     echo -n -e "\n*** Build Settings ***\n"
 
     [[ ${CLEAN} =~ (^|,)bluetooth(,|$) ]] && BTH_FORCE_REBUILD=yes
@@ -419,7 +421,7 @@ if [ "${ENABLE_BTH}" = yes ] ; then
 
     bluez_install
 
-    if [ "${ENABLE_SOUND}" = yes ] ; then
+    if is_true "${ENABLE_SOUND}"; then
 	libmd_install
 	libbsd_install
 

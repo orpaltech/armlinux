@@ -1,0 +1,213 @@
+From 8489f65fa529ee8bbbdefe7bf105a7a0e14e4e3f Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <sergey.suloev@gmail.com>
+Date: Sun, 7 Dec 2025 22:23:53 +0300
+Subject: [PATCH] drm/sun4i: dsi: Updates for sun6-mipi-dsi driver
+
+---
+ drivers/gpu/drm/sun4i/sun4i_tcon.c     | 11 ++++++
+ drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c | 49 ++++++++++++++++++++++----
+ 2 files changed, 54 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.c b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+index 960e83c..aef04e7 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.c
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+@@ -86,6 +86,9 @@ static void sun4i_tcon_channel_set_status(struct sun4i_tcon *tcon, int channel,
+ {
+ 	struct clk *clk;
+ 
++        DRM_DEV_ERROR(tcon->dev, "DEBUG: sun4i_tcon_channel_set_status called, channel=%d, enabled=%d\n",
++                      channel, enabled);
++
+ 	switch (channel) {
+ 	case 0:
+ 		WARN_ON(!tcon->quirks->has_channel_0);
+@@ -113,6 +116,8 @@ static void sun4i_tcon_channel_set_status(struct sun4i_tcon *tcon, int channel,
+ 		clk_rate_exclusive_put(clk);
+ 		clk_disable_unprepare(clk);
+ 	}
++
++	DRM_DEV_ERROR(tcon->dev, "DEBUG: sun4i_tcon_channel_set_status finished");
+ }
+ 
+ static void sun4i_tcon_setup_lvds_phy(struct sun4i_tcon *tcon,
+@@ -227,6 +232,8 @@ void sun4i_tcon_enable_vblank(struct sun4i_tcon *tcon, bool enable)
+ {
+ 	u32 mask, val = 0;
+ 
++	DRM_DEV_ERROR(tcon->dev, "DEBUG: sun4i_tcon_enable_vblank called, enable=%d\n", enable);
++
+ 	DRM_DEBUG_DRIVER("%sabling VBLANK interrupt\n", enable ? "En" : "Dis");
+ 
+ 	mask = SUN4I_TCON_GINT0_VBLANK_ENABLE(0) |
+@@ -347,6 +354,8 @@ static void sun4i_tcon0_mode_set_cpu(struct sun4i_tcon *tcon,
+ 				     const struct drm_encoder *encoder,
+ 				     const struct drm_display_mode *mode)
+ {
++	DRM_DEV_ERROR(tcon->dev, "DEBUG: sun4i_tcon0_mode_set_cpu called\n");
++
+ 	/* TODO support normal CPU interface modes */
+ 	struct sun6i_dsi *dsi = encoder_to_sun6i_dsi(encoder);
+ 	struct mipi_dsi_device *device = dsi->device;
+@@ -420,6 +429,8 @@ static void sun4i_tcon0_mode_set_cpu(struct sun4i_tcon *tcon,
+ 	/* Enable the output on the pins */
+ 	regmap_write(tcon->regs, SUN4I_TCON0_IO_TRI_REG,
+ 		     0xe0000000);
++
++	DRM_DEV_ERROR(tcon->dev, "DEBUG: sun4i_tcon0_mode_set_cpu finished\n");
+ }
+ 
+ static void sun4i_tcon0_mode_set_lvds(struct sun4i_tcon *tcon,
+diff --git a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+index c35b70d..be7fb45 100644
+--- a/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
++++ b/drivers/gpu/drm/sun4i/sun6i_mipi_dsi.c
+@@ -6,6 +6,8 @@
+  * Maxime Ripard <maxime.ripard@bootlin.com>
+  */
+ 
++#define DEBUG
++
+ #include <linux/clk.h>
+ #include <linux/component.h>
+ #include <linux/crc-ccitt.h>
+@@ -21,6 +23,7 @@
+ 
+ #include <drm/drm_atomic_helper.h>
+ #include <drm/drm_mipi_dsi.h>
++#include <drm/drm_of.h>
+ #include <drm/drm_panel.h>
+ #include <drm/drm_print.h>
+ #include <drm/drm_probe_helper.h>
+@@ -670,6 +673,9 @@ static void sun6i_dsi_setup_timings(struct sun6i_dsi *dsi,
+ static int sun6i_dsi_start(struct sun6i_dsi *dsi,
+ 			   enum sun6i_dsi_start_inst func)
+ {
++	u32 basic_ctl;
++	u32 inst_func;
++
+ 	switch (func) {
+ 	case DSI_START_LPTX:
+ 		regmap_write(dsi->regs, SUN6I_DSI_INST_JUMP_SEL_REG,
+@@ -710,6 +716,13 @@ static int sun6i_dsi_start(struct sun6i_dsi *dsi,
+ 				  SUN6I_DSI_INST_FUNC_REG(DSI_INST_ID_LP11),
+ 				  SUN6I_DSI_INST_FUNC_LANE_CEN, 0);
+ 
++	/* Read back DSI controller state */
++	regmap_read(dsi->regs, SUN6I_DSI_BASIC_CTL_REG, &basic_ctl);
++	regmap_read(dsi->regs, SUN6I_DSI_INST_FUNC_REG(0), &inst_func);
++
++	DRM_DEV_ERROR(dsi->dev, "DEBUG: DSI after start - BASIC_CTL=0x%08x, INST_FUNC=0x%08x\n", 
++		      basic_ctl, inst_func);
++
+ 	return 0;
+ }
+ 
+@@ -720,9 +733,12 @@ static void sun6i_dsi_encoder_enable(struct drm_encoder *encoder)
+ 	struct mipi_dsi_device *device = dsi->device;
+ 	union phy_configure_opts opts = { };
+ 	struct phy_configure_opts_mipi_dphy *cfg = &opts.mipi_dphy;
++	u32 eotp_enable = 0;
+ 	u16 delay;
+ 	int err;
+ 
++	DRM_DEV_ERROR(dsi->dev, "DEBUG: sun6i_dsi_encoder_enable START\n");
++
+ 	DRM_DEBUG_DRIVER("Enabling DSI output\n");
+ 
+ 	err = regulator_enable(dsi->regulator);
+@@ -737,8 +753,12 @@ static void sun6i_dsi_encoder_enable(struct drm_encoder *encoder)
+ 	 */
+ 	regmap_write(dsi->regs, SUN6I_DSI_CTL_REG, SUN6I_DSI_CTL_EN);
+ 
++	if (!(device->mode_flags & MIPI_DSI_MODE_NO_EOT_PACKET))
++		eotp_enable |= SUN6I_DSI_BASIC_CTL0_HS_EOTP_EN;
+ 	regmap_write(dsi->regs, SUN6I_DSI_BASIC_CTL0_REG,
+-		     SUN6I_DSI_BASIC_CTL0_ECC_EN | SUN6I_DSI_BASIC_CTL0_CRC_EN);
++		     eotp_enable |
++		     SUN6I_DSI_BASIC_CTL0_ECC_EN |
++		     SUN6I_DSI_BASIC_CTL0_CRC_EN);
+ 
+ 	regmap_write(dsi->regs, SUN6I_DSI_TRANS_START_REG, 10);
+ 	regmap_write(dsi->regs, SUN6I_DSI_TRANS_ZERO_REG, 0);
+@@ -754,8 +774,12 @@ static void sun6i_dsi_encoder_enable(struct drm_encoder *encoder)
+ 		     SUN6I_DSI_BASIC_CTL1_VIDEO_PRECISION |
+ 		     SUN6I_DSI_BASIC_CTL1_VIDEO_MODE);
+ 
++	DRM_DEV_ERROR(dsi->dev, "DEBUG: Before sun6i_dsi_setup_burst\n");
+ 	sun6i_dsi_setup_burst(dsi, mode);
++	DRM_DEV_ERROR(dsi->dev, "DEBUG: After sun6i_dsi_setup_burst\n");
++	DRM_DEV_ERROR(dsi->dev, "DEBUG: Before sun6i_dsi_setup_inst_loop\n");
+ 	sun6i_dsi_setup_inst_loop(dsi, mode);
++	DRM_DEV_ERROR(dsi->dev, "DEBUG: After sun6i_dsi_setup_inst_loop\n");
+ 	sun6i_dsi_setup_format(dsi, mode);
+ 	sun6i_dsi_setup_timings(dsi, mode);
+ 
+@@ -769,8 +793,11 @@ static void sun6i_dsi_encoder_enable(struct drm_encoder *encoder)
+ 	phy_configure(dsi->dphy, &opts);
+ 	phy_power_on(dsi->dphy);
+ 
+-	if (dsi->panel)
++	if (dsi->panel) {
++		DRM_DEV_ERROR(dsi->dev, "DEBUG: Before drm_panel_prepare\n");
+ 		drm_panel_prepare(dsi->panel);
++		DRM_DEV_ERROR(dsi->dev, "DEBUG: After drm_panel_prepare\n");
++	}
+ 
+ 	/*
+ 	 * FIXME: This should be moved after the switch to HS mode.
+@@ -784,10 +811,17 @@ static void sun6i_dsi_encoder_enable(struct drm_encoder *encoder)
+ 	 * ordering on the panels I've tested it with, so I guess this
+ 	 * will do for now, until that IP is better understood.
+ 	 */
+-	if (dsi->panel)
++	if (dsi->panel) {
++		DRM_DEV_ERROR(dsi->dev, "DEBUG: Before drm_panel_enable\n");
+ 		drm_panel_enable(dsi->panel);
++		DRM_DEV_ERROR(dsi->dev, "DEBUG: After drm_panel_enable\n");
++	}
+ 
++	DRM_DEV_ERROR(dsi->dev, "DEBUG: Before sun6i_dsi_start\n");
+ 	sun6i_dsi_start(dsi, DSI_START_HSC);
++	DRM_DEV_ERROR(dsi->dev, "DEBUG: After sun6i_dsi_start\n");
++
++	DRM_DEV_ERROR(dsi->dev, "DEBUG: sun6i_dsi_encoder_enable END - DSI started\n");
+ 
+ 	udelay(1000);
+ 
+@@ -1052,8 +1086,11 @@ static int sun6i_dsi_bind(struct device *dev, struct device *master,
+ {
+ 	struct drm_device *drm = data;
+ 	struct sun6i_dsi *dsi = dev_get_drvdata(dev);
++	struct drm_connector *connector = &dsi->connector;
+ 	int ret;
+ 
++	dev_dbg(dsi->dev, "is drm registered? %d\n", drm->registered);
++
+ 	drm_encoder_helper_add(&dsi->encoder,
+ 			       &sun6i_dsi_enc_helper_funcs);
+ 	ret = drm_simple_encoder_init(drm, &dsi->encoder,
+@@ -1064,9 +1101,9 @@ static int sun6i_dsi_bind(struct device *dev, struct device *master,
+ 	}
+ 	dsi->encoder.possible_crtcs = BIT(0);
+ 
+-	drm_connector_helper_add(&dsi->connector,
++	drm_connector_helper_add(connector,
+ 				 &sun6i_dsi_connector_helper_funcs);
+-	ret = drm_connector_init(drm, &dsi->connector,
++	ret = drm_connector_init(drm, connector,
+ 				 &sun6i_dsi_connector_funcs,
+ 				 DRM_MODE_CONNECTOR_DSI);
+ 	if (ret) {
+@@ -1075,7 +1112,7 @@ static int sun6i_dsi_bind(struct device *dev, struct device *master,
+ 		goto err_cleanup_connector;
+ 	}
+ 
+-	drm_connector_attach_encoder(&dsi->connector, &dsi->encoder);
++	drm_connector_attach_encoder(connector, &dsi->encoder);
+ 
+ 	dsi->drm = drm;
+ 
+-- 
+2.43.0
+

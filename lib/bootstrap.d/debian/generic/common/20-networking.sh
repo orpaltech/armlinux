@@ -27,7 +27,8 @@ install_readonly ${FILES_DIR}/network/interfaces  ${ETC_DIR}/network/interfaces
 # Install configuration for interfaces
 install_readonly ${FILES_DIR}/network/eth.network  ${ETC_DIR}/systemd/network/10-eth.network
 
-if [ "${ENABLE_WLAN}" = yes ] ; then
+if is_true "${ENABLE_WLAN}"; then
+
   # Install configuration for interface wlan0
   install_readonly ${FILES_DIR}/network/wireless.network  ${ETC_DIR}/systemd/network/00-wireless.network
 

@@ -94,54 +94,59 @@ update_kernel()
     KERNEL_BASE_DIR="${KERNEL_ROOT_DIR}/${KERNEL_REPO_NAME}"
     mkdir -p ${KERNEL_BASE_DIR}
 
-    if [[ "${KERNEL_USE_ALT}" =~ ^(y|yes)$ ]]; then
+    if is_true "${KERNEL_USE_ALT}"; then
 	display_alert "Extracting kernel from" "${KERNEL_REPO_NAME} | ${KERNEL_ALT_URL}" "info"
 
 	KERNEL_SOURCE_DIR=${KERNEL_BASE_DIR}/alt
 
-	mkdir -p ${KERNEL_SOURCE_DIR}
-	sudo rm -rf ${KERNEL_SOURCE_DIR}/*
+	if is_false "${KERNEL_UPDATE_DISABLE}"; then
 
-	local tar_name=$(basename "${KERNEL_ALT_URL}")
-        local tar_path="${KERNEL_BASE_DIR}/${tar_name}"
-        if [ ! -f ${tar_path} ] ; then
+	    mkdir -p ${KERNEL_SOURCE_DIR}
+	    sudo rm -rf ${KERNEL_SOURCE_DIR}/*
+
+	    local tar_name=$(basename "${KERNEL_ALT_URL}")
+	    local tar_path="${KERNEL_BASE_DIR}/${tar_name}"
+	    if [ ! -f ${tar_path} ] ; then
 		wget -O ${tar_path} ${KERNEL_ALT_URL}
 		[ $? -eq 0 ] || exit $?
-	fi
-        tar -xvf ${tar_path} --strip-components=1 -C ${KERNEL_SOURCE_DIR}
-#        rm -f ${tar_path}
+	    fi
+	    tar -xvf ${tar_path} --strip-components=1 -C ${KERNEL_SOURCE_DIR}
+	    # rm -f ${tar_path}
 
+	fi
     else
 
 	KERNEL_SOURCE_DIR=${KERNEL_BASE_DIR}/git
 
-	local kernel_repo_url="${KERNEL_REPO_URL}"
+	if is_false "${KERNEL_UPDATE_DISABLE}"; then
 
-	if [ -n "${GIT_MIRROR_ROOT}" ]; then
+	    local kernel_repo_url="${KERNEL_REPO_URL}"
+
+	    if [ -n "${GIT_MIRROR_ROOT}" ]; then
 		local mirror_repo_url="${GIT_MIRROR_ROOT}/kernel_${KERNEL_REPO_NAME}.git"
 		if git_repo_exists "${mirror_repo_url}"; then
 			kernel_repo_url=${mirror_repo_url}
 		fi
-	fi
+	    fi
 
-	[[ -n "${KERNEL_REPO_TAG}" ]] && branch_or_tag="tags/${KERNEL_REPO_TAG}" || branch_or_tag="${KERNEL_REPO_BRANCH}"
+	    [[ -n "${KERNEL_REPO_TAG}" ]] && branch_or_tag="tags/${KERNEL_REPO_TAG}" || branch_or_tag="${KERNEL_REPO_BRANCH}"
 
-	if [ -d "${KERNEL_SOURCE_DIR}" ] && [ -d "${KERNEL_SOURCE_DIR}/.git" ] ; then
+	    if [ -d "${KERNEL_SOURCE_DIR}" ] && [ -d "${KERNEL_SOURCE_DIR}/.git" ] ; then
                 local old_url=$($REALGIT -C $KERNEL_SOURCE_DIR config --get remote.origin.url)
                 if [ "${old_url}" != "${kernel_repo_url}" ] ; then
 			echo "Kernel repository has changed, clean up working dir ?"
 			pause
                         rm -rf ${KERNEL_SOURCE_DIR}
                 fi
-        fi
+	    fi
 
-	if [ -d "${KERNEL_SOURCE_DIR}" ] && [ -d "${KERNEL_SOURCE_DIR}/.git" ] ; then
+	    if [ -d "${KERNEL_SOURCE_DIR}" ] && [ -d "${KERNEL_SOURCE_DIR}/.git" ] ; then
 		display_alert "Updating kernel from" "${KERNEL_REPO_NAME} | ${kernel_repo_url} | ${branch_or_tag}" "info"
 
 		sudo chown -R ${CURRENT_USER}:${CURRENT_USER} $KERNEL_SOURCE_DIR
 
 		# update sources
-		$GIT -C ${KERNEL_SOURCE_DIR} fetch origin --tags --depth=1
+		$GIT -C ${KERNEL_SOURCE_DIR} fetch origin --tags
 		[ $? -eq 0 ] || exit $?;
 
 		$GIT -C ${KERNEL_SOURCE_DIR} reset --hard
@@ -154,23 +159,45 @@ update_kernel()
 		echo "Checking out branch: ${KERNEL_REPO_BRANCH}"
 		$GIT -C ${KERNEL_SOURCE_DIR} checkout -B ${KERNEL_REPO_BRANCH} origin/${KERNEL_REPO_BRANCH}
 		$GIT -C ${KERNEL_SOURCE_DIR} pull
-	else
+
+	    else
 		display_alert "Cloning kernel from" "${KERNEL_REPO_NAME} | ${kernel_repo_url} | ${branch_or_tag}" "info"
 
 		[[ -d ${KERNEL_SOURCE_DIR} ]] && rm -rf ${KERNEL_SOURCE_DIR}
 
-		$GIT clone ${kernel_repo_url} -b ${KERNEL_REPO_BRANCH} --depth=1 ${KERNEL_SOURCE_DIR}
+		$GIT clone ${kernel_repo_url} -b ${KERNEL_REPO_BRANCH} ${KERNEL_SOURCE_DIR}
 		[ $? -eq 0 ] || exit $?;
 
-		$GIT -C ${KERNEL_SOURCE_DIR} fetch origin --tags --depth=1
+		$GIT -C ${KERNEL_SOURCE_DIR} fetch origin --tags
 		[ $? -eq 0 ] || exit $?;
-	fi
 
-	if [ -n "${KERNEL_REPO_TAG}" ] ; then
+	    fi
+
+	    if [ -n "${KERNEL_REPO_COMMIT}" ] ; then
+		echo "Checking out kernel commit: ${KERNEL_REPO_COMMIT}"
+	    elif [ -n "${KERNEL_REPO_TAG}" ] ; then
 		echo "Checking out kernel tag: tags/${KERNEL_REPO_TAG}"
-		$GIT -C ${KERNEL_SOURCE_DIR} checkout tags/${KERNEL_REPO_TAG}
+		KERNEL_REPO_COMMIT="tags/${KERNEL_REPO_TAG}"
+	    fi
+
+	    if [ -n "${KERNEL_REPO_COMMIT}" ] ; then
+		$GIT -C ${KERNEL_SOURCE_DIR} checkout ${KERNEL_REPO_COMMIT}
 		[ $? -eq 0 ] || exit $?;
+	    fi
+
 	fi
+
+#  echo "=================================================================================="
+#  read -p "Before Kernel fix. Press any key to continue or Ctrl+C to exit... " -n1 -s
+#  echo ""
+###########################################
+	# Revert the sun4i mixer initialization refactor (most likely culprit)
+#	$GIT -C ${KERNEL_SOURCE_DIR} revert --no-edit 54bd08e15b74 9e623068f177 5b9cfdbfc328 5419143dd071 ef54f1dc246b a28175894415 81cf7c68794c
+#	$GIT -C ${KERNEL_SOURCE_DIR} revert --no-edit f6ee26f58870..c9b1150a68d9
+##########################################
+#  echo "=================================================================================="
+#  read -p "After Kernel fix. Press any key to continue or Ctrl+C to exit... " -n1 -s
+#  echo ""
 
     fi
 

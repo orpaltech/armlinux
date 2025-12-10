@@ -3,7 +3,7 @@
 REALGIT=/usr/bin/git
 
 if [ -n "${SSH_KEY_PATH}" ]; then
-export GIT_SSH_COMMAND="/usr/bin/ssh -i ${SSH_KEY_PATH} -o IdentitiesOnly=yes -F /dev/null"
+export GIT_SSH_COMMAND="/usr/bin/ssh -i ${SSH_KEY_PATH} -o ConnectTimeout=5 -o ConnectionAttempts=1 -o IdentitiesOnly=yes -F /dev/null"
 fi
 
 git_once()

@@ -1,7 +1,8 @@
-UTIL_LINUX_REPO_URL="https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git"
-UTIL_LINUX_VERSION=2.41
+UTIL_LINUX_REPO_URL="https://kernel.googlesource.com/pub/scm/utils/util-linux/util-linux"
+#https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git"
+UTIL_LINUX_VERSION=2.41.2
 UTIL_LINUX_BRANCH=master
-UTIL_LINUX_TAG=
+UTIL_LINUX_TAG="v${UTIL_LINUX_VERSION}"
 UTIL_LINUX_SRC_DIR=${EXTRADIR}/util-linux
 UTIL_LINUX_BUILD_DIR=${UTIL_LINUX_SRC_DIR}/${BB_BUILD_OUT}
 UTIL_LINUX_REBUILD=yes

@@ -96,7 +96,8 @@ EOF
 	echo "Done."
 }
 
-if [ "${ENABLE_BTH}" = yes ] ; then
+if is_true "${ENABLE_BTH}"; then
+
 	echo -n -e "\n*** Build Settings ***\n"
 
 	[[ ${CLEAN} =~ (^|,)bluetooth(,|$) ]] && BTH_FORCE_REBUILD=yes

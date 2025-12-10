@@ -13,6 +13,7 @@ install_fonts()
 	cp -R ${FILES_DIR}/fonts/*	${USR_DIR}/share/fonts/
 
 	if [ "${BB_LIBC}" = gnu ] ; then
+
 		chroot_exec ldconfig -v
 	fi
 	chroot_exec /usr/bin/fc-cache -fv

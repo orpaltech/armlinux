@@ -1,5 +1,5 @@
 READLINE_REPO_URL="https://git.savannah.gnu.org/git/readline.git"
-READLINE_VERSION=8.2
+READLINE_VERSION=8.3
 READLINE_BRANCH=master
 READLINE_TAG=
 READLINE_SRC_DIR=${EXTRADIR}/readline

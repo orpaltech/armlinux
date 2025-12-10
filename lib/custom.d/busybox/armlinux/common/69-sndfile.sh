@@ -74,7 +74,7 @@ sndfile_install()
 # ############ install packages ##############
 #
 
-if [ "${ENABLE_SOUND}" = yes ] ; then
+if is_true "${ENABLE_SOUND}"; then
 
     [[ ${CLEAN} =~ (^|,)sound(,|$) ]] && SND_FORCE_REBUILD=yes
     set -x

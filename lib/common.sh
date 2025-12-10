@@ -99,6 +99,41 @@ count_files()
 
 # ----------------------------------------------------------------------
 
+function is_true()
+{
+  local val="$1"
+  if [[ "$val" == "y" || "$val" == "yes" || "$val" == "true" || "$val" == "1" ]]; then
+	return 0
+  else
+	return 1
+  fi
+}
+
+function is_true_or_unset()
+{
+  local val="$1"
+  if [ -z "${val}" ]; then
+	return 0;
+  fi
+  is_true $val
+  if [[ $? -eq 0 ]]; then
+	return 0
+  else
+	return 1
+  fi
+}
+
+function is_false()
+{
+  local val="$1"
+  is_true $val
+  if [[ $? -eq 0 ]]; then
+	return 1
+  else
+	return 0
+  fi
+}
+
 fn_exists()
 {
   declare -f -F $1 > /dev/null

@@ -2,7 +2,7 @@
 # Install firmware files
 #
 
-WREGDB_VERSION=2025.02.20
+WREGDB_VERSION=2025.07.10
 WREGDB_TAR_FILE="wireless-regdb-${WREGDB_VERSION}.tar.xz"
 WREGDB_TAR_URL="https://mirrors.edge.kernel.org/pub/software/network/wireless-regdb/${WREGDB_TAR_FILE}"
 WREGDB_BASE_DIR=${EXTRADIR}/wireless-regdb

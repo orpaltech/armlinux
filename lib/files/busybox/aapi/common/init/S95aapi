@@ -16,6 +16,7 @@ case "$1" in
 	QT_QPA_EGLFS_HIDECURSOR=1 \
 	QT_QPA_NO_LIBINPUT=1 \
 	QT_QPA_EVDEV_TOUCHSCREEN_PARAMETERS=/dev/input/event1:rotate=0 \
+	QT_QPA_EGLFS_KMS_CONFIG=/etc/config/aapi_eglfs_kms.config \
 	QT_LOGGING_RULES=qt.qpa.*=true \
 	/usr/local/bin/aapi_app &
 	;;

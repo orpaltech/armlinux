@@ -1,0 +1,762 @@
+From 24b717f0b4217700808209ab26c96821deefb7ff Mon Sep 17 00:00:00 2001
+From: Sergey Suloev <sergey.suloev@gmail.com>
+Date: Fri, 22 Aug 2025 00:05:48 +0300
+Subject: [PATCH] ASoC: Add support for ORPALTECH AA-PI soundcard
+
+---
+ sound/soc/bcm/Kconfig              |   9 +
+ sound/soc/bcm/Makefile             |   9 +-
+ sound/soc/bcm/orpal-aapi-sound.c   | 329 +++++++++++++++++++++++++++++
+ sound/soc/sunxi/Kconfig            |  10 +-
+ sound/soc/sunxi/Makefile           |   5 +
+ sound/soc/sunxi/orpal-aapi-sound.c | 329 +++++++++++++++++++++++++++++
+ 6 files changed, 689 insertions(+), 2 deletions(-)
+ create mode 100644 sound/soc/bcm/orpal-aapi-sound.c
+ create mode 100644 sound/soc/sunxi/orpal-aapi-sound.c
+
+diff --git a/sound/soc/bcm/Kconfig b/sound/soc/bcm/Kconfig
+index de4e8a0..673c1b3 100644
+--- a/sound/soc/bcm/Kconfig
++++ b/sound/soc/bcm/Kconfig
+@@ -29,4 +29,13 @@ config SND_BCM63XX_I2S_WHISTLER
+ 
+ 	  If you don't know what to do here, say N
+ 
++config SND_ORPAL_AAPI
++	tristate "ORPALTECH AA-PI Soundcard driver for BCM2835"
++	depends on SND_BCM2835_SOC_I2S
++	select SND_SOC_WM8731
++	select SND_SOC_ORPAL_PCM180X
++	help
++	  Say Y or M if you want to add support for ORPALTECH AA-Pi
++	  Soundcard.
++
+ endmenu
+diff --git a/sound/soc/bcm/Makefile b/sound/soc/bcm/Makefile
+index 0c1325a..4ac5e9d 100644
+--- a/sound/soc/bcm/Makefile
++++ b/sound/soc/bcm/Makefile
+@@ -12,4 +12,11 @@ obj-$(CONFIG_SND_SOC_CYGNUS) += snd-soc-cygnus.o
+ # BCM63XX Platform Support
+ snd-soc-63xx-y := bcm63xx-i2s-whistler.o bcm63xx-pcm-whistler.o
+ 
+-obj-$(CONFIG_SND_BCM63XX_I2S_WHISTLER) += snd-soc-63xx.o
+\ No newline at end of file
++obj-$(CONFIG_SND_BCM63XX_I2S_WHISTLER) += snd-soc-63xx.o
++
++ifeq ($(CONFIG_ARCH_BCM2835),y)
++# ORPALTECH AA-Pi Soundcard Support
++snd-soc-orpal-aapi-objs := orpal-aapi-sound.o
++
++obj-$(CONFIG_SND_ORPAL_AAPI) += snd-soc-orpal-aapi.o
++endif
+diff --git a/sound/soc/bcm/orpal-aapi-sound.c b/sound/soc/bcm/orpal-aapi-sound.c
+new file mode 100644
+index 0000000..9110b6e
+--- /dev/null
++++ b/sound/soc/bcm/orpal-aapi-sound.c
+@@ -0,0 +1,329 @@
++/*
++ * ASoC Driver for ORPALTECH AA-PI Soundcard (capture mode only).
++ *
++ *  Created on:	15-Apr-2018
++ *  Created by:	Sergey Suloev <ssuloev@orpaltech.ru>
++ *
++ * Copyright (C) 2013-2025 ORPAL Technology, Inc.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#define DEBUG
++
++#include <linux/module.h>
++#include <linux/types.h>
++
++#include <sound/core.h>
++#include <sound/soc.h>
++#include <sound/pcm_params.h>
++#include <sound/control.h>
++
++#include "../codecs/wm8731.h"
++
++
++
++/*static const unsigned int aapi_sound_rates[] = { 32000, 48000, 64000, 96000 };*/
++static const unsigned int aapi_sound_channels[] = { 2 };
++
++/* Setup constraints */
++/*static struct snd_pcm_hw_constraint_list aapi_sound_constraints_rates = {
++	.list	= aapi_sound_rates,
++	.count	= ARRAY_SIZE(aapi_sound_rates),
++};*/
++static struct snd_pcm_hw_constraint_list aapi_sound_constraints_channels = {
++	.list	= aapi_sound_channels,
++	.count	= ARRAY_SIZE(aapi_sound_channels),
++};
++
++struct aapi_sound_card_quirks {
++	const char	*codec_dai_name;
++	int	codec_clk_id;
++	u32	bclk_ratio;
++};
++
++struct aapi_sound_drvdata {
++	int	codec_clk_id;
++	u32	sysclk_freq;
++	u32	bclk_ratio;
++};
++
++static int aapi_sound_asoc_dai_init(struct snd_soc_pcm_runtime *rtd)
++{
++	struct snd_soc_card *card = rtd->card;
++
++	dev_dbg(card->dev, "%s: enter\n", __func__);
++
++	return 0;
++}
++
++static int aapi_sound_asoc_startup(struct snd_pcm_substream *substream)
++{
++	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
++	struct snd_soc_card *card = rtd->card;
++	int ret;
++
++	dev_dbg(card->dev, "%s: enter\n", __func__);
++/*
++	ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
++					SNDRV_PCM_HW_PARAM_RATE,
++					&aapi_sound_constraints_rates);
++	if (ret < 0) {
++		dev_err(card->dev,
++			"%s: set rate constraints failed: 0x%x\n",
++			__func__, ret);
++		return ret;
++	}
++*/
++	ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
++					SNDRV_PCM_HW_PARAM_CHANNELS,
++					&aapi_sound_constraints_channels);
++	if (ret) {
++		dev_err(card->dev,
++			"%s: set channels constraints failed: 0x%x\n",
++			__func__, ret);
++		return ret;
++	}
++
++	return 0;
++}
++
++static int aapi_sound_asoc_hw_params(struct snd_pcm_substream *substream,
++				     struct snd_pcm_hw_params *params)
++{
++	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
++	struct snd_soc_dai *codec_dai = snd_soc_rtd_to_codec(rtd, 0);
++	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
++	struct snd_soc_card *card = rtd->card;
++	struct aapi_sound_drvdata *drvdata = snd_soc_card_get_drvdata(card);
++	u32 sysclk;
++	int clk_id;
++	int ret;
++
++	dev_dbg(card->dev, "%s: enter\n", __func__);
++
++	sysclk = drvdata->sysclk_freq;
++	clk_id = drvdata->codec_clk_id;
++
++	if (!sysclk) {
++		dev_err(card->dev, "Invalid SYSCLK freq\n");
++		return -EINVAL;
++	}
++
++	if (clk_id < 0) {
++		dev_dbg(card->dev, "No need to set codec SYSCLK.\n");
++	} else {
++		/* Set codec sysclk */
++		ret = snd_soc_dai_set_sysclk(codec_dai, clk_id, sysclk,
++					SND_SOC_CLOCK_IN);
++		if (ret) {
++			dev_err(card->dev, "Failed to set codec SYSCLK by id=%d\n",
++				clk_id);
++			return ret;
++		}
++
++		dev_dbg(card->dev, "Set codec SYSCLK.. OK: freq=%d, id=%d\n",
++			sysclk, clk_id);
++	}
++
++	/* Set I2S sysclk */
++	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, sysclk, SND_SOC_CLOCK_OUT);
++	if (ret) {
++		dev_err(card->dev, "Failed to set I2S SYSCLK: %d\n", ret);
++		return ret;
++	}
++
++	if (drvdata->bclk_ratio) {
++		dev_dbg(card->dev, "Set BCLK/Fs fixed ratio to %d..\n",
++			drvdata->bclk_ratio);
++
++		/* Set BCLK/Fs fixed ratio */
++		ret = snd_soc_dai_set_bclk_ratio(cpu_dai, drvdata->bclk_ratio);
++		if (ret < 0) {
++			dev_err(card->dev, "Unable to set BCLK ratio: %d\n", ret);
++			return ret;
++		}
++	}
++
++	return 0;
++}
++
++/* machine stream operations */
++static struct snd_soc_ops aapi_sound_ops = {
++	.startup   = aapi_sound_asoc_startup,
++	.hw_params = aapi_sound_asoc_hw_params,
++};
++
++static const struct snd_soc_dapm_widget aapi_sound_widgets[] = {
++	SND_SOC_DAPM_LINE("Line In Jacks", NULL),
++};
++
++static const struct snd_soc_dapm_route aapi_sound_routes[] = {
++	/* line inputs */
++	{ "LLINEIN", NULL, "Line In Jacks" },
++	{ "RLINEIN", NULL, "Line In Jacks" }
++};
++
++static int aapi_sound_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct device_node *np = dev->of_node;
++	struct snd_soc_card *card;
++	struct snd_soc_dai_link *dai;
++	struct device_node *codec_np, *cpu_np;
++	struct snd_soc_dai_link_component *comp;
++	const struct aapi_sound_card_quirks *match;
++	struct aapi_sound_drvdata *drvdata;
++	int ret;
++
++	dev_dbg(dev, "%s: enter\n", __func__);
++
++	if (!np)
++		return -ENODEV;
++
++	match = of_device_get_match_data(dev);
++	if (!match) {
++		dev_err(dev, "Missing device configuration\n");
++		return -EINVAL;
++	}
++
++	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
++	if (!drvdata)
++		return -ENOMEM;
++
++	drvdata->codec_clk_id = match->codec_clk_id;
++	drvdata->bclk_ratio = match->bclk_ratio;
++
++	ret = of_property_read_u32(np, "orpal,sysclk-freq",
++				  &drvdata->sysclk_freq);
++	if (ret < 0) {
++		dev_err(dev, "sysclk-freq must be specified\n");
++		return -EINVAL;
++	}
++
++	card = devm_kzalloc(dev, sizeof(*card), GFP_KERNEL);
++	dai = devm_kzalloc(dev, sizeof(*dai), GFP_KERNEL);
++	comp = devm_kzalloc(dev, 3 * sizeof(*comp), GFP_KERNEL);
++	if (!dai || !card || !comp)
++		return -ENOMEM;
++
++        // Populate DAI link structure
++	dai->cpus	= &comp[0];
++	dai->num_cpus	= 1;
++	dai->codecs	= &comp[1];
++	dai->num_codecs	= 1;
++	dai->platforms	= &comp[2];
++	dai->num_platforms = 1;
++
++	dai->name	= "aapi-snd-dai";
++	dai->stream_name = "aapi-snd-pcm";
++	dai->init	= aapi_sound_asoc_dai_init;
++	dai->ops	= &aapi_sound_ops;
++	dai->dai_fmt	= SND_SOC_DAIFMT_I2S
++			| SND_SOC_DAIFMT_BP_FP
++			| SND_SOC_DAIFMT_NB_NF;
++
++	// Read the Device tree
++	codec_np = of_parse_phandle(np, "orpal,audio-codec", 0);
++	if (!codec_np) {
++		dev_err(dev, "audio-codec property missing\n");
++		return -EINVAL;
++	}
++
++	dai->codecs->dai_name = match->codec_dai_name;
++	dai->codecs->of_node = codec_np;
++	of_node_put(codec_np);
++
++	cpu_np = of_parse_phandle(np, "orpal,i2s-controller", 0);
++	if (!cpu_np) {
++		dev_err(dev, "i2s-controller node missing\n");
++		of_node_put(codec_np);
++		return -EINVAL;
++	}
++
++	dai->cpus->of_node = cpu_np;
++	dai->platforms->of_node = cpu_np;
++	of_node_put(cpu_np);
++
++	// Register ASoC card object
++	card->dev	= dev;
++	card->name	= "orpal-aapi-snd";
++	card->owner	= THIS_MODULE;
++	card->dai_link	= dai;
++	card->num_links	= 1;
++
++	card->dapm_widgets	= aapi_sound_widgets;
++	card->num_dapm_widgets	= ARRAY_SIZE(aapi_sound_widgets);
++	card->dapm_routes	= aapi_sound_routes;
++	card->num_dapm_routes	= ARRAY_SIZE(aapi_sound_routes);
++
++	card->fully_routed	= true;
++
++	snd_soc_card_set_drvdata(card, drvdata);
++
++	ret = devm_snd_soc_register_card(dev, card);
++	if (ret == -EPROBE_DEFER)
++		return ret;
++	if (ret < 0) {
++		dev_err(dev, "register card failed: (%d)\n", ret);
++		return ret;
++	}
++
++	dev_info(dev, "%s card registered!\n", card->name);
++
++	return 0;
++}
++
++/*
++ * The board has an XTAL installed.
++ * The selected XTAL freq sets the codec in the "normal" mode.
++ * The ratio BCLK/Fs = 64 is constant if codec is master.
++ * See spec for details.
++ */
++static const struct aapi_sound_card_quirks aapi_wm8731_data = {
++	.codec_dai_name	= "wm8731-hifi",
++	.codec_clk_id	= WM8731_SYSCLK_XTAL,
++	.bclk_ratio	= 64,
++};
++
++/*
++ * The SYSCLK frequency is fixed in the board as (256*Fs)
++ * The ratio BCLK/Fs = 64 is constant if codec is master.
++ * See spec for details.
++ */
++static const struct aapi_sound_card_quirks aapi_pcm180x_data = {
++	.codec_dai_name	= "pcm180x-hifi",
++	.codec_clk_id	= -1,	/* No need to set SYSCLK */
++	.bclk_ratio	= 64,
++};
++
++static const struct of_device_id aapi_sound_of_match[] = {
++	{
++		.compatible = "orpaltech,aapi-sound-wm8731",
++		.data = &aapi_wm8731_data,
++	},
++	{
++		.compatible = "orpaltech,aapi-sound-pcm180x",
++		.data = &aapi_pcm180x_data,
++	},
++	{ /*sentinel*/ },
++};
++MODULE_DEVICE_TABLE(of, aapi_sound_of_match);
++
++static struct platform_driver aapi_sound_driver = {
++	.probe	= aapi_sound_probe,
++	.driver	= {
++		.name	= "orpal-aapi-snd",
++		.owner	= THIS_MODULE,
++		.of_match_table	= aapi_sound_of_match,
++	},
++};
++module_platform_driver(aapi_sound_driver);
++
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.ru>");
++MODULE_DESCRIPTION("ORPALTECH AA-PI Soundcard driver");
++MODULE_LICENSE("GPL v2");
++MODULE_ALIAS("platform:orpal-aapi-snd");
+diff --git a/sound/soc/sunxi/Kconfig b/sound/soc/sunxi/Kconfig
+index 205f422..5240cbf 100644
+--- a/sound/soc/sunxi/Kconfig
++++ b/sound/soc/sunxi/Kconfig
+@@ -1,5 +1,5 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+-menu "Allwinner"
++menu "Allwinner SoC Audio support"
+ 	depends on ARCH_SUNXI || COMPILE_TEST
+ 
+ config SND_SUN4I_CODEC
+@@ -67,4 +67,12 @@ config SND_SUN8I_ADDA_PR_REGMAP
+ 	tristate
+ 	select REGMAP
+ 
++config SND_ORPAL_AAPI
++	tristate "ORPALTECH AA-PI Soundcard driver for Allwinner SoCs"
++	depends on SND_SUN4I_I2S
++	select SND_SOC_WM8731
++	select SND_SOC_ORPAL_PCM180X
++	help
++	  Say Y or M if you want to add support for ORPALTECH AA-PI Soundcard.
++
+ endmenu
+diff --git a/sound/soc/sunxi/Makefile b/sound/soc/sunxi/Makefile
+index 4483fe9..7fcc90b 100644
+--- a/sound/soc/sunxi/Makefile
++++ b/sound/soc/sunxi/Makefile
+@@ -7,3 +7,8 @@ obj-$(CONFIG_SND_SUN50I_CODEC_ANALOG) += sun50i-codec-analog.o
+ obj-$(CONFIG_SND_SUN8I_CODEC) += sun8i-codec.o
+ obj-$(CONFIG_SND_SUN8I_ADDA_PR_REGMAP) += sun8i-adda-pr-regmap.o
+ obj-$(CONFIG_SND_SUN50I_DMIC) += sun50i-dmic.o
++ifeq ($(CONFIG_ARCH_SUNXI),y)
++# ORPAL-AA-Pi Soundcard Support
++snd-soc-orpal-aapi-objs := orpal-aapi-sound.o
++obj-$(CONFIG_SND_ORPAL_AAPI) += snd-soc-orpal-aapi.o
++endif
+diff --git a/sound/soc/sunxi/orpal-aapi-sound.c b/sound/soc/sunxi/orpal-aapi-sound.c
+new file mode 100644
+index 0000000..9110b6e
+--- /dev/null
++++ b/sound/soc/sunxi/orpal-aapi-sound.c
+@@ -0,0 +1,329 @@
++/*
++ * ASoC Driver for ORPALTECH AA-PI Soundcard (capture mode only).
++ *
++ *  Created on:	15-Apr-2018
++ *  Created by:	Sergey Suloev <ssuloev@orpaltech.ru>
++ *
++ * Copyright (C) 2013-2025 ORPAL Technology, Inc.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ */
++
++#define DEBUG
++
++#include <linux/module.h>
++#include <linux/types.h>
++
++#include <sound/core.h>
++#include <sound/soc.h>
++#include <sound/pcm_params.h>
++#include <sound/control.h>
++
++#include "../codecs/wm8731.h"
++
++
++
++/*static const unsigned int aapi_sound_rates[] = { 32000, 48000, 64000, 96000 };*/
++static const unsigned int aapi_sound_channels[] = { 2 };
++
++/* Setup constraints */
++/*static struct snd_pcm_hw_constraint_list aapi_sound_constraints_rates = {
++	.list	= aapi_sound_rates,
++	.count	= ARRAY_SIZE(aapi_sound_rates),
++};*/
++static struct snd_pcm_hw_constraint_list aapi_sound_constraints_channels = {
++	.list	= aapi_sound_channels,
++	.count	= ARRAY_SIZE(aapi_sound_channels),
++};
++
++struct aapi_sound_card_quirks {
++	const char	*codec_dai_name;
++	int	codec_clk_id;
++	u32	bclk_ratio;
++};
++
++struct aapi_sound_drvdata {
++	int	codec_clk_id;
++	u32	sysclk_freq;
++	u32	bclk_ratio;
++};
++
++static int aapi_sound_asoc_dai_init(struct snd_soc_pcm_runtime *rtd)
++{
++	struct snd_soc_card *card = rtd->card;
++
++	dev_dbg(card->dev, "%s: enter\n", __func__);
++
++	return 0;
++}
++
++static int aapi_sound_asoc_startup(struct snd_pcm_substream *substream)
++{
++	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
++	struct snd_soc_card *card = rtd->card;
++	int ret;
++
++	dev_dbg(card->dev, "%s: enter\n", __func__);
++/*
++	ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
++					SNDRV_PCM_HW_PARAM_RATE,
++					&aapi_sound_constraints_rates);
++	if (ret < 0) {
++		dev_err(card->dev,
++			"%s: set rate constraints failed: 0x%x\n",
++			__func__, ret);
++		return ret;
++	}
++*/
++	ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
++					SNDRV_PCM_HW_PARAM_CHANNELS,
++					&aapi_sound_constraints_channels);
++	if (ret) {
++		dev_err(card->dev,
++			"%s: set channels constraints failed: 0x%x\n",
++			__func__, ret);
++		return ret;
++	}
++
++	return 0;
++}
++
++static int aapi_sound_asoc_hw_params(struct snd_pcm_substream *substream,
++				     struct snd_pcm_hw_params *params)
++{
++	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
++	struct snd_soc_dai *codec_dai = snd_soc_rtd_to_codec(rtd, 0);
++	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
++	struct snd_soc_card *card = rtd->card;
++	struct aapi_sound_drvdata *drvdata = snd_soc_card_get_drvdata(card);
++	u32 sysclk;
++	int clk_id;
++	int ret;
++
++	dev_dbg(card->dev, "%s: enter\n", __func__);
++
++	sysclk = drvdata->sysclk_freq;
++	clk_id = drvdata->codec_clk_id;
++
++	if (!sysclk) {
++		dev_err(card->dev, "Invalid SYSCLK freq\n");
++		return -EINVAL;
++	}
++
++	if (clk_id < 0) {
++		dev_dbg(card->dev, "No need to set codec SYSCLK.\n");
++	} else {
++		/* Set codec sysclk */
++		ret = snd_soc_dai_set_sysclk(codec_dai, clk_id, sysclk,
++					SND_SOC_CLOCK_IN);
++		if (ret) {
++			dev_err(card->dev, "Failed to set codec SYSCLK by id=%d\n",
++				clk_id);
++			return ret;
++		}
++
++		dev_dbg(card->dev, "Set codec SYSCLK.. OK: freq=%d, id=%d\n",
++			sysclk, clk_id);
++	}
++
++	/* Set I2S sysclk */
++	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, sysclk, SND_SOC_CLOCK_OUT);
++	if (ret) {
++		dev_err(card->dev, "Failed to set I2S SYSCLK: %d\n", ret);
++		return ret;
++	}
++
++	if (drvdata->bclk_ratio) {
++		dev_dbg(card->dev, "Set BCLK/Fs fixed ratio to %d..\n",
++			drvdata->bclk_ratio);
++
++		/* Set BCLK/Fs fixed ratio */
++		ret = snd_soc_dai_set_bclk_ratio(cpu_dai, drvdata->bclk_ratio);
++		if (ret < 0) {
++			dev_err(card->dev, "Unable to set BCLK ratio: %d\n", ret);
++			return ret;
++		}
++	}
++
++	return 0;
++}
++
++/* machine stream operations */
++static struct snd_soc_ops aapi_sound_ops = {
++	.startup   = aapi_sound_asoc_startup,
++	.hw_params = aapi_sound_asoc_hw_params,
++};
++
++static const struct snd_soc_dapm_widget aapi_sound_widgets[] = {
++	SND_SOC_DAPM_LINE("Line In Jacks", NULL),
++};
++
++static const struct snd_soc_dapm_route aapi_sound_routes[] = {
++	/* line inputs */
++	{ "LLINEIN", NULL, "Line In Jacks" },
++	{ "RLINEIN", NULL, "Line In Jacks" }
++};
++
++static int aapi_sound_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct device_node *np = dev->of_node;
++	struct snd_soc_card *card;
++	struct snd_soc_dai_link *dai;
++	struct device_node *codec_np, *cpu_np;
++	struct snd_soc_dai_link_component *comp;
++	const struct aapi_sound_card_quirks *match;
++	struct aapi_sound_drvdata *drvdata;
++	int ret;
++
++	dev_dbg(dev, "%s: enter\n", __func__);
++
++	if (!np)
++		return -ENODEV;
++
++	match = of_device_get_match_data(dev);
++	if (!match) {
++		dev_err(dev, "Missing device configuration\n");
++		return -EINVAL;
++	}
++
++	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
++	if (!drvdata)
++		return -ENOMEM;
++
++	drvdata->codec_clk_id = match->codec_clk_id;
++	drvdata->bclk_ratio = match->bclk_ratio;
++
++	ret = of_property_read_u32(np, "orpal,sysclk-freq",
++				  &drvdata->sysclk_freq);
++	if (ret < 0) {
++		dev_err(dev, "sysclk-freq must be specified\n");
++		return -EINVAL;
++	}
++
++	card = devm_kzalloc(dev, sizeof(*card), GFP_KERNEL);
++	dai = devm_kzalloc(dev, sizeof(*dai), GFP_KERNEL);
++	comp = devm_kzalloc(dev, 3 * sizeof(*comp), GFP_KERNEL);
++	if (!dai || !card || !comp)
++		return -ENOMEM;
++
++        // Populate DAI link structure
++	dai->cpus	= &comp[0];
++	dai->num_cpus	= 1;
++	dai->codecs	= &comp[1];
++	dai->num_codecs	= 1;
++	dai->platforms	= &comp[2];
++	dai->num_platforms = 1;
++
++	dai->name	= "aapi-snd-dai";
++	dai->stream_name = "aapi-snd-pcm";
++	dai->init	= aapi_sound_asoc_dai_init;
++	dai->ops	= &aapi_sound_ops;
++	dai->dai_fmt	= SND_SOC_DAIFMT_I2S
++			| SND_SOC_DAIFMT_BP_FP
++			| SND_SOC_DAIFMT_NB_NF;
++
++	// Read the Device tree
++	codec_np = of_parse_phandle(np, "orpal,audio-codec", 0);
++	if (!codec_np) {
++		dev_err(dev, "audio-codec property missing\n");
++		return -EINVAL;
++	}
++
++	dai->codecs->dai_name = match->codec_dai_name;
++	dai->codecs->of_node = codec_np;
++	of_node_put(codec_np);
++
++	cpu_np = of_parse_phandle(np, "orpal,i2s-controller", 0);
++	if (!cpu_np) {
++		dev_err(dev, "i2s-controller node missing\n");
++		of_node_put(codec_np);
++		return -EINVAL;
++	}
++
++	dai->cpus->of_node = cpu_np;
++	dai->platforms->of_node = cpu_np;
++	of_node_put(cpu_np);
++
++	// Register ASoC card object
++	card->dev	= dev;
++	card->name	= "orpal-aapi-snd";
++	card->owner	= THIS_MODULE;
++	card->dai_link	= dai;
++	card->num_links	= 1;
++
++	card->dapm_widgets	= aapi_sound_widgets;
++	card->num_dapm_widgets	= ARRAY_SIZE(aapi_sound_widgets);
++	card->dapm_routes	= aapi_sound_routes;
++	card->num_dapm_routes	= ARRAY_SIZE(aapi_sound_routes);
++
++	card->fully_routed	= true;
++
++	snd_soc_card_set_drvdata(card, drvdata);
++
++	ret = devm_snd_soc_register_card(dev, card);
++	if (ret == -EPROBE_DEFER)
++		return ret;
++	if (ret < 0) {
++		dev_err(dev, "register card failed: (%d)\n", ret);
++		return ret;
++	}
++
++	dev_info(dev, "%s card registered!\n", card->name);
++
++	return 0;
++}
++
++/*
++ * The board has an XTAL installed.
++ * The selected XTAL freq sets the codec in the "normal" mode.
++ * The ratio BCLK/Fs = 64 is constant if codec is master.
++ * See spec for details.
++ */
++static const struct aapi_sound_card_quirks aapi_wm8731_data = {
++	.codec_dai_name	= "wm8731-hifi",
++	.codec_clk_id	= WM8731_SYSCLK_XTAL,
++	.bclk_ratio	= 64,
++};
++
++/*
++ * The SYSCLK frequency is fixed in the board as (256*Fs)
++ * The ratio BCLK/Fs = 64 is constant if codec is master.
++ * See spec for details.
++ */
++static const struct aapi_sound_card_quirks aapi_pcm180x_data = {
++	.codec_dai_name	= "pcm180x-hifi",
++	.codec_clk_id	= -1,	/* No need to set SYSCLK */
++	.bclk_ratio	= 64,
++};
++
++static const struct of_device_id aapi_sound_of_match[] = {
++	{
++		.compatible = "orpaltech,aapi-sound-wm8731",
++		.data = &aapi_wm8731_data,
++	},
++	{
++		.compatible = "orpaltech,aapi-sound-pcm180x",
++		.data = &aapi_pcm180x_data,
++	},
++	{ /*sentinel*/ },
++};
++MODULE_DEVICE_TABLE(of, aapi_sound_of_match);
++
++static struct platform_driver aapi_sound_driver = {
++	.probe	= aapi_sound_probe,
++	.driver	= {
++		.name	= "orpal-aapi-snd",
++		.owner	= THIS_MODULE,
++		.of_match_table	= aapi_sound_of_match,
++	},
++};
++module_platform_driver(aapi_sound_driver);
++
++MODULE_AUTHOR("Sergey Suloev <ssuloev@orpaltech.ru>");
++MODULE_DESCRIPTION("ORPALTECH AA-PI Soundcard driver");
++MODULE_LICENSE("GPL v2");
++MODULE_ALIAS("platform:orpal-aapi-snd");
+-- 
+2.43.0
+
